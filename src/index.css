@@ -1,0 +1,271 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Animações personalizadas */
+@layer utilities {
+  .animate-in {
+    animation-fill-mode: both;
+  }
+  
+  .slide-in-from-top-4 {
+    animation: slide-in-from-top-4 0.2s ease-out;
+  }
+  
+  .slide-in-from-right {
+    animation: slide-in-from-right 0.3s ease-out;
+  }
+  
+  .zoom-in-95 {
+    animation: zoom-in-95 0.2s ease-out;
+  }
+  
+  .fade-in {
+    animation: fade-in 0.3s ease-out;
+  }
+  
+  .slide-in-from-bottom-4 {
+    animation: slide-in-from-bottom-4 0.4s ease-out;
+  }
+}
+
+@keyframes slide-in-from-top-4 {
+  from {
+    opacity: 0;
+    transform: translateY(-1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-from-right {
+  from {
+    opacity: 0;
+    transform: translateX(1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes zoom-in-95 {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-from-bottom-4 {
+  from {
+    opacity: 0;
+    transform: translateY(1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Dark mode styles */
+@layer base {
+  html {
+    @apply transition-colors duration-300;
+  }
+  
+  .dark {
+    @apply bg-gray-900 text-gray-100;
+  }
+  
+  .dark .bg-white {
+    @apply bg-gray-800;
+  }
+  
+  .dark .border-gray-200 {
+    @apply border-gray-700;
+  }
+  
+  .dark .text-gray-900 {
+    @apply text-gray-100;
+  }
+  
+  .dark .text-gray-600 {
+    @apply text-gray-300;
+  }
+  
+  .dark .text-gray-500 {
+    @apply text-gray-400;
+  }
+  
+  .dark .bg-gray-50 {
+    @apply bg-gray-700;
+  }
+  
+  .dark .bg-gray-100 {
+    @apply bg-gray-600;
+  }
+  
+  .dark .hover\:bg-gray-50:hover {
+    @apply bg-gray-700;
+  }
+  
+  .dark .hover\:bg-gray-100:hover {
+    @apply bg-gray-600;
+  }
+  
+  /* Inputs and form elements */
+  .dark input,
+  .dark textarea,
+  .dark select {
+    @apply bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400;
+  }
+  
+  .dark input:focus,
+  .dark textarea:focus,
+  .dark select:focus {
+    @apply border-blue-500 ring-blue-500;
+  }
+  
+  /* Buttons */
+  .dark .border-gray-300 {
+    @apply border-gray-600;
+  }
+  
+  /* Dropdowns and modals */
+  .dark .shadow-lg {
+    @apply shadow-2xl;
+  }
+  
+  /* Status badges */
+  .dark .bg-blue-100 {
+    @apply bg-blue-900;
+  }
+  
+  .dark .text-blue-800 {
+    @apply text-blue-200;
+  }
+  
+  .dark .bg-green-100 {
+    @apply bg-green-900;
+  }
+  
+  .dark .text-green-800 {
+    @apply text-green-200;
+  }
+  
+  .dark .bg-yellow-100 {
+    @apply bg-yellow-900;
+  }
+  
+  .dark .text-yellow-800 {
+    @apply text-yellow-200;
+  }
+  
+  .dark .bg-red-100 {
+    @apply bg-red-900;
+  }
+  
+  .dark .text-red-800 {
+    @apply text-red-200;
+  }
+  
+  .dark .bg-purple-100 {
+    @apply bg-purple-900;
+  }
+  
+  .dark .text-purple-800 {
+    @apply text-purple-200;
+  }
+  
+  .dark .bg-gray-300 {
+    @apply bg-gray-600;
+  }
+  
+  .dark .text-gray-800 {
+    @apply text-gray-200;
+  }
+
+  /* Colored backgrounds for dark mode */
+  .dark .bg-blue-50 {
+    @apply bg-blue-900/30;
+  }
+  
+  .dark .bg-yellow-50 {
+    @apply bg-yellow-900/30;
+  }
+  
+  .dark .bg-green-50 {
+    @apply bg-green-900/30;
+  }
+  
+  .dark .bg-red-50 {
+    @apply bg-red-900/30;
+  }
+  
+  .dark .text-blue-900 {
+    @apply text-blue-100;
+  }
+  
+  .dark .text-yellow-900 {
+    @apply text-yellow-100;
+  }
+  
+  .dark .text-green-900 {
+    @apply text-green-100;
+  }
+  
+  .dark .text-red-900 {
+    @apply text-red-100;
+  }
+  
+  .dark .border-blue-200 {
+    @apply border-blue-700;
+  }
+  
+  .dark .border-yellow-200 {
+    @apply border-yellow-700;
+  }
+  
+  .dark .border-green-200 {
+    @apply border-green-700;
+  }
+  
+  .dark .border-red-200 {
+    @apply border-red-700;
+  }
+  
+  /* Code elements */
+  .dark code {
+    @apply bg-gray-700 text-gray-200;
+  }
+  
+  /* Calendar and date picker styles */
+  .dark input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+  }
+  
+  /* Progress bars */
+  .dark .bg-gray-200 {
+    @apply bg-gray-600;
+  }
+  
+  /* Select dropdown options */
+  .dark select option {
+    @apply bg-gray-700 text-gray-100;
+  }
+}
