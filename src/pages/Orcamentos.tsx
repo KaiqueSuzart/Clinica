@@ -11,6 +11,19 @@ export default function Orcamentos() {
   const [showEditBudget, setShowEditBudget] = useState(false);
   const [selectedBudget, setSelectedBudget] = useState<any>(null);
   const [budgetsList, setBudgetsList] = useState(budgets);
+  
+  // Estados para novo orçamento
+  const [newBudgetPatient, setNewBudgetPatient] = useState('');
+  const [newBudgetValidUntil, setNewBudgetValidUntil] = useState('');
+  const [newBudgetItems, setNewBudgetItems] = useState<any[]>([]);
+  const [discountType, setDiscountType] = useState<'percentage' | 'fixed'>('percentage');
+  const [discountValue, setDiscountValue] = useState(0);
+  
+  // Estados para novo item
+  const [newItemProcedure, setNewItemProcedure] = useState('');
+  const [newItemDescription, setNewItemDescription] = useState('');
+  const [newItemQuantity, setNewItemQuantity] = useState(1);
+  const [newItemUnitPrice, setNewItemUnitPrice] = useState(0);
 
   const handleViewBudget = (budget: any) => {
     setSelectedBudget(budget);
