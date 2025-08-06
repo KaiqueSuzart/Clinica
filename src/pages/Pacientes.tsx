@@ -6,6 +6,7 @@ import StatusBadge from '../components/UI/StatusBadge';
 import NewPatientModal from '../components/Patients/NewPatientModal';
 import AnamneseModal from '../components/Patients/AnamneseModal';
 import EditPatientModal from '../components/Patients/EditPatientModal';
+import TreatmentPlanModal from '../components/Patients/TreatmentPlanModal';
 import { patients } from '../data/mockData';
 
 export default function Pacientes() {
@@ -83,6 +84,30 @@ export default function Pacientes() {
     setPatientsList(prev => prev.map(patient => 
       patient.id === updatedPatient.id ? updatedPatient : patient
     ));
+  };
+
+  const handleSaveTreatmentPlan = (treatmentPlan: any) => {
+    setPatientsList(prev => prev.map(patient => {
+      if (patient.id === treatmentPlan.patientId) {
+        return {
+          ...patient,
+          treatmentPlan: treatmentPlan,
+          timeline: [
+            {
+              id: Date.now().toString(),
+              patientId: patient.id,
+              type: 'procedimento',
+              title: 'Plano de Tratamento Atualizado',
+              description: `Plano "${treatmentPlan.title}" foi ${patient.treatmentPlan ? 'atualizado' : 'criado'}`,
+              date: new Date().toISOString(),
+              professional: 'Dr. Ana Silva'
+            },
+            ...patient.timeline
+          ]
+        };
+      }
+      return patient;
+    }));
   };
 
   const hasAnamneseNotes = (patientId: string) => {
