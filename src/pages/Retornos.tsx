@@ -5,28 +5,29 @@ import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
 import StatusBadge from '../components/UI/StatusBadge';
 import NewReturnModal from '../components/Returns/NewReturnModal';
+import ScheduleAppointmentModal from '../components/Returns/ScheduleAppointmentModal';
 import { returnVisits } from '../data/mockData';
 
 export default function Retornos() {
   const [showNewReturn, setShowNewReturn] = useState(false);
   const [returnsList, setReturnsList] = useState(returnVisits);
   const [activeTab, setActiveTab] = useState<'confirmed' | 'possible'>('confirmed');
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [selectedPossibleReturn, setSelectedPossibleReturn] = useState<any>(null);
 
   const handleNewReturn = (newReturn: any) => {
     setReturnsList(prev => [...prev, newReturn]);
   };
 
   const handleMarcarConsulta = (possibleReturn: any) => {
-    // Simular agendamento da consulta
-    console.log('Marcando consulta para:', possibleReturn.patientName);
-    
-    // Aqui você poderia:
-    // 1. Abrir modal de agendamento
-    // 2. Redirecionar para página de agenda
-    // 3. Marcar como agendado
-    
-    // Por enquanto, vamos simular que foi marcado
-    alert(`Consulta marcada para ${possibleReturn.patientName}!\n\nProcedimento: ${possibleReturn.procedure}\nData prevista: ${new Date(possibleReturn.scheduledDate).toLocaleDateString('pt-BR')}`);
+    setSelectedPossibleReturn(possibleReturn);
+    setShowScheduleModal(true);
+  };
+
+  const handleSaveAppointment = (appointmentData: any) => {
+    console.log('Consulta agendada:', appointmentData);
+    // Aqui você salvaria no backend e removeria da lista de possíveis retornos
+    alert(`Consulta agendada com sucesso!\n\nPaciente: ${appointmentData.patientName}\nData: ${new Date(appointmentData.date).toLocaleDateString('pt-BR')}\nHorário: ${appointmentData.time}`);
   };
 
   // Simular possíveis retornos (em uma aplicação real, viria do backend)
@@ -375,6 +376,20 @@ export default function Retornos() {
         onClose={() => setShowNewReturn(false)}
         onSave={handleNewReturn}
       />
+      
+      {selectedPossibleReturn && (
+        <ScheduleAppointmentModal
+          isOpen={showScheduleModal}
+          onClose={() => {
+            setShowScheduleModal(false);
+            setSelectedPossibleReturn(null);
+          }}
+          patientName={selectedPossibleReturn.patientName}
+          patientPhone={selectedPossibleReturn.patientPhone}
+          procedure={selectedPossibleReturn.procedure}
+          onSave={handleSaveAppointment}
+        />
+      )}
     </div>
   );
 }
