@@ -25,6 +25,50 @@ export default function Orcamentos() {
   const [newItemQuantity, setNewItemQuantity] = useState(1);
   const [newItemUnitPrice, setNewItemUnitPrice] = useState(0);
 
+  const addNewItem = () => {
+    if (!newItemProcedure.trim() || !newItemDescription.trim()) {
+      alert('Preencha o procedimento e a descrição');
+      return;
+    }
+
+    const newItem = {
+      id: Date.now().toString(),
+      procedure: newItemProcedure,
+      description: newItemDescription,
+      quantity: newItemQuantity,
+      unitPrice: newItemUnitPrice,
+      total: newItemQuantity * newItemUnitPrice
+    };
+
+    setNewBudgetItems(prev => [...prev, newItem]);
+    
+    // Reset campos
+    setNewItemProcedure('');
+    setNewItemDescription('');
+    setNewItemQuantity(1);
+    setNewItemUnitPrice(0);
+  };
+
+  const removeItem = (itemId: string) => {
+    setNewBudgetItems(prev => prev.filter(item => item.id !== itemId));
+  };
+
+  const calculateSubtotal = () => {
+    return newBudgetItems.reduce((sum, item) => sum + item.total, 0);
+  };
+
+  const calculateDiscount = () => {
+    const subtotal = calculateSubtotal();
+    if (discountType === 'percentage') {
+      return (subtotal * discountValue) / 100;
+    }
+    return discountValue;
+  };
+
+  const calculateTotal = () => {
+    return calculateSubtotal() - calculateDiscount();
+  };
+
   const handleViewBudget = (budget: any) => {
     setSelectedBudget(budget);
     setShowViewBudget(true);
@@ -150,6 +194,39 @@ export default function Orcamentos() {
 
             <div>
               <h4 className="text-md font-semibold text-gray-900 mb-4">Itens do Orçamento</h4>
+              
+              {/* Lista de itens adicionados */}
+              {newBudgetItems.length > 0 && (
+                <div className="mb-4">
+                  <div className="space-y-2">
+                    {newBudgetItems.map((item) => (
+                      <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-4">
+                            <span className="font-medium text-gray-900 dark:text-gray-100">{item.procedure}</span>
+                            <span className="text-gray-600 dark:text-gray-300">{item.description}</span>
+                            <span className="text-sm text-gray-500 dark:text-gray-400">
+                              {item.quantity}x R$ {item.unitPrice.toFixed(2)}
+                            </span>
+                            <span className="font-semibold text-gray-900 dark:text-gray-100">
+                              R$ {item.total.toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeItem(item.id)}
+                          className="p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Formulário para adicionar novo item */}
               <div className="space-y-3">
                 <div className="grid grid-cols-12 gap-3 items-end">
                   <div className="col-span-4">
@@ -158,8 +235,10 @@ export default function Orcamentos() {
                     </label>
                     <input
                       type="text"
+                      value={newItemProcedure}
+                      onChange={(e) => setNewItemProcedure(e.target.value)}
                       placeholder="Nome do procedimento"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     />
                   </div>
                   <div className="col-span-4">
@@ -168,8 +247,10 @@ export default function Orcamentos() {
                     </label>
                     <input
                       type="text"
+                      value={newItemDescription}
+                      onChange={(e) => setNewItemDescription(e.target.value)}
                       placeholder="Descrição detalhada"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     />
                   </div>
                   <div className="col-span-1">
@@ -178,8 +259,10 @@ export default function Orcamentos() {
                     </label>
                     <input
                       type="number"
-                      placeholder="1"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      value={newItemQuantity}
+                      onChange={(e) => setNewItemQuantity(Number(e.target.value))}
+                      min="1"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     />
                   </div>
                   <div className="col-span-2">
@@ -188,27 +271,107 @@ export default function Orcamentos() {
                     </label>
                     <input
                       type="number"
-                      placeholder="0,00"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      value={newItemUnitPrice}
+                      onChange={(e) => setNewItemUnitPrice(Number(e.target.value))}
+                      step="0.01"
+                      min="0"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     />
                   </div>
                   <div className="col-span-1">
-                    <Button variant="outline" size="sm">+</Button>
+                    <Button 
+                      type="button"
+                      variant="outline" 
+                      size="sm"
+                      onClick={addNewItem}
+                      disabled={!newItemProcedure.trim() || !newItemDescription.trim()}
+                    >
+                      +
+                    </Button>
                   </div>
                 </div>
               </div>
+              
+              {/* Sistema de Desconto */}
+              {newBudgetItems.length > 0 && (
+                <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <h5 className="text-md font-semibold text-gray-900 dark:text-gray-100 mb-4">Desconto</h5>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Tipo de Desconto
+                      </label>
+                      <select
+                        value={discountType}
+                        onChange={(e) => setDiscountType(e.target.value as 'percentage' | 'fixed')}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      >
+                        <option value="percentage">Percentual (%)</option>
+                        <option value="fixed">Valor Fixo (R$)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {discountType === 'percentage' ? 'Percentual' : 'Valor'}
+                      </label>
+                      <input
+                        type="number"
+                        value={discountValue}
+                        onChange={(e) => setDiscountValue(Number(e.target.value))}
+                        min="0"
+                        max={discountType === 'percentage' ? 100 : undefined}
+                        step={discountType === 'percentage' ? 1 : 0.01}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                        placeholder={discountType === 'percentage' ? '0' : '0,00'}
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <div className="text-sm text-gray-600 dark:text-gray-300">
+                        <p>Desconto: <span className="text-red-600 dark:text-red-400 font-semibold">
+                          -R$ {calculateDiscount().toFixed(2)}
+                        </span></p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="flex justify-between items-center pt-4 border-t border-gray-200">
+            <div className="flex justify-between items-center pt-4 border-t border-gray-200 dark:border-gray-700">
+              {newBudgetItems.length > 0 ? (
+                <div className="text-right">
+                  <div className="text-sm text-gray-600 dark:text-gray-300">
+                    Subtotal: R$ {calculateSubtotal().toFixed(2)}
+                  </div>
+                  {calculateDiscount() > 0 && (
+                    <div className="text-sm text-red-600 dark:text-red-400">
+                      Desconto: -R$ {calculateDiscount().toFixed(2)}
+                    </div>
+                  )}
+                  <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                    Total: R$ {calculateTotal().toFixed(2)}
+                  </div>
+                </div>
+              ) : (
               <div className="text-lg font-semibold">
                 Total: R$ 0,00
               </div>
+              )}
               <div className="flex space-x-3">
                 <Button variant="outline" onClick={() => setShowNewBudget(false)}>
                   Cancelar
                 </Button>
-                <Button variant="secondary">Salvar Rascunho</Button>
-                <Button>Finalizar Orçamento</Button>
+                <Button 
+                  variant="secondary"
+                  disabled={newBudgetItems.length === 0}
+                >
+                  Salvar Rascunho
+                </Button>
+                <Button
+                  disabled={newBudgetItems.length === 0 || !newBudgetPatient}
+                >
+                  Finalizar Orçamento
+                </Button>
               </div>
             </div>
           </div>
