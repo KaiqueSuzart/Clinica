@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileText, Plus, DollarSign, Send, Eye } from 'lucide-react';
+import { FileText, Plus, DollarSign, Send, Eye, Edit, X } from 'lucide-react';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
 import StatusBadge from '../components/UI/StatusBadge';
@@ -7,7 +7,47 @@ import { budgets } from '../data/mockData';
 
 export default function Orcamentos() {
   const [showNewBudget, setShowNewBudget] = useState(false);
+  const [showViewBudget, setShowViewBudget] = useState(false);
+  const [showEditBudget, setShowEditBudget] = useState(false);
+  const [selectedBudget, setSelectedBudget] = useState<any>(null);
+  const [budgetsList, setBudgetsList] = useState(budgets);
 
+  const handleViewBudget = (budget: any) => {
+    setSelectedBudget(budget);
+    setShowViewBudget(true);
+  };
+
+  const handleEditBudget = (budget: any) => {
+    setSelectedBudget(budget);
+    setShowEditBudget(true);
+  };
+
+  const handleSendBudget = (budget: any) => {
+    // Simular envio do orçamento
+    alert(`Orçamento enviado para ${budget.patientName}!\n\nValor: R$ ${budget.total.toFixed(2)}\nStatus: Enviado por WhatsApp`);
+    
+    // Atualizar status para enviado (em uma aplicação real, seria uma chamada à API)
+    setBudgetsList(prev => prev.map(b => 
+      b.id === budget.id ? { ...b, status: 'enviado', sentAt: new Date().toISOString() } : b
+    ));
+  };
+
+  const handleSaveBudget = (budgetData: any) => {
+    if (selectedBudget) {
+      // Editar orçamento existente
+      setBudgetsList(prev => prev.map(b => 
+        b.id === selectedBudget.id ? { ...b, ...budgetData, updatedAt: new Date().toISOString() } : b
+      ));
+    } else {
+      // Novo orçamento
+      const newBudget = {
+        ...budgetData,
+        id: Date.now().toString(),
+        createdAt: new Date().toISOString()
+      };
+      setBudgetsList(prev => [...prev, newBudget]);
+    }
+  };
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -27,7 +67,7 @@ export default function Orcamentos() {
             <FileText className="w-8 h-8 text-blue-600 mr-3" />
             <div>
               <p className="text-sm text-gray-600">Total</p>
-              <p className="text-2xl font-bold text-gray-900">{budgets.length}</p>
+              <p className="text-2xl font-bold text-gray-900">{budgetsList.length}</p>
             </div>
           </div>
         </Card>
@@ -37,7 +77,7 @@ export default function Orcamentos() {
             <div>
               <p className="text-sm text-gray-600">Aprovados</p>
               <p className="text-2xl font-bold text-gray-900">
-                {budgets.filter(b => b.status === 'aprovado').length}
+                {budgetsList.filter(b => b.status === 'aprovado').length}
               </p>
             </div>
           </div>
@@ -48,7 +88,7 @@ export default function Orcamentos() {
             <div>
               <p className="text-sm text-gray-600">Rascunhos</p>
               <p className="text-2xl font-bold text-gray-900">
-                {budgets.filter(b => b.status === 'rascunho').length}
+                {budgetsList.filter(b => b.status === 'rascunho').length}
               </p>
             </div>
           </div>
@@ -61,7 +101,7 @@ export default function Orcamentos() {
             <div>
               <p className="text-sm text-gray-600">Recusados</p>
               <p className="text-2xl font-bold text-gray-900">
-                {budgets.filter(b => b.status === 'recusado').length}
+                {budgetsList.filter(b => b.status === 'recusado').length}
               </p>
             </div>
           </div>
@@ -162,7 +202,7 @@ export default function Orcamentos() {
       )}
 
       {/* Lista de Orçamentos */}
-      <Card title="Orçamentos Criados" subtitle={`${budgets.length} orçamentos na lista`}>
+      <Card title="Orçamentos Criados" subtitle={`${budgetsList.length} orçamentos na lista`}>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -188,7 +228,7 @@ export default function Orcamentos() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {budgets.map((budget) => (
+              {budgetsList.map((budget) => (
                 <tr key={budget.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">
@@ -219,9 +259,20 @@ export default function Orcamentos() {
                         Ver
                       </Button>
                       <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        icon={Edit}
+                        onClick={() => handleEditBudget(budget)}
+                      >
                         Editar
                       </Button>
-                      <Button variant="outline" size="sm" icon={Send}>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        icon={Send}
+                        onClick={() => handleSendBudget(budget)}
+                      >
                         Enviar
                       </Button>
                     </div>
@@ -232,6 +283,236 @@ export default function Orcamentos() {
           </table>
         </div>
       </Card>
+
+      {/* Modal de Visualização */}
+      {showViewBudget && selectedBudget && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                Orçamento - {selectedBudget.patientName}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowViewBudget(false);
+                  setSelectedBudget(null);
+                }}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                  <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Informações do Orçamento</h4>
+                  <div className="space-y-2 text-sm">
+                    <p><strong>Paciente:</strong> {selectedBudget.patientName}</p>
+                    <p><strong>Data de Criação:</strong> {new Date(selectedBudget.createdAt).toLocaleDateString('pt-BR')}</p>
+                    <p><strong>Validade:</strong> {new Date(selectedBudget.validUntil).toLocaleDateString('pt-BR')}</p>
+                    <p><strong>Status:</strong> <StatusBadge status={selectedBudget.status} type="budget" /></p>
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Resumo Financeiro</h4>
+                  <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                        R$ {selectedBudget.total.toFixed(2)}
+                      </div>
+                      <p className="text-sm text-blue-800 dark:text-blue-200">Valor Total</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">Itens do Orçamento</h4>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-700">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Procedimento</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Descrição</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Qtd</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Valor Unit.</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                      {selectedBudget.items.map((item: any) => (
+                        <tr key={item.id}>
+                          <td className="px-4 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{item.procedure}</td>
+                          <td className="px-4 py-4 text-sm text-gray-600 dark:text-gray-300">{item.description}</td>
+                          <td className="px-4 py-4 text-sm text-gray-900 dark:text-gray-100">{item.quantity}</td>
+                          <td className="px-4 py-4 text-sm text-gray-900 dark:text-gray-100">R$ {item.unitPrice.toFixed(2)}</td>
+                          <td className="px-4 py-4 text-sm font-semibold text-gray-900 dark:text-gray-100">R$ {item.total.toFixed(2)}</td>
+                        </tr>
+                      ))}
+              <div className="flex justify-end space-x-3 mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowViewBudget(false);
+                    setSelectedBudget(null);
+                  }}
+                >
+                  Fechar
+                </Button>
+                <Button
+                  variant="outline"
+                  icon={Edit}
+                  onClick={() => {
+                    setShowViewBudget(false);
+                    handleEditBudget(selectedBudget);
+                  }}
+                >
+                  Editar
+                </Button>
+                <Button
+                  icon={Send}
+                  onClick={() => {
+                    handleSendBudget(selectedBudget);
+                    setShowViewBudget(false);
+                    setSelectedBudget(null);
+                  }}
+                >
+                  Enviar
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+                    </tbody>
+      {/* Modal de Edição */}
+      {showEditBudget && selectedBudget && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                Editar Orçamento - {selectedBudget.patientName}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowEditBudget(false);
+                  setSelectedBudget(null);
+                }}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+                  </table>
+            <div className="p-6">
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Paciente
+                    </label>
+                    <input
+                      type="text"
+                      value={selectedBudget.patientName}
+                      disabled
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Validade
+                    </label>
+                    <input
+                      type="date"
+                      defaultValue={selectedBudget.validUntil}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    />
+                  </div>
+                </div>
+                </div>
+                <div>
+                  <h4 className="text-md font-semibold text-gray-900 dark:text-gray-100 mb-4">Itens do Orçamento</h4>
+                  <div className="space-y-3">
+                    {selectedBudget.items.map((item: any, index: number) => (
+                      <div key={item.id} className="grid grid-cols-12 gap-3 items-end p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                        <div className="col-span-4">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Procedimento
+                          </label>
+                          <input
+                            type="text"
+                            defaultValue={item.procedure}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                          />
+                        </div>
+                        <div className="col-span-4">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Descrição
+                          </label>
+                          <input
+                            type="text"
+                            defaultValue={item.description}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                          />
+                        </div>
+                        <div className="col-span-1">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Qtd
+                          </label>
+                          <input
+                            type="number"
+                            defaultValue={item.quantity}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Valor Unit.
+                          </label>
+                          <input
+                            type="number"
+                            defaultValue={item.unitPrice}
+                            step="0.01"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                          />
+                        </div>
+                        <div className="col-span-1">
+                          <Button variant="outline" size="sm" icon={X}>
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <Button variant="outline" className="mt-4" icon={Plus}>
+                    Adicionar Item
+                  </Button>
+                </div>
+              </div>
+                <div className="flex justify-between items-center pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                    Total: R$ {selectedBudget.total.toFixed(2)}
+                  </div>
+                  <div className="flex space-x-3">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        setShowEditBudget(false);
+                        setSelectedBudget(null);
+                      }}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button variant="secondary">Salvar Rascunho</Button>
+                    <Button>Salvar Orçamento</Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
