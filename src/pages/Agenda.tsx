@@ -4,6 +4,7 @@ import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
 import StatusBadge from '../components/UI/StatusBadge';
 import NewAppointmentModal from '../components/Appointments/NewAppointmentModal';
+import EditAppointmentModal from '../components/Appointments/EditAppointmentModal';
 import { appointments } from '../data/mockData';
 
 export default function Agenda() {
@@ -12,6 +13,8 @@ export default function Agenda() {
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [showNewAppointment, setShowNewAppointment] = useState(false);
   const [appointmentsList, setAppointmentsList] = useState(appointments);
+  const [showEditAppointment, setShowEditAppointment] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
 
   const professionals = ['Dr. Ana Silva', 'Dr. Pedro Costa', 'Dra. Maria Santos'];
   const statuses = ['confirmado', 'pendente', 'cancelado', 'realizado'];
@@ -24,6 +27,17 @@ export default function Agenda() {
 
   const handleNewAppointment = (newAppointment: any) => {
     setAppointmentsList(prev => [...prev, newAppointment]);
+  };
+
+  const handleEditAppointment = (appointment: any) => {
+    setSelectedAppointment(appointment);
+    setShowEditAppointment(true);
+  };
+
+  const handleSaveEditAppointment = (updatedAppointment: any) => {
+    setAppointmentsList(prev => prev.map(apt => 
+      apt.id === updatedAppointment.id ? updatedAppointment : apt
+    ));
   };
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -149,7 +163,13 @@ export default function Agenda() {
                 <div className="flex items-center space-x-3">
                   <StatusBadge status={appointment.status} />
                   <div className="flex space-x-2">
-                    <Button variant="outline" size="sm">Editar</Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleEditAppointment(appointment)}
+                    >
+                      Editar
+                    </Button>
                     <Button variant="outline" size="sm">WhatsApp</Button>
                   </div>
                 </div>
@@ -164,6 +184,18 @@ export default function Agenda() {
         onClose={() => setShowNewAppointment(false)}
         onSave={handleNewAppointment}
       />
+      
+      {selectedAppointment && (
+        <EditAppointmentModal
+          isOpen={showEditAppointment}
+          onClose={() => {
+            setShowEditAppointment(false);
+            setSelectedAppointment(null);
+          }}
+          appointment={selectedAppointment}
+          onSave={handleSaveEditAppointment}
+        />
+      )}
     </div>
   );
 }
