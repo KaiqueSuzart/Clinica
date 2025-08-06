@@ -14,6 +14,8 @@ export default function Retornos() {
   const [activeTab, setActiveTab] = useState<'confirmed' | 'possible'>('confirmed');
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [selectedPossibleReturn, setSelectedPossibleReturn] = useState<any>(null);
+  const [showReagendarModal, setShowReagendarModal] = useState(false);
+  const [selectedReturnToReschedule, setSelectedReturnToReschedule] = useState<any>(null);
 
   const handleNewReturn = (newReturn: any) => {
     setReturnsList(prev => [...prev, newReturn]);
@@ -24,12 +26,28 @@ export default function Retornos() {
     setShowScheduleModal(true);
   };
 
+  const handleReagendar = (returnVisit: any) => {
+    setSelectedReturnToReschedule(returnVisit);
+    setShowReagendarModal(true);
+  };
   const handleSaveAppointment = (appointmentData: any) => {
     console.log('Consulta agendada:', appointmentData);
     // Aqui você salvaria no backend e removeria da lista de possíveis retornos
     alert(`Consulta agendada com sucesso!\n\nPaciente: ${appointmentData.patientName}\nData: ${new Date(appointmentData.date).toLocaleDateString('pt-BR')}\nHorário: ${appointmentData.time}`);
   };
 
+  const handleSaveReschedule = (appointmentData: any) => {
+    console.log('Consulta reagendada:', appointmentData);
+    // Aqui você atualizaria o retorno no backend
+    alert(`Consulta reagendada com sucesso!\n\nPaciente: ${appointmentData.patientName}\nNova Data: ${new Date(appointmentData.date).toLocaleDateString('pt-BR')}\nNovo Horário: ${appointmentData.time}`);
+    
+    // Atualizar a lista local
+    setReturnsList(prev => prev.map(ret => 
+      ret.id === selectedReturnToReschedule?.id 
+        ? { ...ret, returnDate: appointmentData.date, status: 'confirmado' }
+        : ret
+    ));
+  };
   // Simular possíveis retornos (em uma aplicação real, viria do backend)
   const possibleReturns = [
     {
@@ -351,7 +369,13 @@ export default function Retornos() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">
                       <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleReagendar(returnVisit)}
+                      >
                         Reagendar
+                      </Button>
                       </Button>
                       <Button variant="outline" size="sm" icon={Phone}>
                         Ligar
@@ -388,6 +412,20 @@ export default function Retornos() {
           patientPhone={selectedPossibleReturn.patientPhone}
           procedure={selectedPossibleReturn.procedure}
           onSave={handleSaveAppointment}
+        />
+      )}
+      
+      {selectedReturnToReschedule && (
+        <ScheduleAppointmentModal
+          isOpen={showReagendarModal}
+          onClose={() => {
+            setShowReagendarModal(false);
+            setSelectedReturnToReschedule(null);
+          }}
+          patientName={selectedReturnToReschedule.patientName}
+          patientPhone="(11) 99999-9999" // Em uma aplicação real, viria do backend
+          procedure={selectedReturnToReschedule.procedure}
+          onSave={handleSaveReschedule}
         />
       )}
     </div>
