@@ -19,6 +19,8 @@ export default function Pacientes() {
   const [selectedAnamnesePatient, setSelectedAnamnesePatient] = useState<string | null>(null);
   const [showEditPatient, setShowEditPatient] = useState(false);
   const [selectedEditPatient, setSelectedEditPatient] = useState<any>(null);
+  const [showTreatmentPlan, setShowTreatmentPlan] = useState(false);
+  const [selectedTreatmentPatient, setSelectedTreatmentPatient] = useState<any>(null);
 
   const filteredPatients = patientsList.filter(patient =>
     patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -152,6 +154,7 @@ export default function Pacientes() {
                   <nav className="-mb-px flex space-x-8">
                     {[
                       { id: 'info', label: 'Informações', icon: User },
+                     { id: 'treatment', label: 'Plano de Tratamento', icon: FileText },
                       { id: 'timeline', label: 'Linha do Tempo', icon: Clock },
                       { id: 'files', label: 'Arquivos', icon: Upload },
                       { id: 'notes', label: 'Anotações', icon: StickyNote }
@@ -169,6 +172,9 @@ export default function Pacientes() {
                         >
                           <Icon className="w-4 h-4 mr-2" />
                           {tab.label}
+                         {tab.id === 'treatment' && selectedPatientData?.treatmentPlan && (
+                           <span className="ml-1 w-2 h-2 bg-blue-500 rounded-full"></span>
+                         )}
                         </button>
                       );
                     })}
@@ -225,6 +231,136 @@ export default function Pacientes() {
               </Card>
               )}
 
+             {/* Plano de Tratamento */}
+             {activeTab === 'treatment' && (
+               <Card title="Plano de Tratamento" subtitle="Gerencie o plano de tratamento do paciente">
+                 {selectedPatientData?.treatmentPlan ? (
+                   <div className="space-y-6">
+                     {/* Resumo do Plano */}
+                     <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg">
+                       <div className="flex items-center justify-between mb-4">
+                         <h4 className="font-semibold text-blue-900 dark:text-blue-100">
+                           {selectedPatientData.treatmentPlan.title}
+                         </h4>
+                         <Button 
+                           variant="outline" 
+                           size="sm"
+                           onClick={() => {
+                             setSelectedTreatmentPatient(selectedPatientData);
+                             setShowTreatmentPlan(true);
+                           }}
+                         >
+                           Editar Plano
+                         </Button>
+                       </div>
+                       
+                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                         <div className="text-center">
+                           <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                             {selectedPatientData.treatmentPlan.items?.length || 0}
+                           </div>
+                           <p className="text-sm text-blue-800 dark:text-blue-200">Procedimentos</p>
+                         </div>
+                         <div className="text-center">
+                           <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                             R$ {selectedPatientData.treatmentPlan.totalCost?.toFixed(2) || '0.00'}
+                           </div>
+                           <p className="text-sm text-green-800 dark:text-green-200">Custo Total</p>
+                         </div>
+                         <div className="text-center">
+                           <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                             {selectedPatientData.treatmentPlan.progress || 0}%
+                           </div>
+                           <p className="text-sm text-purple-800 dark:text-purple-200">Progresso</p>
+                         </div>
+                       </div>
+                       
+                       <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-3 mb-4">
+                         <div 
+                           className="bg-blue-600 h-3 rounded-full transition-all duration-300"
+                           style={{ width: `${selectedPatientData.treatmentPlan.progress || 0}%` }}
+                         />
+                       </div>
+                       
+                       {selectedPatientData.treatmentPlan.description && (
+                         <p className="text-blue-800 dark:text-blue-200 text-sm">
+                           {selectedPatientData.treatmentPlan.description}
+                         </p>
+                       )}
+                     </div>
+
+                     {/* Lista de Procedimentos */}
+                     <div>
+                       <h5 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                         Procedimentos do Plano
+                       </h5>
+                       <div className="space-y-3">
+                         {selectedPatientData.treatmentPlan.items?.map((item: any) => (
+                           <div key={item.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                             <div className="flex items-start justify-between">
+                               <div className="flex-1">
+                                 <div className="flex items-center space-x-3 mb-2">
+                                   <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                                     #{item.order}
+                                   </span>
+                                   <h6 className="font-semibold text-gray-900 dark:text-gray-100">
+                                     {item.procedure}
+                                     {item.tooth && <span className="text-blue-600 dark:text-blue-400"> - Dente {item.tooth}</span>}
+                                   </h6>
+                                   <span className={`px-2 py-1 text-xs rounded-full border ${
+                                     item.priority === 'alta' ? 'text-red-600 bg-red-50 border-red-200 dark:bg-red-900/30 dark:border-red-700' :
+                                     item.priority === 'media' ? 'text-yellow-600 bg-yellow-50 border-yellow-200 dark:bg-yellow-900/30 dark:border-yellow-700' :
+                                     'text-green-600 bg-green-50 border-green-200 dark:bg-green-900/30 dark:border-green-700'
+                                   }`}>
+                                     {item.priority}
+                                   </span>
+                                 </div>
+                                 
+                                 <p className="text-gray-700 dark:text-gray-300 mb-2">{item.description}</p>
+                                 
+                                 <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
+                                   <span>R$ {item.estimatedCost?.toFixed(2)}</span>
+                                   <span>{item.estimatedSessions} sessão(ões)</span>
+                                   {item.startDate && (
+                                     <span>Iniciado: {new Date(item.startDate).toLocaleDateString('pt-BR')}</span>
+                                   )}
+                                   {item.completionDate && (
+                                     <span>Concluído: {new Date(item.completionDate).toLocaleDateString('pt-BR')}</span>
+                                   )}
+                                 </div>
+                               </div>
+                               
+                               <div className="ml-4">
+                                 <StatusBadge status={item.status} />
+                               </div>
+                             </div>
+                           </div>
+                         )) || []}
+                       </div>
+                     </div>
+                   </div>
+                 ) : (
+                   <div className="text-center py-12">
+                     <FileText className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+                     <h4 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+                       Nenhum plano de tratamento
+                     </h4>
+                     <p className="text-gray-600 dark:text-gray-400 mb-6">
+                       Crie um plano de tratamento para organizar os procedimentos
+                     </p>
+                     <Button 
+                       onClick={() => {
+                         setSelectedTreatmentPatient(selectedPatientData);
+                         setShowTreatmentPlan(true);
+                       }}
+                       icon={Plus}
+                     >
+                       Criar Plano de Tratamento
+                     </Button>
+                   </div>
+                 )}
+               </Card>
+             )}
               {/* Linha do Tempo */}
               {activeTab === 'timeline' && (
                 <Card title="Linha do Tempo do Paciente" subtitle="Histórico completo de atendimentos">
@@ -427,6 +563,20 @@ export default function Pacientes() {
         onSave={handleNewPatient}
       />
       
+    
+    {selectedTreatmentPatient && (
+      <TreatmentPlanModal
+        isOpen={showTreatmentPlan}
+        onClose={() => {
+          setShowTreatmentPlan(false);
+          setSelectedTreatmentPatient(null);
+        }}
+        patientName={selectedTreatmentPatient.name}
+        patientId={selectedTreatmentPatient.id}
+        existingPlan={selectedTreatmentPatient.treatmentPlan}
+        onSave={handleSaveTreatmentPlan}
+      />
+    )}
       {selectedAnamnesePatient && (
         <AnamneseModal
           isOpen={showAnamnese}

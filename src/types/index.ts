@@ -22,8 +22,35 @@ export interface Patient {
   procedures: Procedure[];
   notes: PatientNote[];
   timeline: TimelineEvent[];
+  treatmentPlan?: TreatmentPlan;
 }
 
+export interface TreatmentPlan {
+  id: string;
+  patientId: string;
+  title: string;
+  description: string;
+  items: TreatmentItem[];
+  totalCost: number;
+  progress: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TreatmentItem {
+  id: string;
+  procedure: string;
+  description: string;
+  tooth?: string;
+  priority: 'alta' | 'media' | 'baixa';
+  estimatedCost: number;
+  estimatedSessions: number;
+  status: 'planejado' | 'em_andamento' | 'concluido' | 'cancelado';
+  startDate?: string;
+  completionDate?: string;
+  notes: string;
+  order: number;
+}
 export interface PatientNote {
   id: string;
   patientId: string;
