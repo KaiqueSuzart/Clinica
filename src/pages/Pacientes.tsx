@@ -479,9 +479,6 @@ export default function Pacientes() {
                     <p>Nenhum arquivo enviado</p>
                   </div>
                 )}
-              </Card>
-              )}
-
               {/* Anotações Internas */}
               {activeTab === 'notes' && (
                 <Card title="Anotações Internas" subtitle="Informações privadas da equipe">
