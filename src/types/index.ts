@@ -36,7 +36,7 @@ export interface PatientNote {
 export interface TimelineEvent {
   id: string;
   patientId: string;
-  type: 'consulta' | 'procedimento' | 'arquivo' | 'nota' | 'retorno';
+  type: 'consulta' | 'procedimento' | 'arquivo' | 'nota' | 'retorno' | 'anamnese';
   title: string;
   description: string;
   date: string;

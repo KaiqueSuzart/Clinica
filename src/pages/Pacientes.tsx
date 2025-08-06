@@ -4,6 +4,7 @@ import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
 import StatusBadge from '../components/UI/StatusBadge';
 import NewPatientModal from '../components/Patients/NewPatientModal';
+import AnamneseModal from '../components/Patients/AnamneseModal';
 import { patients } from '../data/mockData';
 
 export default function Pacientes() {
@@ -13,6 +14,8 @@ export default function Pacientes() {
   const [newNote, setNewNote] = useState('');
   const [showNewPatient, setShowNewPatient] = useState(false);
   const [patientsList, setPatientsList] = useState(patients);
+  const [showAnamnese, setShowAnamnese] = useState(false);
+  const [selectedAnamnesePatient, setSelectedAnamnesePatient] = useState<string | null>(null);
 
   const filteredPatients = patientsList.filter(patient =>
     patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -33,6 +36,45 @@ export default function Pacientes() {
     setPatientsList(prev => [...prev, newPatient]);
     setSelectedPatient(newPatient.id);
   };
+
+  const handleOpenAnamnese = (patientId: string) => {
+    setSelectedAnamnesePatient(patientId);
+    setShowAnamnese(true);
+  };
+
+  const handleSaveAnamnese = (anamneseData: any) => {
+    // Em uma aplicação real, isso seria salvo no backend
+    console.log('Anamnese salva:', anamneseData);
+    
+    // Adicionar à timeline do paciente
+    setPatientsList(prev => prev.map(patient => {
+      if (patient.id === anamneseData.patientId) {
+        return {
+          ...patient,
+          timeline: [
+            {
+              id: Date.now().toString(),
+              patientId: patient.id,
+              type: 'anamnese',
+              title: 'Anamnese Atualizada',
+              description: 'Formulário de anamnese preenchido e salvo',
+              date: new Date().toISOString(),
+              professional: 'Dr. Ana Silva'
+            },
+            ...patient.timeline
+          ]
+        };
+      }
+      return patient;
+    }));
+  };
+
+  const hasAnamneseNotes = (patient: any) => {
+    // Simular verificação se há anotações na anamnese
+    // Em uma aplicação real, isso viria do backend
+    return patient.id === '1'; // Exemplo: paciente 1 tem anotações
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -147,7 +189,18 @@ export default function Pacientes() {
                 </div>
                 <div className="mt-6 flex space-x-3">
                   <Button variant="outline" size="sm">Editar</Button>
-                  <Button variant="outline" size="sm" icon={FileText}>Anamnese</Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    icon={FileText}
+                    onClick={() => handleOpenAnamnese(selectedPatientData.id)}
+                    className={hasAnamneseNotes(selectedPatientData) ? 'border-red-300 text-red-600 hover:bg-red-50' : ''}
+                  >
+                    Anamnese
+                    {hasAnamneseNotes(selectedPatientData) && (
+                      <span className="ml-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                    )}
+                  </Button>
                   <Button variant="outline" size="sm" icon={Upload}>Arquivos</Button>
                 </div>
               </Card>
@@ -354,6 +407,19 @@ export default function Pacientes() {
         onClose={() => setShowNewPatient(false)}
         onSave={handleNewPatient}
       />
+      
+      {selectedAnamnesePatient && (
+        <AnamneseModal
+          isOpen={showAnamnese}
+          onClose={() => {
+            setShowAnamnese(false);
+            setSelectedAnamnesePatient(null);
+          }}
+          patientName={patientsList.find(p => p.id === selectedAnamnesePatient)?.name || ''}
+          patientId={selectedAnamnesePatient}
+          onSave={handleSaveAnamnese}
+        />
+      )}
     </div>
   );
 }
