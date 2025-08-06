@@ -200,6 +200,9 @@ export default function Pacientes() {
                          {tab.id === 'notes' && selectedPatientData?.notes && selectedPatientData.notes.length > 0 && (
                            <span className="ml-1 w-2 h-2 bg-blue-500 rounded-full"></span>
                          )}
+                         {tab.id === 'treatment' && selectedPatientData?.treatmentPlan && (
+                           <span className="ml-1 w-2 h-2 bg-blue-500 rounded-full"></span>
+                         )}
                         </button>
                       );
                     })}
@@ -467,9 +470,6 @@ export default function Pacientes() {
                             className="mt-3 w-full h-32 object-cover rounded-lg"
                           />
                         )}
-                         {tab.id === 'treatment' && selectedPatientData?.treatmentPlan && (
-                           <span className="ml-1 w-2 h-2 bg-blue-500 rounded-full"></span>
-                         )}
                       </div>
                     ))}
                   </div>
@@ -479,6 +479,8 @@ export default function Pacientes() {
                     <p>Nenhum arquivo enviado</p>
                   </div>
                 )}
+                </Card>
+              )}
               {/* Anotações Internas */}
               {activeTab === 'notes' && (
                 <Card title="Anotações Internas" subtitle="Informações privadas da equipe">
