@@ -5,6 +5,7 @@ import Button from '../components/UI/Button';
 import StatusBadge from '../components/UI/StatusBadge';
 import NewPatientModal from '../components/Patients/NewPatientModal';
 import AnamneseModal from '../components/Patients/AnamneseModal';
+import EditPatientModal from '../components/Patients/EditPatientModal';
 import { patients } from '../data/mockData';
 
 export default function Pacientes() {
@@ -16,6 +17,8 @@ export default function Pacientes() {
   const [patientsList, setPatientsList] = useState(patients);
   const [showAnamnese, setShowAnamnese] = useState(false);
   const [selectedAnamnesePatient, setSelectedAnamnesePatient] = useState<string | null>(null);
+  const [showEditPatient, setShowEditPatient] = useState(false);
+  const [selectedEditPatient, setSelectedEditPatient] = useState<any>(null);
 
   const filteredPatients = patientsList.filter(patient =>
     patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -69,10 +72,21 @@ export default function Pacientes() {
     }));
   };
 
-  const hasAnamneseNotes = (patient: any) => {
-    // Simular verificação se há anotações na anamnese
-    // Em uma aplicação real, isso viria do backend
-    return patient.id === '1'; // Exemplo: paciente 1 tem anotações
+  const handleEditPatient = (patient: any) => {
+    setSelectedEditPatient(patient);
+    setShowEditPatient(true);
+  };
+
+  const handleSaveEditPatient = (updatedPatient: any) => {
+    setPatientsList(prev => prev.map(patient => 
+      patient.id === updatedPatient.id ? updatedPatient : patient
+    ));
+  };
+
+  const hasAnamneseNotes = (patientId: string) => {
+    // Verificar se há anotações na anamnese
+    // Simular que o paciente 1 tem anotações
+    return patientId === '1';
   };
 
   return (
@@ -188,16 +202,21 @@ export default function Pacientes() {
                   </div>
                 </div>
                 <div className="mt-6 flex space-x-3">
-                  <Button variant="outline" size="sm">Editar</Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => handleEditPatient(selectedPatientData)}
+                  >
+                    Editar
+                  </Button>
                   <Button 
                     variant="outline" 
                     size="sm" 
                     icon={FileText}
                     onClick={() => handleOpenAnamnese(selectedPatientData.id)}
-                    className={hasAnamneseNotes(selectedPatientData) ? 'border-red-300 text-red-600 hover:bg-red-50' : ''}
                   >
                     Anamnese
-                    {hasAnamneseNotes(selectedPatientData) && (
+                    {hasAnamneseNotes(selectedPatientData.id) && (
                       <span className="ml-1 w-2 h-2 bg-red-500 rounded-full"></span>
                     )}
                   </Button>
@@ -418,6 +437,18 @@ export default function Pacientes() {
           patientName={patientsList.find(p => p.id === selectedAnamnesePatient)?.name || ''}
           patientId={selectedAnamnesePatient}
           onSave={handleSaveAnamnese}
+        />
+      )}
+      
+      {selectedEditPatient && (
+        <EditPatientModal
+          isOpen={showEditPatient}
+          onClose={() => {
+            setShowEditPatient(false);
+            setSelectedEditPatient(null);
+          }}
+          patient={selectedEditPatient}
+          onSave={handleSaveEditPatient}
         />
       )}
     </div>
