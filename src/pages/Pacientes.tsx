@@ -7,6 +7,7 @@ import NewPatientModal from '../components/Patients/NewPatientModal';
 import AnamneseModal from '../components/Patients/AnamneseModal';
 import EditPatientModal from '../components/Patients/EditPatientModal';
 import TreatmentPlanModal from '../components/Patients/TreatmentPlanModal';
+import ScheduleReturnModal from '../components/Patients/ScheduleReturnModal';
 import { patients } from '../data/mockData';
 
 export default function Pacientes() {
@@ -22,6 +23,8 @@ export default function Pacientes() {
   const [selectedEditPatient, setSelectedEditPatient] = useState<any>(null);
   const [showTreatmentPlan, setShowTreatmentPlan] = useState(false);
   const [selectedTreatmentPatient, setSelectedTreatmentPatient] = useState<any>(null);
+  const [showScheduleReturn, setShowScheduleReturn] = useState(false);
+  const [selectedReturnPatient, setSelectedReturnPatient] = useState<any>(null);
 
   const filteredPatients = patientsList.filter(patient =>
     patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -84,6 +87,30 @@ export default function Pacientes() {
     setPatientsList(prev => prev.map(patient => 
       patient.id === updatedPatient.id ? updatedPatient : patient
     ));
+  };
+
+  const handleScheduleReturn = (returnData: any) => {
+    setPatientsList(prev => prev.map(patient => {
+      if (patient.id === returnData.patientId) {
+        return {
+          ...patient,
+          scheduledReturn: returnData,
+          timeline: [
+            {
+              id: Date.now().toString(),
+              patientId: patient.id,
+              type: 'retorno',
+              title: 'Retorno Agendado',
+              description: `Retorno para ${returnData.procedure} agendado para ${new Date(returnData.returnDate).toLocaleDateString('pt-BR')}`,
+              date: new Date().toISOString(),
+              professional: 'Dr. Ana Silva'
+            },
+            ...patient.timeline
+          ]
+        };
+      }
+      return patient;
+    }));
   };
 
   const handleSaveTreatmentPlan = (treatmentPlan: any) => {
@@ -250,6 +277,17 @@ export default function Pacientes() {
                     onClick={() => handleOpenAnamnese(selectedPatientData.id)}
                   >
                     Anamnese
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    icon={Calendar}
+                    onClick={() => {
+                      setSelectedReturnPatient(selectedPatientData);
+                      setShowScheduleReturn(true);
+                    }}
+                  >
+                    Agendar Retorno
                   </Button>
                   <Button variant="outline" size="sm" icon={Upload}>Arquivos</Button>
                 </div>
@@ -611,6 +649,19 @@ export default function Pacientes() {
           patientName={patientsList.find(p => p.id === selectedAnamnesePatient)?.name || ''}
           patientId={selectedAnamnesePatient}
           onSave={handleSaveAnamnese}
+        />
+      )}
+      
+      {selectedReturnPatient && (
+        <ScheduleReturnModal
+          isOpen={showScheduleReturn}
+          onClose={() => {
+            setShowScheduleReturn(false);
+            setSelectedReturnPatient(null);
+          }}
+          patientName={selectedReturnPatient.name}
+          patientId={selectedReturnPatient.id}
+          onSave={handleScheduleReturn}
         />
       )}
       

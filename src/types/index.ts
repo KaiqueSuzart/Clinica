@@ -23,6 +23,19 @@ export interface Patient {
   notes: PatientNote[];
   timeline: TimelineEvent[];
   treatmentPlan?: TreatmentPlan;
+  scheduledReturn?: ScheduledReturn;
+}
+
+export interface ScheduledReturn {
+  id: string;
+  patientId: string;
+  patientName: string;
+  procedure: string;
+  returnDate: string;
+  reminderDate: string;
+  notes?: string;
+  status: 'agendado' | 'lembrete_enviado' | 'pendente_agendamento';
+  createdAt: string;
 }
 
 export interface TreatmentPlan {
