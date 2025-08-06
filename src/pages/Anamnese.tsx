@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { ClipboardList, FileText, Save, Download, Search, User, MessageSquare, StickyNote } from 'lucide-react';
+import { ClipboardList, FileText, Save, Download, Search, User, MessageSquare, StickyNote, AlertTriangle } from 'lucide-react';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
 import StatusBadge from '../components/UI/StatusBadge';
-import { patients } from '../data/mockData';
+import { patients as initialPatients } from '../data/mockData';
 
 export default function Anamnese() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPatient, setSelectedPatient] = useState<string | null>(null);
+  const [patientsList, setPatientsList] = useState(initialPatients);
   const [formData, setFormData] = useState({
     allergies: '',
     medications: '',
@@ -34,17 +35,93 @@ export default function Anamnese() {
     anesthesiaReaction: false
   });
 
-  const filteredPatients = patients.filter(patient =>
+  const filteredPatients = patientsList.filter(patient =>
     patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     patient.phone.includes(searchTerm)
   );
 
-  const selectedPatientData = patients.find(p => p.id === selectedPatient);
+  const selectedPatientData = patientsList.find(p => p.id === selectedPatient);
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
+    }));
+  };
+
+  const addToPatientNotes = (field: string, content: string) => {
+    if (!selectedPatient || !content.trim()) {
+      alert('Selecione um paciente e preencha o campo primeiro');
+      return;
+    }
+
+    const fieldLabels: { [key: string]: string } = {
+      allergies: 'Alergias',
+      medications: 'Medicamentos',
+      medicalHistory: 'Histórico Médico',
+      dentalHistory: 'Histórico Odontológico'
+    };
+
+    const newNote = {
+      id: Date.now().toString(),
+      patientId: selectedPatient,
+      content: `[${fieldLabels[field]}] ${content}`,
+      isPrivate: true,
+      createdBy: 'Dr. Ana Silva',
+      createdAt: new Date().toISOString()
+    };
+
+    // Atualizar a lista de pacientes com a nova anotação
+    setPatientsList(prev => prev.map(patient => {
+      if (patient.id === selectedPatient) {
+        return {
+          ...patient,
+          notes: [newNote, ...(patient.notes || [])],
+          timeline: [
+            {
+              id: Date.now().toString(),
+              patientId: selectedPatient,
+              type: 'nota',
+              title: 'Anotação da Anamnese',
+              description: `Anotação adicionada: ${fieldLabels[field]}`,
+              date: new Date().toISOString(),
+              professional: 'Dr. Ana Silva'
+            },
+            ...(patient.timeline || [])
+          ]
+        };
+      }
+      return patient;
+    }));
+
+    // Limpar o campo após anotar
+    handleInputChange(field, '');
+    
+    alert(`Anotação "${fieldLabels[field]}" adicionada às anotações privadas do paciente!`);
+  };
+
+  const addCheckboxToNotes = (field: string, label: string, isChecked: boolean) => {
+    if (!selectedPatient || !isChecked) {
+      return;
+    }
+
+    const newNote = {
+      id: Date.now().toString(),
+      patientId: selectedPatient,
+      content: `[Condição Médica] ${label}: SIM - Verificado na anamnese`,
+      isPrivate: true,
+      createdBy: 'Dr. Ana Silva',
+      createdAt: new Date().toISOString()
+    };
+
+    setPatientsList(prev => prev.map(patient => {
+      if (patient.id === selectedPatient) {
+        return {
+          ...patient,
+          notes: [newNote, ...(patient.notes || [])]
+        };
+      }
+      return patient;
     }));
   };
 
@@ -187,26 +264,50 @@ export default function Anamnese() {
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Possui alguma alergia? (medicamentos, alimentos, materiais)
                       </label>
-                      <textarea
-                        value={formData.allergies}
-                        onChange={(e) => handleInputChange('allergies', e.target.value)}
-                        rows={3}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
-                        placeholder="Descreva as alergias ou digite 'Não possui'"
-                      />
+                      <div className="flex space-x-2">
+                        <textarea
+                          value={formData.allergies}
+                          onChange={(e) => handleInputChange('allergies', e.target.value)}
+                          rows={3}
+                          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+                          placeholder="Descreva as alergias ou digite 'Não possui'"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => addToPatientNotes('allergies', formData.allergies)}
+                          disabled={!formData.allergies.trim()}
+                          className="px-3 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-1"
+                          title="Adicionar às anotações do paciente"
+                        >
+                          <StickyNote className="w-4 h-4" />
+                          <span className="text-sm">Anotar</span>
+                        </button>
+                      </div>
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Faz uso de algum medicamento?
                       </label>
-                      <textarea
-                        value={formData.medications}
-                        onChange={(e) => handleInputChange('medications', e.target.value)}
-                        rows={3}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
-                        placeholder="Liste os medicamentos em uso ou digite 'Não faz uso'"
-                      />
+                      <div className="flex space-x-2">
+                        <textarea
+                          value={formData.medications}
+                          onChange={(e) => handleInputChange('medications', e.target.value)}
+                          rows={3}
+                          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+                          placeholder="Liste os medicamentos em uso ou digite 'Não faz uso'"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => addToPatientNotes('medications', formData.medications)}
+                          disabled={!formData.medications.trim()}
+                          className="px-3 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-1"
+                          title="Adicionar às anotações do paciente"
+                        >
+                          <StickyNote className="w-4 h-4" />
+                          <span className="text-sm">Anotar</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -222,40 +323,72 @@ export default function Anamnese() {
                         <input 
                           type="checkbox" 
                           checked={formData.diabetes}
-                          onChange={(e) => handleInputChange('diabetes', e.target.checked)}
+                          onChange={(e) => {
+                            handleInputChange('diabetes', e.target.checked);
+                            if (e.target.checked) {
+                              addCheckboxToNotes('diabetes', 'Diabetes', true);
+                            }
+                          }}
                           className="w-4 h-4 text-blue-600 bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 focus:ring-2 mr-2" 
                         />
                         <span className="text-sm text-gray-700 dark:text-gray-300">Diabetes</span>
+                        {formData.diabetes && (
+                          <AlertTriangle className="w-4 h-4 text-red-500 ml-2" title="Anotado automaticamente" />
+                        )}
                       </label>
                       
                       <label className="flex items-center">
                         <input 
                           type="checkbox" 
                           checked={formData.hypertension}
-                          onChange={(e) => handleInputChange('hypertension', e.target.checked)}
+                          onChange={(e) => {
+                            handleInputChange('hypertension', e.target.checked);
+                            if (e.target.checked) {
+                              addCheckboxToNotes('hypertension', 'Hipertensão', true);
+                            }
+                          }}
                           className="w-4 h-4 text-blue-600 bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 focus:ring-2 mr-2" 
                         />
                         <span className="text-sm text-gray-700 dark:text-gray-300">Hipertensão</span>
+                        {formData.hypertension && (
+                          <AlertTriangle className="w-4 h-4 text-red-500 ml-2" title="Anotado automaticamente" />
+                        )}
                       </label>
                       
                       <label className="flex items-center">
                         <input 
                           type="checkbox" 
                           checked={formData.heartProblems}
-                          onChange={(e) => handleInputChange('heartProblems', e.target.checked)}
+                          onChange={(e) => {
+                            handleInputChange('heartProblems', e.target.checked);
+                            if (e.target.checked) {
+                              addCheckboxToNotes('heartProblems', 'Problemas cardíacos', true);
+                            }
+                          }}
                           className="w-4 h-4 text-blue-600 bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 focus:ring-2 mr-2" 
                         />
                         <span className="text-sm text-gray-700 dark:text-gray-300">Problemas cardíacos</span>
+                        {formData.heartProblems && (
+                          <AlertTriangle className="w-4 h-4 text-red-500 ml-2" title="Anotado automaticamente" />
+                        )}
                       </label>
                       
                       <label className="flex items-center">
                         <input 
                           type="checkbox" 
                           checked={formData.pregnant}
-                          onChange={(e) => handleInputChange('pregnant', e.target.checked)}
+                          onChange={(e) => {
+                            handleInputChange('pregnant', e.target.checked);
+                            if (e.target.checked) {
+                              addCheckboxToNotes('pregnant', 'Está grávida', true);
+                            }
+                          }}
                           className="w-4 h-4 text-blue-600 bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 focus:ring-2 mr-2" 
                         />
                         <span className="text-sm text-gray-700 dark:text-gray-300">Está grávida</span>
+                        {formData.pregnant && (
+                          <AlertTriangle className="w-4 h-4 text-red-500 ml-2" title="Anotado automaticamente" />
+                        )}
                       </label>
                     </div>
 
@@ -264,30 +397,54 @@ export default function Anamnese() {
                         <input 
                           type="checkbox" 
                           checked={formData.smoking}
-                          onChange={(e) => handleInputChange('smoking', e.target.checked)}
+                          onChange={(e) => {
+                            handleInputChange('smoking', e.target.checked);
+                            if (e.target.checked) {
+                              addCheckboxToNotes('smoking', 'Fumante', true);
+                            }
+                          }}
                           className="w-4 h-4 text-blue-600 bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 focus:ring-2 mr-2" 
                         />
                         <span className="text-sm text-gray-700 dark:text-gray-300">Fumante</span>
+                        {formData.smoking && (
+                          <AlertTriangle className="w-4 h-4 text-red-500 ml-2" title="Anotado automaticamente" />
+                        )}
                       </label>
                       
                       <label className="flex items-center">
                         <input 
                           type="checkbox" 
                           checked={formData.alcohol}
-                          onChange={(e) => handleInputChange('alcohol', e.target.checked)}
+                          onChange={(e) => {
+                            handleInputChange('alcohol', e.target.checked);
+                            if (e.target.checked) {
+                              addCheckboxToNotes('alcohol', 'Consome álcool regularmente', true);
+                            }
+                          }}
                           className="w-4 h-4 text-blue-600 bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 focus:ring-2 mr-2" 
                         />
                         <span className="text-sm text-gray-700 dark:text-gray-300">Consome álcool regularmente</span>
+                        {formData.alcohol && (
+                          <AlertTriangle className="w-4 h-4 text-red-500 ml-2" title="Anotado automaticamente" />
+                        )}
                       </label>
                       
                       <label className="flex items-center">
                         <input 
                           type="checkbox" 
                           checked={formData.anesthesiaReaction}
-                          onChange={(e) => handleInputChange('anesthesiaReaction', e.target.checked)}
+                          onChange={(e) => {
+                            handleInputChange('anesthesiaReaction', e.target.checked);
+                            if (e.target.checked) {
+                              addCheckboxToNotes('anesthesiaReaction', 'Reação à anestesia', true);
+                            }
+                          }}
                           className="w-4 h-4 text-blue-600 bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 focus:ring-2 mr-2" 
                         />
                         <span className="text-sm text-gray-700 dark:text-gray-300">Reação à anestesia</span>
+                        {formData.anesthesiaReaction && (
+                          <AlertTriangle className="w-4 h-4 text-red-500 ml-2" title="Anotado automaticamente" />
+                        )}
                       </label>
                     </div>
                   </div>
@@ -400,13 +557,25 @@ export default function Anamnese() {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Histórico Odontológico Geral
                     </label>
-                    <textarea
-                      value={formData.dentalHistory}
-                      onChange={(e) => handleInputChange('dentalHistory', e.target.value)}
-                      rows={4}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
-                      placeholder="Descreva outros aspectos do histórico odontológico..."
-                    />
+                    <div className="flex space-x-2">
+                      <textarea
+                        value={formData.dentalHistory}
+                        onChange={(e) => handleInputChange('dentalHistory', e.target.value)}
+                        rows={4}
+                        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+                        placeholder="Descreva outros aspectos do histórico odontológico..."
+                      />
+                      <button
+                        type="button"
+                        onClick={() => addToPatientNotes('dentalHistory', formData.dentalHistory)}
+                        disabled={!formData.dentalHistory.trim()}
+                        className="px-3 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-1"
+                        title="Adicionar às anotações do paciente"
+                      >
+                        <StickyNote className="w-4 h-4" />
+                        <span className="text-sm">Anotar</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -415,13 +584,25 @@ export default function Anamnese() {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Histórico Médico Geral (doenças, cirurgias, tratamentos)
                   </label>
-                  <textarea
-                    value={formData.medicalHistory}
-                    onChange={(e) => handleInputChange('medicalHistory', e.target.value)}
-                    rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
-                    placeholder="Descreva o histórico médico geral do paciente..."
-                  />
+                  <div className="flex space-x-2">
+                    <textarea
+                      value={formData.medicalHistory}
+                      onChange={(e) => handleInputChange('medicalHistory', e.target.value)}
+                      rows={4}
+                      className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+                      placeholder="Descreva o histórico médico geral do paciente..."
+                    />
+                    <button
+                      type="button"
+                      onClick={() => addToPatientNotes('medicalHistory', formData.medicalHistory)}
+                      disabled={!formData.medicalHistory.trim()}
+                      className="px-3 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-1"
+                      title="Adicionar às anotações do paciente"
+                    >
+                      <StickyNote className="w-4 h-4" />
+                      <span className="text-sm">Anotar</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Termo de Consentimento */}
