@@ -3,22 +3,28 @@ import { Calendar, Clock, User, Plus, Filter, MessageCircle, CheckCircle, AlertC
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
 import StatusBadge from '../components/UI/StatusBadge';
+import NewAppointmentModal from '../components/Appointments/NewAppointmentModal';
 import { appointments } from '../data/mockData';
 
 export default function Agenda() {
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
   const [selectedProfessional, setSelectedProfessional] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
+  const [showNewAppointment, setShowNewAppointment] = useState(false);
+  const [appointmentsList, setAppointmentsList] = useState(appointments);
 
   const professionals = ['Dr. Ana Silva', 'Dr. Pedro Costa', 'Dra. Maria Santos'];
   const statuses = ['confirmado', 'pendente', 'cancelado', 'realizado'];
 
-  const filteredAppointments = appointments.filter(apt => {
+  const filteredAppointments = appointmentsList.filter(apt => {
     const professionalMatch = selectedProfessional === 'all' || apt.professional === selectedProfessional;
     const statusMatch = selectedStatus === 'all' || apt.status === selectedStatus;
     return professionalMatch && statusMatch;
   });
 
+  const handleNewAppointment = (newAppointment: any) => {
+    setAppointmentsList(prev => [...prev, newAppointment]);
+  };
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'confirmado':
@@ -41,7 +47,9 @@ export default function Agenda() {
           <h1 className="text-2xl font-bold text-gray-900">Agenda</h1>
           <p className="text-gray-600">Gerencie os agendamentos da clínica</p>
         </div>
-        <Button icon={Plus}>Nova Consulta</Button>
+        <Button icon={Plus} onClick={() => setShowNewAppointment(true)}>
+          Nova Consulta
+        </Button>
       </div>
 
       {/* Filtros */}
@@ -150,6 +158,12 @@ export default function Agenda() {
           ))}
         </div>
       </Card>
+      
+      <NewAppointmentModal
+        isOpen={showNewAppointment}
+        onClose={() => setShowNewAppointment(false)}
+        onSave={handleNewAppointment}
+      />
     </div>
   );
 }
