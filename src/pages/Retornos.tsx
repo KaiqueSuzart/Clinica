@@ -1,11 +1,20 @@
 import React from 'react';
+import { useState } from 'react';
 import { RotateCcw, Calendar, Clock, Phone } from 'lucide-react';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
 import StatusBadge from '../components/UI/StatusBadge';
+import NewReturnModal from '../components/Returns/NewReturnModal';
 import { returnVisits } from '../data/mockData';
 
 export default function Retornos() {
+  const [showNewReturn, setShowNewReturn] = useState(false);
+  const [returnsList, setReturnsList] = useState(returnVisits);
+
+  const handleNewReturn = (newReturn: any) => {
+    setReturnsList(prev => [...prev, newReturn]);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -13,7 +22,9 @@ export default function Retornos() {
           <h1 className="text-2xl font-bold text-gray-900">Retornos</h1>
           <p className="text-gray-600">Gerencie os retornos agendados dos pacientes</p>
         </div>
-        <Button icon={RotateCcw}>Novo Retorno</Button>
+        <Button icon={RotateCcw} onClick={() => setShowNewReturn(true)}>
+          Novo Retorno
+        </Button>
       </div>
 
       {/* Estatísticas */}
@@ -23,7 +34,7 @@ export default function Retornos() {
             <Calendar className="w-8 h-8 text-blue-600 mr-3" />
             <div>
               <p className="text-sm text-gray-600">Total de Retornos</p>
-              <p className="text-2xl font-bold text-gray-900">{returnVisits.length}</p>
+              <p className="text-2xl font-bold text-gray-900">{returnsList.length}</p>
             </div>
           </div>
         </Card>
@@ -33,7 +44,7 @@ export default function Retornos() {
             <div>
               <p className="text-sm text-gray-600">Pendentes</p>
               <p className="text-2xl font-bold text-gray-900">
-                {returnVisits.filter(r => r.status === 'pendente').length}
+                {returnsList.filter(r => r.status === 'pendente').length}
               </p>
             </div>
           </div>
@@ -44,7 +55,7 @@ export default function Retornos() {
             <div>
               <p className="text-sm text-gray-600">Confirmados</p>
               <p className="text-2xl font-bold text-gray-900">
-                {returnVisits.filter(r => r.status === 'confirmado').length}
+                {returnsList.filter(r => r.status === 'confirmado').length}
               </p>
             </div>
           </div>
@@ -52,7 +63,7 @@ export default function Retornos() {
       </div>
 
       {/* Lista de Retornos */}
-      <Card title="Retornos Agendados" subtitle={`${returnVisits.length} retornos na lista`}>
+      <Card title="Retornos Agendados" subtitle={`${returnsList.length} retornos na lista`}>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -78,7 +89,7 @@ export default function Retornos() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {returnVisits.map((returnVisit) => (
+              {returnsList.map((returnVisit) => (
                 <tr key={returnVisit.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div>
@@ -124,6 +135,12 @@ export default function Retornos() {
           </table>
         </div>
       </Card>
+      
+      <NewReturnModal
+        isOpen={showNewReturn}
+        onClose={() => setShowNewReturn(false)}
+        onSave={handleNewReturn}
+      />
     </div>
   );
 }
