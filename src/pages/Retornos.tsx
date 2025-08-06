@@ -1,6 +1,6 @@
 import React from 'react';
 import { useState } from 'react';
-import { RotateCcw, Calendar, Clock, Phone, CheckCircle, AlertCircle } from 'lucide-react';
+import { RotateCcw, Calendar, Clock, Phone, CheckCircle, AlertCircle, MessageSquare } from 'lucide-react';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
 import StatusBadge from '../components/UI/StatusBadge';
