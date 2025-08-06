@@ -3,6 +3,7 @@ import { Search, User, Phone, Calendar, Plus, FileText, Upload, Clock, MessageSq
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
 import StatusBadge from '../components/UI/StatusBadge';
+import NewPatientModal from '../components/Patients/NewPatientModal';
 import { patients } from '../data/mockData';
 
 export default function Pacientes() {
@@ -10,13 +11,15 @@ export default function Pacientes() {
   const [selectedPatient, setSelectedPatient] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'info' | 'timeline' | 'files' | 'notes'>('info');
   const [newNote, setNewNote] = useState('');
+  const [showNewPatient, setShowNewPatient] = useState(false);
+  const [patientsList, setPatientsList] = useState(patients);
 
-  const filteredPatients = patients.filter(patient =>
+  const filteredPatients = patientsList.filter(patient =>
     patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     patient.phone.includes(searchTerm)
   );
 
-  const selectedPatientData = patients.find(p => p.id === selectedPatient);
+  const selectedPatientData = patientsList.find(p => p.id === selectedPatient);
 
   const handleAddNote = () => {
     if (newNote.trim() && selectedPatientData) {
@@ -26,6 +29,10 @@ export default function Pacientes() {
     }
   };
 
+  const handleNewPatient = (newPatient: any) => {
+    setPatientsList(prev => [...prev, newPatient]);
+    setSelectedPatient(newPatient.id);
+  };
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -33,7 +40,9 @@ export default function Pacientes() {
           <h1 className="text-2xl font-bold text-gray-900">Pacientes</h1>
           <p className="text-gray-600">Gerencie os dados dos pacientes</p>
         </div>
-        <Button icon={Plus}>Novo Paciente</Button>
+        <Button icon={Plus} onClick={() => setShowNewPatient(true)}>
+          Novo Paciente
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -339,6 +348,12 @@ export default function Pacientes() {
           )}
         </div>
       </div>
+      
+      <NewPatientModal
+        isOpen={showNewPatient}
+        onClose={() => setShowNewPatient(false)}
+        onSave={handleNewPatient}
+      />
     </div>
   );
 }
