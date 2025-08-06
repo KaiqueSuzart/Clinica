@@ -16,6 +16,19 @@ export default function Retornos() {
     setReturnsList(prev => [...prev, newReturn]);
   };
 
+  const handleMarcarConsulta = (possibleReturn: any) => {
+    // Simular agendamento da consulta
+    console.log('Marcando consulta para:', possibleReturn.patientName);
+    
+    // Aqui você poderia:
+    // 1. Abrir modal de agendamento
+    // 2. Redirecionar para página de agenda
+    // 3. Marcar como agendado
+    
+    // Por enquanto, vamos simular que foi marcado
+    alert(`Consulta marcada para ${possibleReturn.patientName}!\n\nProcedimento: ${possibleReturn.procedure}\nData prevista: ${new Date(possibleReturn.scheduledDate).toLocaleDateString('pt-BR')}`);
+  };
+
   // Simular possíveis retornos (em uma aplicação real, viria do backend)
   const possibleReturns = [
     {
@@ -263,7 +276,12 @@ export default function Retornos() {
                         <Button variant="outline" size="sm" icon={MessageSquare}>
                           WhatsApp
                         </Button>
-                        <Button variant="success" size="sm" icon={Calendar}>
+                        <Button 
+                          variant="success" 
+                          size="sm" 
+                          icon={Calendar}
+                          onClick={() => handleMarcarConsulta(possibleReturn)}
+                        >
                           Marcar
                         </Button>
                       </div>
