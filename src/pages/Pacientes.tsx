@@ -197,7 +197,7 @@ export default function Pacientes() {
                         >
                           <Icon className="w-4 h-4 mr-2" />
                           {tab.label}
-                         {tab.id === 'treatment' && selectedPatientData?.treatmentPlan && (
+                         {tab.id === 'notes' && selectedPatientData?.notes && selectedPatientData.notes.length > 0 && (
                            <span className="ml-1 w-2 h-2 bg-blue-500 rounded-full"></span>
                          )}
                         </button>
@@ -247,9 +247,6 @@ export default function Pacientes() {
                     onClick={() => handleOpenAnamnese(selectedPatientData.id)}
                   >
                     Anamnese
-                    {hasAnamneseNotes(selectedPatientData.id) && (
-                      <span className="ml-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                    )}
                   </Button>
                   <Button variant="outline" size="sm" icon={Upload}>Arquivos</Button>
                 </div>
@@ -470,6 +467,9 @@ export default function Pacientes() {
                             className="mt-3 w-full h-32 object-cover rounded-lg"
                           />
                         )}
+                         {tab.id === 'treatment' && selectedPatientData?.treatmentPlan && (
+                           <span className="ml-1 w-2 h-2 bg-blue-500 rounded-full"></span>
+                         )}
                       </div>
                     ))}
                   </div>
