@@ -123,8 +123,45 @@ export default function Retornos() {
       </div>
       )}
 
-      {/* Lista de Retornos */}
-      <Card title="Retornos Agendados" subtitle={`${returnsList.length} retornos na lista`}>
+      {activeTab === 'possible' && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="p-6">
+            <div className="flex items-center">
+              <AlertCircle className="w-8 h-8 text-yellow-600 mr-3" />
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Aguardando Agendamento</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{possibleReturns.length}</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-6">
+            <div className="flex items-center">
+              <Clock className="w-8 h-8 text-red-600 mr-3" />
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Atrasados</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  {possibleReturns.filter(r => r.daysSinceReminder > 0).length}
+                </p>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-6">
+            <div className="flex items-center">
+              <Calendar className="w-8 h-8 text-blue-600 mr-3" />
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Este Mês</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  {possibleReturns.filter(r => new Date(r.scheduledDate).getMonth() === new Date().getMonth()).length}
+                </p>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Lista de Retornos Confirmados */}
+      {activeTab === 'confirmed' && (
+        <Card title="Retornos Confirmados" subtitle={`${returnsList.length} retornos na lista`}>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -196,6 +233,7 @@ export default function Retornos() {
           </table>
         </div>
       </Card>
+      )}
       
       <NewReturnModal
         isOpen={showNewReturn}
