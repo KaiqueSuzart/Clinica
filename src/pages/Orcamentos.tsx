@@ -256,7 +256,12 @@ export default function Orcamentos() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">
-                      <Button variant="outline" size="sm" icon={Eye}>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        icon={Eye}
+                        onClick={() => handleViewBudget(budget)}
+                      >
                         Ver
                       </Button>
                       <Button 
