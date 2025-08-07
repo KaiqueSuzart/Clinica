@@ -18,6 +18,8 @@ export default function Orcamentos() {
   const [newBudgetItems, setNewBudgetItems] = useState<any[]>([]);
   const [discountType, setDiscountType] = useState<'percentage' | 'fixed'>('percentage');
   const [discountValue, setDiscountValue] = useState(0);
+  const [newBudgetPatient, setNewBudgetPatient] = useState('');
+  const [newBudgetValidUntil, setNewBudgetValidUntil] = useState('');
   
   // Estados para novo item
   const [newItemProcedure, setNewItemProcedure] = useState('');
@@ -174,7 +176,11 @@ export default function Orcamentos() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Paciente
                 </label>
-                <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <select 
+                  value={newBudgetPatient}
+                  onChange={(e) => setNewBudgetPatient(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                >
                   <option value="">Selecione um paciente</option>
                   <option value="1">João Santos</option>
                   <option value="2">Maria Oliveira</option>
@@ -187,7 +193,9 @@ export default function Orcamentos() {
                 </label>
                 <input
                   type="date"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  value={newBudgetValidUntil}
+                  onChange={(e) => setNewBudgetValidUntil(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                 />
               </div>
             </div>
