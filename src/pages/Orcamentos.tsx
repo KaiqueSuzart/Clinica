@@ -18,8 +18,6 @@ export default function Orcamentos() {
   const [newBudgetItems, setNewBudgetItems] = useState<any[]>([]);
   const [discountType, setDiscountType] = useState<'percentage' | 'fixed'>('percentage');
   const [discountValue, setDiscountValue] = useState(0);
-  const [newBudgetPatient, setNewBudgetPatient] = useState('');
-  const [newBudgetValidUntil, setNewBudgetValidUntil] = useState('');
   
   // Estados para novo item
   const [newItemProcedure, setNewItemProcedure] = useState('');
