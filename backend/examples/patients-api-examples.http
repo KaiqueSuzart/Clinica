@@ -1,0 +1,111 @@
+### ========================================
+### API DE PACIENTES - EXEMPLOS DE USO
+### ========================================
+
+### 1. LISTAR TODOS OS PACIENTES
+GET http://localhost:3001/patients
+
+### 2. BUSCAR PACIENTE POR ID
+GET http://localhost:3001/patients/1
+
+### 3. CRIAR NOVO PACIENTE
+POST http://localhost:3001/patients
+Content-Type: application/json
+
+{
+  "nome": "João Silva Santos",
+  "telefone": "(11) 99999-9999",
+  "empresa": 1,
+  "iaativa": true,
+  "Email": "joao.silva@email.com",
+  "Cpf": 12345678901,
+  "data_nascimento": "1990-05-15",
+  "observacoes": "Paciente com histórico de hipertensão",
+  "status": "ativo",
+  "address": "Rua das Flores, 123 - São Paulo/SP",
+  "responsavel_nome": "Maria Silva",
+  "responsavel_telefone": "(11) 88888-8888",
+  "responsavel_parente": "Mãe",
+  "emergency_contact_name": "Carlos Silva",
+  "emergency_contact_phone": "(11) 77777-7777",
+  "observations": "Alergia a penicilina"
+}
+
+### 4. ATUALIZAR PACIENTE
+PUT http://localhost:3001/patients/1
+Content-Type: application/json
+
+{
+  "telefone": "(11) 88888-8888",
+  "status": "inativo",
+  "observacoes": "Paciente transferido para outra clínica"
+}
+
+### 5. BUSCAR PACIENTES COM FILTROS
+GET http://localhost:3001/patients/search?nome=João&status=ativo
+
+### 6. BUSCAR POR CPF
+GET http://localhost:3001/patients/search?Cpf=12345678901
+
+### 7. BUSCAR POR EMAIL
+GET http://localhost:3001/patients/search?Email=joao.silva@email.com
+
+### 8. BUSCAR PACIENTES POR STATUS
+GET http://localhost:3001/patients/status/ativo
+
+### 9. LISTAR APENAS PACIENTES ATIVOS
+GET http://localhost:3001/patients/active
+
+### 10. PACIENTES COM RETORNOS PRÓXIMOS
+GET http://localhost:3001/patients/upcoming-returns
+
+### 11. REMOVER PACIENTE
+DELETE http://localhost:3001/patients/1
+
+### ========================================
+### TESTES ESPECÍFICOS
+### ========================================
+
+### Teste de conexão com Supabase
+GET http://localhost:3001/test-supabase
+
+### Verificar saúde da API
+GET http://localhost:3001/health
+
+### ========================================
+### EXEMPLOS DE DADOS PARA TESTE
+### ========================================
+
+### Paciente 2
+POST http://localhost:3001/patients
+Content-Type: application/json
+
+{
+  "nome": "Maria Oliveira Costa",
+  "telefone": "(11) 77777-7777",
+  "empresa": 2,
+  "iaativa": true,
+  "Email": "maria.oliveira@email.com",
+  "Cpf": 98765432109,
+  "data_nascimento": "1985-08-22",
+  "status": "ativo",
+  "address": "Av. Paulista, 1000 - São Paulo/SP",
+  "proximo_retorno": "2024-02-15"
+}
+
+### Paciente 3
+POST http://localhost:3001/patients
+Content-Type: application/json
+
+{
+  "nome": "Carlos Ferreira Lima",
+  "telefone": "(11) 66666-6666",
+  "empresa": 1,
+  "iaativa": false,
+  "Email": "carlos.ferreira@email.com",
+  "Cpf": 45678912345,
+  "data_nascimento": "1978-12-10",
+  "status": "inativo",
+  "observacoes": "Paciente não retornou após 3 tentativas de contato"
+}
+
