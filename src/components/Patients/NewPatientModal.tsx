@@ -64,6 +64,9 @@ export default function NewPatientModal({ isOpen, onClose, onSave }: NewPatientM
       email: formData.email || undefined,
       birthDate: formData.birthDate,
       address: formData.address,
+      // persistir contato de emergência
+      emergencyContact: formData.emergencyContact || undefined,
+      emergencyPhone: formData.emergencyPhone || undefined,
       status: 'ativo',
       files: [],
       procedures: [],
