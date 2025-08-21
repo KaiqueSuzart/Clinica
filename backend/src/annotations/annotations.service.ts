@@ -74,3 +74,4 @@ export class AnnotationsService {
     return { message: 'Anotação removida com sucesso' };
   }
 }
+

@@ -26,3 +26,4 @@ ALTER TABLE annotations DISABLE ROW LEVEL SECURITY;
 
 -- Verificar se a tabela foi criada
 SELECT * FROM information_schema.tables WHERE table_name = 'annotations';
+

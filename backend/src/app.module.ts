@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { EvaluationsModule } from './evaluations/evaluations.module';
 import { AnamneseModule } from './anamnese/anamnese.module';
 import { AnnotationsModule } from './annotations/annotations.module';
+import { TreatmentPlansModule } from './treatment-plans/treatment-plans.module';
 import { SupabaseModule } from './supabase/supabase.module';
 
 @Module({
@@ -18,6 +19,7 @@ import { SupabaseModule } from './supabase/supabase.module';
     EvaluationsModule,
     AnamneseModule,
     AnnotationsModule,
+    TreatmentPlansModule,
   ],
   controllers: [AppController],
   providers: [AppService],
