@@ -1,0 +1,276 @@
+import React, { useState, useEffect } from 'react';
+import { X, User, Phone, Mail, MapPin, Calendar, Save } from 'lucide-react';
+import LoadingButton from '../UI/LoadingButton';
+
+interface EditPatientModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  patient: any;
+  onSave: (patient: any) => void;
+}
+
+export default function EditPatientModal({ isOpen, onClose, patient, onSave }: EditPatientModalProps) {
+  const [formData, setFormData] = useState({
+    nome: '',
+    telefone: '',
+    Email: '',
+    data_nascimento: '',
+    address: '',
+    responsavel_nome: '',
+    responsavel_telefone: '',
+    observacoes: ''
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Carregar dados do paciente quando o modal abrir
+  useEffect(() => {
+    console.log('🔍 EditPatientModal - Dados recebidos:', patient);
+    if (patient) {
+      const formattedData = {
+        nome: patient.nome || '',
+        telefone: patient.telefone || '',
+        Email: patient.Email || '',
+        data_nascimento: patient.data_nascimento ? patient.data_nascimento.split('T')[0] : '',
+        address: patient.address || '',
+        responsavel_nome: patient.responsavel_nome || '',
+        responsavel_telefone: patient.responsavel_telefone || '',
+        observacoes: patient.observacoes || ''
+      };
+      console.log('📝 EditPatientModal - Dados formatados:', formattedData);
+      setFormData(formattedData);
+    }
+  }, [patient]);
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const formatPhone = (value: string) => {
+    // Remove tudo que não é número
+    const numbers = value.replace(/\D/g, '');
+    
+    // Aplica a máscara (11) 99999-9999
+    if (numbers.length <= 11) {
+      return numbers.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+    }
+    return value;
+  };
+
+  const handlePhoneChange = (field: string, value: string) => {
+    const formatted = formatPhone(value);
+    handleInputChange(field, formatted);
+  };
+
+  const validateForm = () => {
+    return formData.nome.trim() && formData.telefone.trim() && formData.data_nascimento;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+
+    setIsSubmitting(true);
+
+    // Simular salvamento
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    const updatedPatient = {
+      ...patient,
+      nome: formData.nome,
+      telefone: formData.telefone,
+      Email: formData.Email,
+      data_nascimento: formData.data_nascimento,
+      address: formData.address,
+      responsavel_nome: formData.responsavel_nome,
+      responsavel_telefone: formData.responsavel_telefone,
+      observacoes: formData.observacoes
+    };
+
+    onSave(updatedPatient);
+    setIsSubmitting(false);
+    onClose();
+  };
+
+  if (!isOpen || !patient) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            Editar Paciente
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6">
+          <div className="space-y-6">
+            {/* Informações Básicas */}
+            <div>
+              <h4 className="text-md font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center">
+                <User className="w-5 h-5 mr-2" />
+                Informações Básicas
+              </h4>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Nome Completo *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.nome}
+                    onChange={(e) => handleInputChange('nome', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+                    placeholder="Digite o nome completo"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Telefone *
+                  </label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <input
+                      type="tel"
+                      value={formData.telefone}
+                      onChange={(e) => handlePhoneChange('telefone', e.target.value)}
+                      className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+                      placeholder="(11) 99999-9999"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Email
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <input
+                      type="email"
+                      value={formData.Email}
+                      onChange={(e) => handleInputChange('Email', e.target.value)}
+                      className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+                      placeholder="email@exemplo.com"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Data de Nascimento *
+                  </label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <input
+                      type="date"
+                      value={formData.data_nascimento}
+                      onChange={(e) => handleInputChange('data_nascimento', e.target.value)}
+                      className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Endereço
+                </label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-3 text-gray-400 w-4 h-4" />
+                  <textarea
+                    value={formData.address}
+                    onChange={(e) => handleInputChange('address', e.target.value)}
+                    rows={2}
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+                    placeholder="Rua, número, bairro, cidade - CEP"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Contato de Emergência */}
+            <div>
+              <h4 className="text-md font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center">
+                <Phone className="w-5 h-5 mr-2" />
+                Contato de Emergência
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Nome do Contato
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.responsavel_nome}
+                    onChange={(e) => handleInputChange('responsavel_nome', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+                    placeholder="Nome do responsável"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Telefone de Emergência
+                  </label>
+                  <input
+                    type="tel"
+                    value={formData.responsavel_telefone}
+                    onChange={(e) => handlePhoneChange('responsavel_telefone', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+                    placeholder="(11) 99999-9999"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Observações */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Observações
+              </label>
+              <textarea
+                value={formData.observacoes}
+                onChange={(e) => handleInputChange('observacoes', e.target.value)}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+                placeholder="Informações importantes sobre o paciente..."
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-3 mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              Cancelar
+            </button>
+            <LoadingButton
+              type="submit"
+              loading={isSubmitting}
+              disabled={!validateForm()}
+              icon={Save}
+            >
+              Salvar Alterações
+            </LoadingButton>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
