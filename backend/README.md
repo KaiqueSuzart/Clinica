@@ -124,8 +124,24 @@ npm run test:cov
 3. Copie as credenciais para o arquivo `.env`
 4. Configure as políticas de segurança (RLS)
 
+## 🗄️ Mapeamento rápido do banco (conforme seu Supabase)
+
+Tabelas principais usadas pelo backend de planos de tratamento:
+
+- `plano_tratamento` (planos)
+  - colunas: `id`, `paciente_id`, `titulo`, `descricao`, `custo_total`, `progresso`, `created_at`, `updated_at`
+- `itens_plano_tratamento` (itens dos planos)
+  - colunas: `id`, `plano_id`, `procedimento`, `descricao`, `dente`, `prioridade`, `custo_estimado`, `sessoes_estimadas`, `status`, `data_inicio`, `data_conclusao`, `observacoes`, `ordem`, `created_at`, `updated_at`
+- `treatment_sessions` (sessões)
+  - colunas: `id`, `treatment_item_id`, `session_number`, `date`, `description`, `completed`, `created_at`, `updated_at`
+- `clientelA` (pacientes)
+  - colunas principais: `id`, `nome`, `telefone`, `empresa`, `Email`, `Cpf`, `data_nascimento`, `observacoes`, etc.
+
+Os tipos de todas essas tabelas estão definidos em `backend/src/types/database.ts` e são usados para tipar o `SupabaseClient`.
+
 ## 📞 Suporte
 
 Para dúvidas ou problemas, consulte a documentação ou entre em contato com a equipe de desenvolvimento.
+
 
 

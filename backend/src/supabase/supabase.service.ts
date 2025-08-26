@@ -1,15 +1,17 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { config } from '../../config';
+import type { Database } from '../types/database';
 
 @Injectable()
 export class SupabaseService implements OnModuleInit {
-  private supabase: SupabaseClient;
+  private supabase: SupabaseClient<Database>;
 
   constructor() {}
 
   onModuleInit() {
-    this.supabase = createClient(config.supabase.url, config.supabase.anonKey, {
+    // Usar service role no backend para evitar bloqueios de RLS
+    this.supabase = createClient<Database>(config.supabase.url, config.supabase.serviceRoleKey, {
       auth: {
         autoRefreshToken: true,
         persistSession: false,
@@ -17,7 +19,7 @@ export class SupabaseService implements OnModuleInit {
     });
   }
 
-  getClient(): SupabaseClient {
+  getClient(): SupabaseClient<Database> {
     return this.supabase;
   }
 

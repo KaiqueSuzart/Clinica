@@ -13,6 +13,17 @@ export class TreatmentSessionsController {
     return this.sessionsService.createSessionsForItem(itemId, numberOfSessions);
   }
 
+  @Post()
+  async createSession(@Body() sessionData: {
+    treatment_item_id: string;
+    session_number: number;
+    date?: string;
+    description?: string;
+    completed?: boolean;
+  }) {
+    return this.sessionsService.createSession(sessionData);
+  }
+
   @Patch(':sessionId')
   async updateSession(
     @Param('sessionId') sessionId: string,

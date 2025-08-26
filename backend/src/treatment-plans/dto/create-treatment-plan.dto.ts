@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsArray, IsOptional, IsNumber, IsEnum, IsDateString, ValidateNested } from 'class-validator';
+import { IsString, IsNotEmpty, IsArray, IsOptional, IsNumber, IsDateString, ValidateNested, IsIn } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateTreatmentItemDto {
@@ -14,7 +14,7 @@ export class CreateTreatmentItemDto {
   @IsString()
   tooth?: string;
 
-  @IsEnum(['alta', 'media', 'baixa'])
+  @IsIn(['alta', 'media', 'baixa'])
   priority: 'alta' | 'media' | 'baixa';
 
   @IsNumber()
@@ -23,7 +23,7 @@ export class CreateTreatmentItemDto {
   @IsNumber()
   estimatedSessions: number;
 
-  @IsEnum(['planejado', 'em_andamento', 'concluido', 'cancelado'])
+  @IsIn(['planejado', 'em_andamento', 'concluido', 'cancelado'])
   status: 'planejado' | 'em_andamento' | 'concluido' | 'cancelado';
 
   @IsOptional()
@@ -43,9 +43,9 @@ export class CreateTreatmentItemDto {
 }
 
 export class CreateTreatmentPlanDto {
-  @IsString()
+  @IsNumber()
   @IsNotEmpty()
-  patientId: string;
+  patientId: number;
 
   @IsString()
   @IsNotEmpty()

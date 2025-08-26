@@ -47,6 +47,30 @@ export class TreatmentSessionsService {
     return data;
   }
 
+  async createSession(sessionData: {
+    treatment_item_id: string;
+    session_number: number;
+    date?: string;
+    description?: string;
+    completed?: boolean;
+  }): Promise<TreatmentSession> {
+    const { data, error } = await this.supabaseService
+      .getClient()
+      .from('treatment_sessions')
+      .insert({
+        treatment_item_id: sessionData.treatment_item_id,
+        session_number: sessionData.session_number,
+        date: sessionData.date || null,
+        description: sessionData.description || null,
+        completed: sessionData.completed || false
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
   async updateSession(sessionId: string, updates: UpdateSessionDto): Promise<TreatmentSession> {
     const { data, error } = await this.supabaseService
       .getClient()
@@ -61,6 +85,8 @@ export class TreatmentSessionsService {
   }
 
   async getSessionsForItem(treatmentItemId: string): Promise<TreatmentSession[]> {
+    console.log(`🔍 getSessionsForItem chamado para item ${treatmentItemId}`);
+    
     const { data, error } = await this.supabaseService
       .getClient()
       .from('treatment_sessions')
@@ -68,7 +94,16 @@ export class TreatmentSessionsService {
       .eq('treatment_item_id', treatmentItemId)
       .order('session_number', { ascending: true });
 
-    if (error) throw error;
+    if (error) {
+      console.error(`❌ Erro ao buscar sessões para item ${treatmentItemId}:`, error);
+      throw error;
+    }
+    
+    console.log(`✅ Sessões encontradas para item ${treatmentItemId}: ${data?.length || 0} sessões`);
+    if (data && data.length > 0) {
+      console.log(`📊 Detalhes das sessões:`, data.map(s => ({ id: s.id, session_number: s.session_number, completed: s.completed })));
+    }
+    
     return data || [];
   }
 

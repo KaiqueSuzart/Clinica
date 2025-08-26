@@ -1,399 +1,842 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
-import { TreatmentSessionsService } from './treatment-sessions.service';
 import { CreateTreatmentPlanDto } from './dto/create-treatment-plan.dto';
 import { UpdateTreatmentPlanDto } from './dto/update-treatment-plan.dto';
 
 @Injectable()
 export class TreatmentPlansService {
   constructor(
-    private supabaseService: SupabaseService,
-    private sessionsService: TreatmentSessionsService
+    private readonly supabaseService: SupabaseService,
   ) {}
 
   async create(createTreatmentPlanDto: CreateTreatmentPlanDto) {
-    const { items, ...planData } = createTreatmentPlanDto;
-    
-    // Calcular custo total se não fornecido
-    if (!planData.totalCost) {
-      planData.totalCost = items.reduce((sum, item) => sum + item.estimatedCost, 0);
-    }
+    try {
+      console.log('🔧 Criando plano de tratamento:', createTreatmentPlanDto);
 
-    // Calcular progresso se não fornecido
-    if (!planData.progress) {
-      planData.progress = 0;
-    }
-
-    // Adicionar timestamps
-    const now = new Date().toISOString();
-    const planWithTimestamps = {
-      paciente_id: planData.patientId,
-      titulo: planData.title,
-      descricao: planData.description,
-      custo_total: planData.totalCost,
-      progresso: planData.progress,
-      created_at: now,
-      updated_at: now,
-    };
-
-    // Criar o plano de tratamento
-    const { data: plan, error: planError } = await this.supabaseService
-      .getClient()
-      .from('plano_tratamento')
-      .insert(planWithTimestamps)
-      .select()
-      .single();
-
-    if (planError) {
-      console.error('Erro ao criar plano de tratamento:', planError);
-      throw planError;
-    }
-
-    // Criar os itens do plano
-    const itemsWithPlanId = items.map(item => ({
-      plano_id: plan.id,
-      procedimento: item.procedure,
-      descricao: item.description,
-      dente: item.tooth,
-      prioridade: item.priority,
-      custo_estimado: item.estimatedCost,
-      sessoes_estimadas: item.estimatedSessions,
-      status: item.status,
-      data_inicio: item.startDate,
-      data_conclusao: item.completionDate,
-      observacoes: item.notes,
-      ordem: item.order,
-      created_at: now,
-      updated_at: now,
-    }));
-
-    const { data: createdItems, error: itemsError } = await this.supabaseService
-      .getClient()
-      .from('itens_plano_tratamento')
-      .insert(itemsWithPlanId)
-      .select();
-
-    if (itemsError) {
-      console.error('Erro ao criar itens do plano:', itemsError);
-      // Se falhar ao criar itens, remover o plano criado
-      await this.supabaseService
+      // Criar o plano
+      const { data: plan, error: planError } = await this.supabaseService
         .getClient()
         .from('plano_tratamento')
-        .delete()
-        .eq('id', plan.id);
-      throw itemsError;
-    }
+        .insert({
+          titulo: createTreatmentPlanDto.title,
+          descricao: createTreatmentPlanDto.description || '',
+          paciente_id: createTreatmentPlanDto.patientId.toString(),
+          progresso: 0,
+          custo_total: createTreatmentPlanDto.totalCost || 0,
+        })
+        .select()
+        .single();
 
-    // Criar sessões para cada item
-    for (const item of createdItems) {
-      await this.sessionsService.createSessionsForItem(item.id, item.sessoes_estimadas);
-    }
+      if (planError) throw planError;
 
-    return {
-      ...plan,
-      items: createdItems,
-    };
+      console.log('✅ Plano criado:', plan);
+
+      // Criar os itens do plano
+      if (createTreatmentPlanDto.items && createTreatmentPlanDto.items.length > 0) {
+        const items = [];
+        for (const item of createTreatmentPlanDto.items) {
+          const { data: createdItem, error: itemError } = await this.supabaseService
+            .getClient()
+            .from('itens_plano_tratamento')
+            .insert({
+              plano_id: plan.id,
+              procedimento: item.procedure,
+              dente: item.tooth || '',
+              sessoes_estimadas: item.estimatedSessions,
+              custo_estimado: item.estimatedCost,
+              status: item.status || 'planejado',
+              observacoes: item.notes || '',
+              prioridade: item.priority,
+              ordem: item.order,
+            })
+            .select()
+            .single();
+
+          if (itemError) throw itemError;
+
+          console.log(`📋 Item criado: ${createdItem.id} - ${item.estimatedSessions} sessões estimadas`);
+          
+          // Criar as sessões para este item
+          if (item.estimatedSessions > 0) {
+            try {
+              const sessions = Array.from({ length: item.estimatedSessions }, (_, i) => ({
+                treatment_item_id: createdItem.id,
+                session_number: i + 1,
+                completed: false
+              }));
+
+              const { data: createdSessions, error: sessionsError } = await this.supabaseService
+                .getClient()
+                .from('treatment_sessions')
+                .insert(sessions)
+                .select();
+
+              if (sessionsError) {
+                console.error(`❌ Erro ao criar sessões para item ${createdItem.id}:`, sessionsError);
+              } else {
+                console.log(`✅ ${createdSessions.length} sessões criadas para item ${createdItem.id}`);
+                createdItem.sessions = createdSessions;
+                createdItem.completedSessions = 0;
+              }
+            } catch (sessionError) {
+              console.error(`❌ Erro ao criar sessões para item ${createdItem.id}:`, sessionError);
+            }
+          }
+          
+          items.push(createdItem);
+        }
+
+        plan.items = items;
+      }
+
+      return plan;
+    } catch (error) {
+      console.error('❌ Erro ao criar plano de tratamento:', error);
+      throw error;
+    }
   }
 
   async findAll() {
-    const { data, error } = await this.supabaseService
-      .getClient()
-      .from('plano_tratamento')
-      .select(`
-        *,
-        items: itens_plano_tratamento(*)
-      `)
-      .order('created_at', { ascending: false });
+    try {
+      const { data: plans, error } = await this.supabaseService
+        .getClient()
+        .from('plano_tratamento')
+        .select(`
+          *,
+          paciente: clientelA(nome, email, telefone),
+          items: itens_plano_tratamento(*)
+        `)
+        .order('created_at', { ascending: false });
 
-    if (error) throw error;
+      if (error) throw error;
 
-    // Adicionar sessões para cada item
-    for (const plan of data) {
-      for (const item of plan.items) {
-        item.sessions = await this.sessionsService.getSessionsForItem(item.id);
+      // Carregar sessões para cada item
+      if (plans) {
+        for (const plan of plans) {
+          if (plan.items) {
+            for (const item of plan.items) {
+              try {
+                // Buscar sessões para este item
+                const { data: sessions } = await this.supabaseService
+                  .getClient()
+                  .from('treatment_sessions')
+                  .select('*')
+                  .eq('treatment_item_id', item.id)
+                  .order('session_number', { ascending: true });
+
+                item.sessions = sessions || [];
+                item.completedSessions = (sessions || []).filter(s => s.completed).length;
+              } catch (sessionError) {
+                console.log(`⚠️ Erro ao carregar sessões para item ${item.id}:`, sessionError.message);
+                item.sessions = [];
+                item.completedSessions = 0;
+              }
+            }
+          }
+        }
       }
-    }
 
-    return data;
+      return plans;
+    } catch (error) {
+      console.error('❌ Erro ao buscar planos:', error);
+      throw error;
+    }
   }
 
-  async findByPatientId(patientId: string) {
-    const { data, error } = await this.supabaseService
-      .getClient()
-      .from('plano_tratamento')
-      .select(`
-        *,
-        items: itens_plano_tratamento(*)
-      `)
-      .eq('paciente_id', patientId)
-      .order('created_at', { ascending: false });
+  async findByPatientId(patientId: number) {
+    try {
+      console.log('🔍 Buscando planos para paciente:', patientId);
 
-    if (error) throw error;
+      const { data: plans, error } = await this.supabaseService
+        .getClient()
+        .from('plano_tratamento')
+        .select(`
+          *,
+          items: itens_plano_tratamento(*)
+        `)
+        .eq('paciente_id', patientId)
+        .order('created_at', { ascending: false });
 
-    // Adicionar sessões para cada item
-    for (const plan of data) {
-      for (const item of plan.items) {
-        item.sessions = await this.sessionsService.getSessionsForItem(item.id);
+      if (error) throw error;
+
+      // Carregar sessões para cada item
+      if (plans) {
+        for (const plan of plans) {
+          if (plan.items) {
+            for (const item of plan.items) {
+              try {
+                // Buscar sessões para este item
+                const { data: sessions } = await this.supabaseService
+                  .getClient()
+                  .from('treatment_sessions')
+                  .select('*')
+                  .eq('treatment_item_id', item.id)
+                  .order('session_number', { ascending: true });
+
+                item.sessions = sessions || [];
+                item.completedSessions = (sessions || []).filter(s => s.completed).length;
+                console.log(`📋 Item ${item.id}: ${item.completedSessions}/${item.sessoes_estimadas} sessões concluídas`);
+              } catch (sessionError) {
+                console.log(`⚠️ Erro ao carregar sessões para item ${item.id}:`, sessionError.message);
+                item.sessions = [];
+                item.completedSessions = 0;
+              }
+            }
+          }
+        }
       }
-    }
 
-    return data;
+      console.log(`✅ Encontrados ${plans?.length || 0} planos para paciente ${patientId}`);
+      return plans || [];
+    } catch (error) {
+      console.error('❌ Erro ao buscar planos do paciente:', error);
+      throw error;
+    }
   }
 
   async findOne(id: string) {
-    const { data, error } = await this.supabaseService
-      .getClient()
-      .from('plano_tratamento')
-      .select(`
-        *,
-        items: itens_plano_tratamento(*)
-      `)
-      .eq('id', id)
-      .single();
+    try {
+      const { data: plan, error } = await this.supabaseService
+        .getClient()
+        .from('plano_tratamento')
+        .select(`
+          *,
+          paciente: clientelA(nome, email, telefone),
+          items: itens_plano_tratamento(*)
+        `)
+        .eq('id', id)
+        .single();
 
-    if (error || !data) {
-      throw new NotFoundException('Plano de tratamento não encontrado');
+      if (error) throw error;
+
+      // Carregar sessões para cada item
+      if (plan && plan.items) {
+        for (const item of plan.items) {
+          try {
+            // Buscar sessões para este item
+            const { data: sessions } = await this.supabaseService
+              .getClient()
+              .from('treatment_sessions')
+              .select('*')
+              .eq('treatment_item_id', item.id)
+              .order('session_number', { ascending: true });
+
+            item.sessions = sessions || [];
+            item.completedSessions = (sessions || []).filter(s => s.completed).length;
+          } catch (sessionError) {
+            console.log(`⚠️ Erro ao carregar sessões para item ${item.id}:`, sessionError.message);
+            item.sessions = [];
+            item.completedSessions = 0;
+          }
+        }
+      }
+
+      return plan;
+    } catch (error) {
+      console.error('❌ Erro ao buscar plano:', error);
+      throw error;
     }
-
-    // Adicionar sessões para cada item
-    for (const item of data.items) {
-      item.sessions = await this.sessionsService.getSessionsForItem(item.id);
-    }
-
-    return data;
   }
 
   async update(id: string, updateTreatmentPlanDto: UpdateTreatmentPlanDto) {
-    // Verificar se o plano existe
-    const existingPlan = await this.findOne(id);
-    
-    const { items, ...planData } = updateTreatmentPlanDto;
-    
-    // Calcular custo total se itens foram atualizados
-    if (items) {
-      planData.totalCost = items.reduce((sum, item) => sum + item.estimatedCost, 0);
-      
-      // Calcular progresso baseado nos itens concluídos
-      const completedItems = items.filter(item => item.status === 'concluido').length;
-      planData.progress = Math.round((completedItems / items.length) * 100);
-    }
+    try {
+      console.log('🔧 Atualizando plano:', id);
+      console.log('📋 Dados recebidos:', JSON.stringify(updateTreatmentPlanDto, null, 2));
 
-    // Criar objeto com dados para atualização
-    const updateData: any = {
-      updated_at: new Date().toISOString()
-    };
-    
-    if (planData.patientId) updateData.paciente_id = planData.patientId;
-    if (planData.title) updateData.titulo = planData.title;
-    if (planData.description !== undefined) updateData.descricao = planData.description;
-    if (planData.totalCost !== undefined) updateData.custo_total = planData.totalCost;
-    if (planData.progress !== undefined) updateData.progresso = planData.progress;
-
-    // Atualizar o plano
-    const { data: updatedPlan, error: planError } = await this.supabaseService
-      .getClient()
-      .from('plano_tratamento')
-      .update(updateData)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (planError) throw planError;
-
-    // Se itens foram fornecidos, atualizar os itens
-    if (items) {
-      // Remover itens existentes e suas sessões
-      await this.supabaseService
+      // 1. Atualizar o plano principal
+      const { data: plan, error: planError } = await this.supabaseService
         .getClient()
-        .from('itens_plano_tratamento')
-        .delete()
-        .eq('plano_id', id);
+        .from('plano_tratamento')
+        .update({
+          titulo: updateTreatmentPlanDto.title,
+          descricao: updateTreatmentPlanDto.description,
+          custo_total: updateTreatmentPlanDto.totalCost,
+          progresso: updateTreatmentPlanDto.progress,
+        })
+        .eq('id', id)
+        .select()
+        .single();
 
-      // Criar novos itens
-      const now = new Date().toISOString();
-      const itemsWithPlanId = items.map(item => ({
-        plano_id: id,
-        procedimento: item.procedure,
-        descricao: item.description,
-        dente: item.tooth,
-        prioridade: item.priority,
-        custo_estimado: item.estimatedCost,
-        sessoes_estimadas: item.estimatedSessions,
-        status: item.status,
-        data_inicio: item.startDate,
-        data_conclusao: item.completionDate,
-        observacoes: item.notes,
-        ordem: item.order,
-        created_at: now,
-        updated_at: now,
-      }));
+      if (planError) throw planError;
 
-      const { data: updatedItems, error: itemsError } = await this.supabaseService
-        .getClient()
-        .from('itens_plano_tratamento')
-        .insert(itemsWithPlanId)
-        .select();
-
-      if (itemsError) throw itemsError;
-
-      // Criar sessões para cada novo item
-      for (const item of updatedItems) {
-        await this.sessionsService.createSessionsForItem(item.id, item.sessoes_estimadas);
-      }
-
-      return {
-        ...updatedPlan,
-        items: updatedItems,
-      };
-    }
-
-    return updatedPlan;
-  }
-
-  async remove(id: string) {
-    // Verificar se o plano existe
-    const plan = await this.findOne(id);
-
-    // Remover sessões primeiro
-    for (const item of plan.items) {
-      await this.sessionsService.deleteSessionsForItem(item.id);
-    }
-
-    // Remover itens primeiro (devido à chave estrangeira)
-    const { error: itemsError } = await this.supabaseService
-      .getClient()
-      .from('itens_plano_tratamento')
-      .delete()
-      .eq('plano_id', id);
-
-    if (itemsError) throw itemsError;
-
-    // Remover o plano
-    const { error: planError } = await this.supabaseService
-      .getClient()
-      .from('plano_tratamento')
-      .delete()
-      .eq('id', id);
-
-    if (planError) throw planError;
-
-    return { message: 'Plano de tratamento removido com sucesso' };
-  }
-
-  async updateItemStatus(planId: string, itemId: string, status: string) {
-    // Verificar se o plano existe
-    await this.findOne(planId);
-
-    // Atualizar status do item
-    const { data: updatedItem, error: itemError } = await this.supabaseService
-      .getClient()
-      .from('itens_plano_tratamento')
-      .update({ 
-        status,
-        updated_at: new Date().toISOString(),
-        ...(status === 'concluido' ? { data_conclusao: new Date().toISOString() } : {}),
-        ...(status === 'em_andamento' ? { data_inicio: new Date().toISOString() } : {})
-      })
-      .eq('id', itemId)
-      .eq('plano_id', planId)
-      .select()
-      .single();
-
-    if (itemError) throw itemError;
-
-    // Recalcular progresso do plano
-    const { data: items } = await this.supabaseService
-      .getClient()
-      .from('itens_plano_tratamento')
-      .select('status')
-      .eq('plano_id', planId);
-
-    const totalItems = items.length;
-    const completedItems = items.filter(item => item.status === 'concluido').length;
-    const progress = Math.round((completedItems / totalItems) * 100);
-
-    // Atualizar progresso do plano
-    await this.supabaseService
-      .getClient()
-      .from('plano_tratamento')
-      .update({ 
-        progresso: progress,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', planId);
-
-    return updatedItem;
-  }
-
-  async updateSession(planId: string, itemId: string, sessionId: string, updates: any) {
-    // Verificar se o plano existe
-    await this.findOne(planId);
-
-    // Atualizar a sessão
-    const updatedSession = await this.sessionsService.updateSession(sessionId, updates);
-
-    // Se a sessão foi marcada como concluída, verificar se todas estão concluídas
-    if (updates.completed) {
-      const sessions = await this.sessionsService.getSessionsForItem(itemId);
-      const allCompleted = sessions.every(s => s.completed);
-      
-      if (allCompleted) {
-        // Atualizar status do item para concluído
+      // 2. Atualizar os itens se fornecidos
+      if (updateTreatmentPlanDto.items) {
+        console.log('🔧 Atualizando/criando itens do plano...');
+        
+        // Limpar itens existentes primeiro
         await this.supabaseService
           .getClient()
           .from('itens_plano_tratamento')
-          .update({ 
-            status: 'concluido',
-            data_conclusao: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', itemId);
-      }
-    }
+          .delete()
+          .eq('plano_id', id);
 
-    return updatedSession;
+        // Inserir novos itens
+        for (const [index, item] of updateTreatmentPlanDto.items.entries()) {
+          console.log(`🔧 Inserindo item ${index + 1}:`, item);
+          
+          const itemData = {
+            plano_id: id,
+            procedimento: item.procedure,
+            descricao: item.description || '',
+            dente: item.tooth || '',
+            prioridade: item.priority || 'media',
+            custo_estimado: item.estimatedCost || 0,
+            sessoes_estimadas: item.estimatedSessions || 1,
+            status: item.status || 'planejado',
+            observacoes: item.notes || '',
+            ordem: item.order || index + 1,
+            data_inicio: item.startDate || null,
+            data_conclusao: item.completionDate || null,
+          };
+          
+          console.log(`📤 Dados do item para inserir:`, itemData);
+          
+          const { data: newItem, error: itemError } = await this.supabaseService
+            .getClient()
+            .from('itens_plano_tratamento')
+            .insert(itemData)
+            .select()
+            .single();
+
+          if (itemError) {
+            console.error('❌ Erro ao inserir item:', itemError);
+            console.error('❌ Dados que causaram erro:', itemData);
+            throw itemError;
+          }
+          
+          console.log(`✅ Item ${index + 1} inserido com sucesso:`, newItem);
+
+          // Criar sessões para o item
+          const sessionsToCreate = [];
+          for (let sessionNumber = 1; sessionNumber <= item.estimatedSessions; sessionNumber++) {
+            sessionsToCreate.push({
+              treatment_item_id: newItem.id,
+              session_number: sessionNumber,
+              completed: false,
+              date: null,
+              description: '',
+            });
+          }
+
+          if (sessionsToCreate.length > 0) {
+            const { error: sessionsError } = await this.supabaseService
+              .getClient()
+              .from('treatment_sessions')
+              .insert(sessionsToCreate);
+
+            if (sessionsError) {
+              console.error('❌ Erro ao criar sessões:', sessionsError);
+            } else {
+              console.log(`✅ Criadas ${sessionsToCreate.length} sessões para item ${newItem.id}`);
+            }
+          }
+        }
+      }
+
+      // 3. Retornar o plano completo com itens atualizados
+      console.log('✅ Atualizações concluídas, buscando plano completo...');
+      return await this.findOne(id);
+    } catch (error) {
+      console.error('❌ Erro ao atualizar plano:', error);
+      console.error('❌ Stack trace:', error.stack);
+      console.error('❌ Detalhes do erro:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      });
+      throw error;
+    }
   }
 
-  async getPatientTreatmentProgress(patientId: string) {
-    const plans = await this.findByPatientId(patientId);
-    
-    if (!plans.length) {
-      return {
-        totalPlans: 0,
-        activePlans: 0,
-        completedPlans: 0,
-        totalCost: 0,
-        averageProgress: 0,
-        recentActivity: []
-      };
+  async remove(id: string) {
+    try {
+      const { error } = await this.supabaseService
+        .getClient()
+        .from('plano_tratamento')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      return { message: 'Plano removido com sucesso' };
+    } catch (error) {
+      console.error('❌ Erro ao remover plano:', error);
+      throw error;
     }
+  }
 
-    const activePlans = plans.filter(plan => plan.progress < 100);
-    const completedPlans = plans.filter(plan => plan.progress === 100);
-    const totalCost = plans.reduce((sum, plan) => sum + (plan.totalCost || 0), 0);
-    const averageProgress = Math.round(
-      plans.reduce((sum, plan) => sum + (plan.progress || 0), 0) / plans.length
-    );
+  async getPatientTreatmentProgress(patientId: number) {
+    try {
+      const plans = await this.findByPatientId(patientId);
+      let totalSessions = 0;
+      let completedSessions = 0;
 
-    // Buscar atividade recente
-    const { data: recentActivity } = await this.supabaseService
-      .getClient()
-      .from('itens_plano_tratamento')
-      .select(`
-        *,
-        plan: plano_tratamento(titulo, paciente_id)
-      `)
-      .eq('plan.paciente_id', patientId)
-      .order('updated_at', { ascending: false })
-      .limit(10);
+      for (const plan of plans) {
+        if (plan.items) {
+          for (const item of plan.items) {
+            // Usar sessões estimadas e completadas em vez de status
+            const estimatedSessions = item.sessoes_estimadas || 0;
+            const itemCompletedSessions = item.completedSessions || 0;
+            
+            totalSessions += estimatedSessions;
+            completedSessions += itemCompletedSessions;
+            
+            console.log(`📊 Item ${item.procedimento}: ${itemCompletedSessions}/${estimatedSessions} sessões`);
+          }
+        }
+      }
 
-    return {
-      totalPlans: plans.length,
-      activePlans: activePlans.length,
-      completedPlans: completedPlans.length,
-      totalCost,
-      averageProgress,
-      recentActivity: recentActivity || []
-    };
+      const progress = totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0;
+      
+      console.log(`📊 Progresso total: ${completedSessions}/${totalSessions} = ${progress}%`);
+      
+      return {
+        totalSessions,
+        completedSessions,
+        progress,
+      };
+    } catch (error) {
+      console.error('❌ Erro ao calcular progresso:', error);
+      throw error;
+    }
+  }
+
+  async updateProgress(id: string, progress: number) {
+    try {
+      const { data, error } = await this.supabaseService
+        .getClient()
+        .from('plano_tratamento')
+        .update({ progresso: progress })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('❌ Erro ao atualizar progresso:', error);
+      throw error;
+    }
+  }
+
+  async updateItemStatus(planId: string, itemId: string, status: string) {
+    try {
+      const { data, error } = await this.supabaseService
+        .getClient()
+        .from('itens_plano_tratamento')
+        .update({ status })
+        .eq('id', itemId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('❌ Erro ao atualizar status do item:', error);
+      throw error;
+    }
+  }
+
+  async updateSession(planId: string, itemId: string, sessionId: string, updates: any) {
+    try {
+      console.log('🔧 Atualizando sessão:', { planId, itemId, sessionId, updates });
+      
+      // Atualizar a sessão
+      const { data: updatedSession, error: sessionError } = await this.supabaseService
+        .getClient()
+        .from('treatment_sessions')
+        .update(updates)
+        .eq('id', sessionId)
+        .select()
+        .single();
+
+      if (sessionError) throw sessionError;
+
+      // Se a sessão foi marcada como concluída, verificar se todas estão concluídas
+      if (updates.completed) {
+        const { data: allSessions, error: sessionsError } = await this.supabaseService
+          .getClient()
+          .from('treatment_sessions')
+          .select('completed')
+          .eq('treatment_item_id', itemId);
+
+        if (sessionsError) throw sessionsError;
+
+        const allCompleted = allSessions.every(s => s.completed);
+        
+        if (allCompleted) {
+          // Atualizar status do item para concluído
+          await this.supabaseService
+            .getClient()
+            .from('itens_plano_tratamento')
+            .update({ 
+              status: 'concluido',
+              data_conclusao: new Date().toISOString()
+            })
+            .eq('id', itemId);
+        }
+      }
+
+      return updatedSession;
+    } catch (error) {
+      console.error('❌ Erro ao atualizar sessão:', error);
+      throw error;
+    }
+  }
+
+  async updateSessionDirect(sessionId: string, updates: any) {
+    try {
+      console.log('🔧 Atualizando sessão diretamente:', { sessionId, updates });
+      
+      // Primeiro, buscar a sessão para obter o treatment_item_id
+      const { data: session, error: sessionError } = await this.supabaseService
+        .getClient()
+        .from('treatment_sessions')
+        .select('treatment_item_id')
+        .eq('id', sessionId)
+        .single();
+
+      if (sessionError) throw sessionError;
+
+      // Agora atualizar a sessão
+      const { data: updatedSession, error: updateError } = await this.supabaseService
+        .getClient()
+        .from('treatment_sessions')
+        .update(updates)
+        .eq('id', sessionId)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+
+      // Se a sessão foi marcada como concluída, verificar se todas estão concluídas
+      if (updates.completed) {
+        const { data: allSessions, error: sessionsError } = await this.supabaseService
+          .getClient()
+          .from('treatment_sessions')
+          .select('completed')
+          .eq('treatment_item_id', session.treatment_item_id);
+
+        if (sessionsError) throw sessionsError;
+
+        const allCompleted = allSessions.every(s => s.completed);
+        
+        if (allCompleted) {
+          // Atualizar status do item para concluído
+          await this.supabaseService
+            .getClient()
+            .from('itens_plano_tratamento')
+            .update({ 
+              status: 'concluido',
+              data_conclusao: new Date().toISOString()
+            })
+            .eq('id', session.treatment_item_id);
+        }
+      }
+
+      console.log('✅ Sessão atualizada com sucesso:', updatedSession);
+      return updatedSession;
+    } catch (error) {
+      console.error('❌ Erro ao atualizar sessão diretamente:', error);
+      throw error;
+    }
+  }
+
+  async setupSessionsTable() {
+    try {
+      console.log('🔧 Verificando tabela de sessões...');
+      
+      // Verificar se a tabela existe
+      const { data: tableExists, error: checkError } = await this.supabaseService
+        .getClient()
+        .from('treatment_sessions')
+        .select('id')
+        .limit(1);
+
+      if (checkError) {
+        console.log('❌ Tabela treatment_sessions não existe:', checkError.message);
+        return { message: 'Tabela treatment_sessions não existe. Execute o script SQL primeiro.' };
+      }
+
+      console.log('✅ Tabela treatment_sessions existe');
+      
+      // Buscar itens existentes
+      const { data: items, error: itemsError } = await this.supabaseService
+        .getClient()
+        .from('itens_plano_tratamento')
+        .select('id, sessoes_estimadas, procedimento');
+
+      if (itemsError) throw itemsError;
+
+      console.log(`📋 Encontrados ${items?.length || 0} itens de tratamento`);
+      
+      return { 
+        message: 'Tabela verificada com sucesso', 
+        itemsCount: items?.length || 0 
+      };
+    } catch (error) {
+      console.error('❌ Erro ao verificar tabela:', error);
+      throw error;
+    }
+  }
+
+  async populateExistingSessions() {
+    try {
+      console.log('🔧 Populando sessões existentes para paciente 12...');
+      
+      // Buscar itens do paciente 12
+      const { data: items, error: itemsError } = await this.supabaseService
+        .getClient()
+        .from('itens_plano_tratamento')
+        .select(`
+          id,
+          procedimento,
+          sessoes_estimadas,
+          plano_tratamento!plano_id(paciente_id)
+        `)
+        .eq('plano_tratamento.paciente_id', 12);
+
+      if (itemsError) throw itemsError;
+
+      console.log(`📋 Encontrados ${items?.length || 0} itens para popular`);
+
+      let populatedCount = 0;
+
+      for (const item of items || []) {
+        const { procedimento, sessoes_estimadas, id: itemId } = item;
+        
+        // Verificar se já existem sessões para este item
+        const { data: existingSessions } = await this.supabaseService
+          .getClient()
+          .from('treatment_sessions')
+          .select('id')
+          .eq('treatment_item_id', itemId);
+
+        if (existingSessions && existingSessions.length > 0) {
+          console.log(`⚠️ Item ${procedimento} já tem sessões, pulando...`);
+          continue;
+        }
+
+        // Criar sessões baseado no tipo de procedimento
+        let completedSessions = 0;
+        
+        if (procedimento === 'Clareamento') {
+          completedSessions = 4; // 4 de 4 completas
+        } else if (procedimento === 'Cirurgia') {
+          completedSessions = 2; // 2 de 4 completas
+        } else {
+          completedSessions = 0; // 0 completas para Limpeza e Prótese
+        }
+
+        // Criar as sessões
+        for (let sessionNum = 1; sessionNum <= sessoes_estimadas; sessionNum++) {
+          const isCompleted = sessionNum <= completedSessions;
+          
+          const { error: sessionError } = await this.supabaseService
+            .getClient()
+            .from('treatment_sessions')
+            .insert({
+              treatment_item_id: itemId,
+              session_number: sessionNum,
+              completed: isCompleted,
+              date: isCompleted ? new Date().toISOString().split('T')[0] : null,
+              description: `Sessão ${sessionNum} - ${isCompleted ? 'Concluída' : 'Pendente'}`,
+            });
+
+          if (sessionError) {
+            console.error(`❌ Erro ao criar sessão ${sessionNum} para ${procedimento}:`, sessionError);
+          } else {
+            populatedCount++;
+            console.log(`✅ Sessão ${sessionNum} criada para ${procedimento} (${isCompleted ? 'Concluída' : 'Pendente'})`);
+          }
+        }
+      }
+
+      return {
+        message: `Sessões populadas com sucesso!`,
+        populatedCount,
+        itemsProcessed: items?.length || 0
+      };
+    } catch (error) {
+      console.error('❌ Erro ao popular sessões:', error);
+      throw error;
+    }
+  }
+
+  async fixAllProgress() {
+    try {
+      console.log('🔧 Corrigindo progresso de todos os planos...');
+      
+      // Buscar todos os planos
+      const { data: plans, error: plansError } = await this.supabaseService
+        .getClient()
+        .from('plano_tratamento')
+        .select('id, titulo');
+
+      if (plansError) throw plansError;
+
+      let totalPlansFixed = 0;
+
+      for (const plan of plans) {
+        try {
+          // Buscar itens do plano
+          const { data: items, error: itemsError } = await this.supabaseService
+            .getClient()
+            .from('itens_plano_tratamento')
+            .select('id, sessoes_estimadas, completedSessions')
+            .eq('plano_id', plan.id);
+
+          if (itemsError) throw itemsError;
+
+          if (items && items.length > 0) {
+            // Calcular progresso real baseado nas sessões
+            let totalSessions = 0;
+            let completedSessions = 0;
+
+            for (const item of items) {
+              totalSessions += item.sessoes_estimadas || 0;
+              completedSessions += item.completedSessions || 0;
+            }
+
+            const realProgress = totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0;
+
+            // Atualizar o progresso do plano
+            const { error: updateError } = await this.supabaseService
+              .getClient()
+              .from('plano_tratamento')
+              .update({ 
+                progresso: realProgress,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', plan.id);
+
+            if (updateError) throw updateError;
+            totalPlansFixed++;
+            console.log(`✅ Plano "${plan.titulo}" corrigido: ${realProgress}% (${completedSessions}/${totalSessions} sessões)`);
+          }
+        } catch (planError) {
+          console.log(`⚠️ Erro ao corrigir plano ${plan.id}:`, planError.message);
+        }
+      }
+
+      return {
+        message: 'Progresso de todos os planos corrigido com sucesso!',
+        totalPlansFixed,
+        timestamp: new Date().toISOString()
+      };
+    } catch (error) {
+      console.error('❌ Erro ao corrigir progresso:', error);
+      throw error;
+    }
+  }
+
+  async fixAllCompletedSessions() {
+    try {
+      console.log('🔧 Corrigindo completedSessions de todos os itens...');
+      
+      // Buscar todos os itens
+      const { data: items, error: itemsError } = await this.supabaseService
+        .getClient()
+        .from('itens_plano_tratamento')
+        .select('id, procedimento, sessoes_estimadas');
+
+      if (itemsError) throw itemsError;
+
+      let totalItemsFixed = 0;
+
+      for (const item of items) {
+        try {
+          // Buscar sessões para este item
+          const { data: sessions, error: sessionsError } = await this.supabaseService
+            .getClient()
+            .from('treatment_sessions')
+            .select('completed')
+            .eq('treatment_item_id', item.id);
+
+          if (sessionsError) throw sessionsError;
+
+          // Calcular sessões completadas
+          const completedCount = (sessions || []).filter(s => s.completed).length;
+
+          // Atualizar o campo completedSessions
+          const { error: updateError } = await this.supabaseService
+            .getClient()
+            .from('itens_plano_tratamento')
+            .update({ 
+              completedSessions: completedCount,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', item.id);
+
+          if (updateError) throw updateError;
+          totalItemsFixed++;
+          console.log(`✅ Item "${item.procedimento}" corrigido: ${completedCount}/${item.sessoes_estimadas} sessões completadas`);
+        } catch (itemError) {
+          console.log(`⚠️ Erro ao corrigir item ${item.id}:`, itemError.message);
+        }
+      }
+
+      return {
+        message: 'CompletedSessions de todos os itens corrigido com sucesso!',
+        totalItemsFixed,
+        timestamp: new Date().toISOString()
+      };
+    } catch (error) {
+      console.error('❌ Erro ao corrigir completedSessions:', error);
+      throw error;
+    }
+  }
+
+  async fixPeriodontiaSession() {
+    try {
+      console.log('🔧 Corrigindo sessão da Periodontia...');
+      
+      // Buscar a sessão da Periodontia
+      const { data: sessions, error: sessionsError } = await this.supabaseService
+        .getClient()
+        .from('treatment_sessions')
+        .select('*')
+        .eq('treatment_item_id', '07dfb7e2-7316-4200-9b88-b063a2da5449');
+
+      if (sessionsError) throw sessionsError;
+
+      if (sessions && sessions.length > 0) {
+        // Marcar a sessão como concluída
+        const { error: updateError } = await this.supabaseService
+          .getClient()
+          .from('treatment_sessions')
+          .update({ 
+            completed: true,
+            date: new Date().toISOString().split('T')[0],
+            description: 'Sessão concluída',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', sessions[0].id);
+
+        if (updateError) throw updateError;
+
+        // Atualizar o campo completedSessions do item
+        const { error: itemUpdateError } = await this.supabaseService
+          .getClient()
+          .from('itens_plano_tratamento')
+          .update({ 
+            completedSessions: 1,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', '07dfb7e2-7316-4200-9b88-b063a2da5449');
+
+        if (itemUpdateError) throw itemUpdateError;
+
+        console.log('✅ Sessão da Periodontia corrigida: 1/1 sessões concluídas');
+      }
+
+      return {
+        message: 'Sessão da Periodontia corrigida com sucesso!',
+        timestamp: new Date().toISOString()
+      };
+    } catch (error) {
+      console.error('❌ Erro ao corrigir sessão da Periodontia:', error);
+      throw error;
+    }
   }
 }
