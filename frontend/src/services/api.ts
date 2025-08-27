@@ -270,7 +270,7 @@ class ApiService {
 
   async updateAnnotation(id: number, annotation: Partial<Annotation>): Promise<Annotation> {
     return this.request(`/annotations/${id}`, {
-      method: 'PUT',
+      method: 'PATCH',
       body: JSON.stringify(annotation),
     });
   }

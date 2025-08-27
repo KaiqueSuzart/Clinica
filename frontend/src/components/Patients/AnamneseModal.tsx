@@ -60,6 +60,7 @@ export default function AnamneseModal({ isOpen, onClose, patientName, patientId,
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [importantNotes, setImportantNotes] = useState<string[]>([]);
+  const [activeNotifications, setActiveNotifications] = useState<{[key: string]: boolean}>({});
 
   useEffect(() => {
     if (existingAnamnese) {
@@ -183,17 +184,62 @@ export default function AnamneseModal({ isOpen, onClose, patientName, patientId,
 
   const addToImportantNotes = (label: string, text: string) => {
     if (text.trim()) {
-      // Adicionar à lista local de notas importantes
-      setImportantNotes(prev => [...prev, `${label}: ${text}`]);
+      const noteContent = `${label}: ${text}`;
+      
+      // Substituir anotação existente do mesmo campo ou adicionar nova
+      setImportantNotes(prev => {
+        const filtered = prev.filter(note => !note.startsWith(`${label}:`));
+        return [...filtered, noteContent];
+      });
+      
+      // Mostrar notificação contextual para este campo específico
+      const fieldKey = label.toLowerCase().replace(/\s+/g, '_');
+      setActiveNotifications(prev => ({
+        ...prev,
+        [fieldKey]: true
+      }));
+      
+      // Remover notificação após 3 segundos
+      setTimeout(() => {
+        setActiveNotifications(prev => ({
+          ...prev,
+          [fieldKey]: false
+        }));
+      }, 3000);
       
       // Se houver callback de anotação, usar para adicionar à aba de anotações
       if (onAddAnnotation) {
         onAddAnnotation({
-          content: `${label}: ${text}`,
+          content: noteContent,
           category: 'Anamnese'
         });
       }
     }
+  };
+
+  // Função para renderizar notificação contextual
+  const renderContextualNotification = (fieldKey: string) => {
+    if (activeNotifications[fieldKey]) {
+      return (
+        <div 
+          className="mt-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg p-3 flex items-center space-x-2 transition-all duration-300 ease-in-out"
+          style={{
+            animation: 'slideDown 0.3s ease-out',
+          }}
+        >
+          <MessageSquare className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-green-800 dark:text-green-200">
+              ✅ Anotado com sucesso!
+            </p>
+            <p className="text-xs text-green-600 dark:text-green-400">
+              Esta informação foi salva nas observações importantes.
+            </p>
+          </div>
+        </div>
+      );
+    }
+    return null;
   };
 
   if (!isOpen) return null;
@@ -246,6 +292,7 @@ export default function AnamneseModal({ isOpen, onClose, patientName, patientId,
                       <span className="text-sm">Anotar</span>
                     </button>
                   </div>
+                  {renderContextualNotification('alergias')}
                 </div>
 
                 <div>
@@ -270,6 +317,7 @@ export default function AnamneseModal({ isOpen, onClose, patientName, patientId,
                       <span className="text-sm">Anotar</span>
                     </button>
                   </div>
+                  {renderContextualNotification('medicamentos')}
                 </div>
               </div>
             </div>
@@ -290,23 +338,26 @@ export default function AnamneseModal({ isOpen, onClose, patientName, patientId,
                       <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Diabetes</span>
                     </label>
                     {formData.diabetes && (
-                      <div className="flex space-x-2">
-                        <textarea
-                          value={formData.diabetes_notes}
-                          onChange={(e) => handleInputChange('diabetes_notes', e.target.value)}
-                          rows={2}
-                          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                          placeholder="Detalhes sobre diabetes..."
-                        />
-                        <button
-                          type="button"
-                          onClick={() => addToImportantNotes('Diabetes', formData.diabetes_notes)}
-                          disabled={!formData.diabetes_notes.trim()}
-                          className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-1"
-                        >
-                          <MessageSquare className="w-4 h-4" />
-                          <span className="text-sm">Anotar</span>
-                        </button>
+                      <div>
+                        <div className="flex space-x-2">
+                          <textarea
+                            value={formData.diabetes_notes}
+                            onChange={(e) => handleInputChange('diabetes_notes', e.target.value)}
+                            rows={2}
+                            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                            placeholder="Detalhes sobre diabetes..."
+                          />
+                          <button
+                            type="button"
+                            onClick={() => addToImportantNotes('Diabetes', formData.diabetes_notes)}
+                            disabled={!formData.diabetes_notes.trim()}
+                            className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-1"
+                          >
+                            <MessageSquare className="w-4 h-4" />
+                            <span className="text-sm">Anotar</span>
+                          </button>
+                        </div>
+                        {renderContextualNotification('diabetes')}
                       </div>
                     )}
                   </div>
@@ -322,23 +373,26 @@ export default function AnamneseModal({ isOpen, onClose, patientName, patientId,
                       <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Hipertensão</span>
                     </label>
                     {formData.hypertension && (
-                      <div className="flex space-x-2">
-                        <textarea
-                          value={formData.hypertension_notes}
-                          onChange={(e) => handleInputChange('hypertension_notes', e.target.value)}
-                          rows={2}
-                          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                          placeholder="Detalhes sobre hipertensão..."
-                        />
-                        <button
-                          type="button"
-                          onClick={() => addToImportantNotes('Hipertensão', formData.hypertension_notes)}
-                          disabled={!formData.hypertension_notes.trim()}
-                          className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-1"
-                        >
-                          <MessageSquare className="w-4 h-4" />
-                          <span className="text-sm">Anotar</span>
-                        </button>
+                      <div>
+                        <div className="flex space-x-2">
+                          <textarea
+                            value={formData.hypertension_notes}
+                            onChange={(e) => handleInputChange('hypertension_notes', e.target.value)}
+                            rows={2}
+                            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                            placeholder="Detalhes sobre hipertensão..."
+                          />
+                          <button
+                            type="button"
+                            onClick={() => addToImportantNotes('Hipertensão', formData.hypertension_notes)}
+                            disabled={!formData.hypertension_notes.trim()}
+                            className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-1"
+                          >
+                            <MessageSquare className="w-4 h-4" />
+                            <span className="text-sm">Anotar</span>
+                          </button>
+                        </div>
+                        {renderContextualNotification('hipertensão')}
                       </div>
                     )}
                   </div>
@@ -354,23 +408,26 @@ export default function AnamneseModal({ isOpen, onClose, patientName, patientId,
                       <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Problemas cardíacos</span>
                     </label>
                     {formData.heart_problems && (
-                      <div className="flex space-x-2">
-                        <textarea
-                          value={formData.heart_problems_notes}
-                          onChange={(e) => handleInputChange('heart_problems_notes', e.target.value)}
-                          rows={2}
-                          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                          placeholder="Detalhes sobre problemas cardíacos..."
-                        />
-                        <button
-                          type="button"
-                          onClick={() => addToImportantNotes('Problemas Cardíacos', formData.heart_problems_notes)}
-                          disabled={!formData.heart_problems_notes.trim()}
-                          className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-1"
-                        >
-                          <MessageSquare className="w-4 h-4" />
-                          <span className="text-sm">Anotar</span>
-                        </button>
+                      <div>
+                        <div className="flex space-x-2">
+                          <textarea
+                            value={formData.heart_problems_notes}
+                            onChange={(e) => handleInputChange('heart_problems_notes', e.target.value)}
+                            rows={2}
+                            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                            placeholder="Detalhes sobre problemas cardíacos..."
+                          />
+                          <button
+                            type="button"
+                            onClick={() => addToImportantNotes('Problemas Cardíacos', formData.heart_problems_notes)}
+                            disabled={!formData.heart_problems_notes.trim()}
+                            className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-1"
+                          >
+                            <MessageSquare className="w-4 h-4" />
+                            <span className="text-sm">Anotar</span>
+                          </button>
+                        </div>
+                        {renderContextualNotification('problemas_cardíacos')}
                       </div>
                     )}
                   </div>

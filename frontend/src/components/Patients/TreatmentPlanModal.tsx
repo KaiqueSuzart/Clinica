@@ -195,15 +195,9 @@ export default function TreatmentPlanModal({
         console.log(`Encontrados ${plans.length} planos para o paciente`);
         setAllPlans(plans);
         
-        // Se não há plano atual selecionado e não há existingPlan, selecionar o mais recente
-        if (!currentPlanId && plans.length > 0 && !existingPlan) {
-          const latestPlan = plans[0]; // Já ordenados por data no backend
-          console.log('Selecionando plano mais recente:', latestPlan);
-          setCurrentPlanId(latestPlan.id);
-          setPlanTitle(latestPlan.title || '');
-          setPlanDescription(latestPlan.description || '');
-          setTreatmentItems(latestPlan.items || []);
-        }
+        // Comentado: não mais selecionar automaticamente o plano mais recente
+        // Agora sempre abre em modo de criação quando não há existingPlan
+        console.log('Planos carregados para histórico, mas mantendo formulário vazio para novo plano');
         
         // Se há existingPlan, verificar se ele está na lista carregada
         if (existingPlan && existingPlan.id) {
@@ -218,42 +212,22 @@ export default function TreatmentPlanModal({
         }
       } else {
         console.log('Nenhum plano encontrado na API');
-        // Se não há planos na API, criar um plano vazio
-        const emptyPlan = {
-          id: `empty-${Date.now()}`,
-          title: 'Novo Plano de Tratamento',
-          description: '',
-          items: [],
-          totalCost: 0,
-          progress: 0,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
-        setAllPlans([emptyPlan]);
-        setCurrentPlanId(emptyPlan.id);
-        setPlanTitle(emptyPlan.title);
-        setPlanDescription(emptyPlan.description);
+        // Se não há planos na API, manter formulário vazio para novo plano
+        setAllPlans([]);
+        setCurrentPlanId(null);
+        setPlanTitle('');
+        setPlanDescription('');
         setTreatmentItems([]);
       }
     } catch (error) {
       console.error('Erro ao carregar planos:', error);
-      // Em caso de erro, criar plano vazio
-      const errorPlan = {
-        id: `error-${Date.now()}`,
-          title: 'Novo Plano de Tratamento',
-          description: '',
-          items: [],
-          totalCost: 0,
-          progress: 0,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
-        setAllPlans([errorPlan]);
-        setCurrentPlanId(errorPlan.id);
-        setPlanTitle(errorPlan.title);
-        setPlanDescription(errorPlan.description);
-        setTreatmentItems([]);
-      }
+      // Em caso de erro, manter formulário vazio para novo plano
+      setAllPlans([]);
+      setCurrentPlanId(null);
+      setPlanTitle('');
+      setPlanDescription('');
+      setTreatmentItems([]);
+    }
     };
 
   // Função para carregar apenas a lista de planos sem sobrescrever o plano atual
@@ -307,6 +281,12 @@ export default function TreatmentPlanModal({
     if (isOpen && patientId && !existingPlan) {
       console.log('Chamando loadPatientPlans (não há existingPlan)...');
       loadPatientPlans();
+      // Garantir que o formulário inicie vazio para novo plano
+      console.log('Inicializando formulário vazio para novo plano');
+      setCurrentPlanId(null);
+      setPlanTitle('');
+      setPlanDescription('');
+      setTreatmentItems([]);
     } else if (isOpen && patientId && existingPlan) {
       console.log('Não chamando loadPatientPlans - há existingPlan, carregando apenas para lista...');
       // Carregar apenas para ter a lista completa, mas não sobrescrever o plano atual

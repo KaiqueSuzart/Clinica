@@ -1,7 +1,37 @@
-import { IsString, IsNotEmpty, IsArray, IsOptional, IsNumber, IsDateString, ValidateNested, IsIn } from 'class-validator';
+import { IsString, IsNotEmpty, IsArray, IsOptional, IsNumber, IsDateString, ValidateNested, IsIn, IsBoolean } from 'class-validator';
 import { Type } from 'class-transformer';
 
+export class TreatmentSessionDto {
+  @IsOptional()
+  @IsString()
+  id?: string;
+
+  @IsOptional()
+  @IsNumber()
+  session_number?: number;
+
+  @IsOptional()
+  @IsNumber()
+  sessionNumber?: number;
+
+  @IsOptional()
+  @IsDateString()
+  date?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  completed?: boolean;
+}
+
 export class CreateTreatmentItemDto {
+  @IsOptional()
+  @IsString()
+  id?: string;
+
   @IsString()
   @IsNotEmpty()
   procedure: string;
@@ -40,6 +70,12 @@ export class CreateTreatmentItemDto {
 
   @IsNumber()
   order: number;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TreatmentSessionDto)
+  sessions?: TreatmentSessionDto[];
 }
 
 export class CreateTreatmentPlanDto {

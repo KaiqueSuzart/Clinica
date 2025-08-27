@@ -103,7 +103,7 @@ export class TreatmentPlansService {
         .from('plano_tratamento')
         .select(`
           *,
-          paciente: clientelA(nome, email, telefone),
+          paciente: clientelA(nome, Email, telefone),
           items: itens_plano_tratamento(*)
         `)
         .order('created_at', { ascending: false });
@@ -201,7 +201,7 @@ export class TreatmentPlansService {
         .from('plano_tratamento')
         .select(`
           *,
-          paciente: clientelA(nome, email, telefone),
+          paciente: clientelA(nome, Email, telefone),
           items: itens_plano_tratamento(*)
         `)
         .eq('id', id)
@@ -263,6 +263,20 @@ export class TreatmentPlansService {
       if (updateTreatmentPlanDto.items) {
         console.log('🔧 Atualizando/criando itens do plano...');
         
+        // Primeiro, buscar itens existentes para preservar as sessões
+        const { data: existingItems, error: fetchError } = await this.supabaseService
+          .getClient()
+          .from('itens_plano_tratamento')
+          .select('*, treatment_sessions(*)')
+          .eq('plano_id', id);
+
+        if (fetchError) {
+          console.error('❌ Erro ao buscar itens existentes:', fetchError);
+          throw fetchError;
+        }
+
+        console.log('📋 Itens existentes encontrados:', existingItems?.length || 0);
+
         // Limpar itens existentes primeiro
         await this.supabaseService
           .getClient()
@@ -272,7 +286,7 @@ export class TreatmentPlansService {
 
         // Inserir novos itens
         for (const [index, item] of updateTreatmentPlanDto.items.entries()) {
-          console.log(`🔧 Inserindo item ${index + 1}:`, item);
+          console.log(`🔧 Processando item ${index + 1}:`, item);
           
           const itemData = {
             plano_id: id,
@@ -306,34 +320,195 @@ export class TreatmentPlansService {
           
           console.log(`✅ Item ${index + 1} inserido com sucesso:`, newItem);
 
-          // Criar sessões para o item
-          const sessionsToCreate = [];
-          for (let sessionNumber = 1; sessionNumber <= item.estimatedSessions; sessionNumber++) {
-            sessionsToCreate.push({
-              treatment_item_id: newItem.id,
-              session_number: sessionNumber,
-              completed: false,
-              date: null,
-              description: '',
-            });
+          // Verificar se este item já existia e tinha sessões
+          let existingSessions = [];
+          if (item.id && existingItems) {
+            const existingItem = existingItems.find(ei => ei.id === item.id);
+            if (existingItem && existingItem.treatment_sessions) {
+              existingSessions = existingItem.treatment_sessions;
+              console.log(`📋 Encontradas ${existingSessions.length} sessões existentes para preservar`);
+            }
           }
 
-          if (sessionsToCreate.length > 0) {
-            const { error: sessionsError } = await this.supabaseService
-              .getClient()
-              .from('treatment_sessions')
-              .insert(sessionsToCreate);
+          // Se o item veio com sessões do frontend, ajustar baseado no estimatedSessions
+          if (item.sessions && item.sessions.length > 0) {
+            console.log(`📋 Sessões recebidas do frontend: ${item.sessions.length}, mas estimatedSessions: ${item.estimatedSessions}`);
+            
+            // Filtrar apenas as sessões que devem existir baseado no estimatedSessions
+            const validSessions = item.sessions
+              .filter(session => session.session_number <= item.estimatedSessions)
+              .slice(0, item.estimatedSessions); // Garantir que não exceda o limite
+            
+            console.log(`📋 Criando ${validSessions.length} sessões válidas`);
+            
+            for (const session of validSessions) {
+              const sessionData = {
+                treatment_item_id: newItem.id,
+                session_number: session.session_number || session.sessionNumber,
+                completed: session.completed || false,
+                date: session.date || null,
+                description: session.description || '',
+              };
 
-            if (sessionsError) {
-              console.error('❌ Erro ao criar sessões:', sessionsError);
-            } else {
-              console.log(`✅ Criadas ${sessionsToCreate.length} sessões para item ${newItem.id}`);
+              const { error: sessionError } = await this.supabaseService
+                .getClient()
+                .from('treatment_sessions')
+                .insert(sessionData);
+
+              if (sessionError) {
+                console.error('❌ Erro ao inserir sessão:', sessionError);
+              } else {
+                console.log(`✅ Sessão ${sessionData.session_number} inserida (completed: ${sessionData.completed})`);
+              }
+            }
+
+            // Se ainda precisamos de mais sessões para completar o estimatedSessions
+            if (validSessions.length < item.estimatedSessions) {
+              const additionalSessionsNeeded = item.estimatedSessions - validSessions.length;
+              console.log(`📋 Criando ${additionalSessionsNeeded} sessões adicionais para completar ${item.estimatedSessions}`);
+              
+              for (let sessionNumber = validSessions.length + 1; sessionNumber <= item.estimatedSessions; sessionNumber++) {
+                const sessionData = {
+                  treatment_item_id: newItem.id,
+                  session_number: sessionNumber,
+                  completed: false,
+                  date: null,
+                  description: '',
+                };
+
+                const { error: sessionError } = await this.supabaseService
+                  .getClient()
+                  .from('treatment_sessions')
+                  .insert(sessionData);
+
+                if (sessionError) {
+                  console.error('❌ Erro ao criar sessão adicional:', sessionError);
+                } else {
+                  console.log(`✅ Sessão adicional ${sessionNumber} criada`);
+                }
+              }
+            }
+          } else if (existingSessions.length > 0) {
+            // Preservar sessões existentes se o item foi encontrado
+            console.log(`📋 Preservando ${existingSessions.length} sessões existentes`);
+            
+            for (const session of existingSessions) {
+              const sessionData = {
+                treatment_item_id: newItem.id,
+                session_number: session.session_number,
+                completed: session.completed || false,
+                date: session.date || null,
+                description: session.description || '',
+              };
+
+              const { error: sessionError } = await this.supabaseService
+                .getClient()
+                .from('treatment_sessions')
+                .insert(sessionData);
+
+              if (sessionError) {
+                console.error('❌ Erro ao preservar sessão:', sessionError);
+              } else {
+                console.log(`✅ Sessão ${sessionData.session_number} preservada`);
+              }
+            }
+
+            // Se o número de sessões estimadas aumentou, criar as sessões adicionais
+            if (item.estimatedSessions > existingSessions.length) {
+              const additionalSessions = item.estimatedSessions - existingSessions.length;
+              console.log(`📋 Criando ${additionalSessions} sessões adicionais`);
+              
+              for (let sessionNumber = existingSessions.length + 1; sessionNumber <= item.estimatedSessions; sessionNumber++) {
+                const sessionData = {
+                  treatment_item_id: newItem.id,
+                  session_number: sessionNumber,
+                  completed: false,
+                  date: null,
+                  description: '',
+                };
+
+                const { error: sessionError } = await this.supabaseService
+                  .getClient()
+                  .from('treatment_sessions')
+                  .insert(sessionData);
+
+                if (sessionError) {
+                  console.error('❌ Erro ao criar sessão adicional:', sessionError);
+                } else {
+                  console.log(`✅ Sessão adicional ${sessionNumber} criada`);
+                }
+              }
+            }
+          } else {
+            // Criar sessões do zero para item novo
+            console.log(`📋 Criando ${item.estimatedSessions} sessões do zero`);
+            const sessionsToCreate = [];
+            for (let sessionNumber = 1; sessionNumber <= item.estimatedSessions; sessionNumber++) {
+              sessionsToCreate.push({
+                treatment_item_id: newItem.id,
+                session_number: sessionNumber,
+                completed: false,
+                date: null,
+                description: '',
+              });
+            }
+
+            if (sessionsToCreate.length > 0) {
+              const { error: sessionsError } = await this.supabaseService
+                .getClient()
+                .from('treatment_sessions')
+                .insert(sessionsToCreate);
+
+              if (sessionsError) {
+                console.error('❌ Erro ao criar sessões:', sessionsError);
+              } else {
+                console.log(`✅ Criadas ${sessionsToCreate.length} sessões para item ${newItem.id}`);
+              }
             }
           }
         }
       }
 
-      // 3. Retornar o plano completo com itens atualizados
+      // 3. Recalcular e atualizar o progresso APÓS todas as sessões serem criadas
+      console.log('🔄 Recalculando progresso do plano após atualizar sessões...');
+      
+      // Buscar todos os itens do plano atualizado
+      const { data: updatedItems, error: itemsError } = await this.supabaseService
+        .getClient()
+        .from('itens_plano_tratamento')
+        .select('id')
+        .eq('plano_id', id);
+
+      if (!itemsError && updatedItems && updatedItems.length > 0) {
+        // Buscar todas as sessões dos itens atualizados
+        const itemIds = updatedItems.map(item => item.id);
+        const { data: allSessions, error: sessionsError } = await this.supabaseService
+          .getClient()
+          .from('treatment_sessions')
+          .select('completed')
+          .in('treatment_item_id', itemIds);
+
+        if (!sessionsError && allSessions) {
+          const totalSessions = allSessions.length;
+          const completedSessions = allSessions.filter(session => session.completed).length;
+          const newProgress = totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0;
+          
+          console.log(`📊 Progresso recalculado APÓS atualização: ${completedSessions}/${totalSessions} = ${newProgress}%`);
+          
+          // Atualizar o progresso no banco
+          await this.supabaseService
+            .getClient()
+            .from('plano_tratamento')
+            .update({ progresso: newProgress })
+            .eq('id', id);
+        } else {
+          console.log('⚠️ Erro ao buscar sessões para recálculo ou nenhuma sessão encontrada');
+        }
+      } else {
+        console.log('⚠️ Erro ao buscar itens para recálculo ou nenhum item encontrado');
+      }
+
+      // 4. Retornar o plano completo com itens atualizados
       console.log('✅ Atualizações concluídas, buscando plano completo...');
       return await this.findOne(id);
     } catch (error) {

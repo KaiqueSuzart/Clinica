@@ -322,16 +322,45 @@ export default function Pacientes() {
   const handleAddAnnotationFromAnamnese = async (annotation: { content: string; category: string }) => {
     if (selectedPatientData) {
       try {
-        const newAnnotation = await apiService.createAnnotation({
-          patient_id: selectedPatientData.id,
-          content: annotation.content,
-          category: annotation.category
-        });
+        // Extrair o prefixo da anotação (ex: "Diabetes:", "Alergias:", etc.)
+        const prefix = annotation.content.split(':')[0] + ':';
+        console.log('🔍 Buscando anotação com prefixo:', prefix);
+        console.log('📋 Anotações atuais:', annotations);
         
-        setAnnotations(prev => [newAnnotation, ...prev]);
-        console.log('Anotação da anamnese adicionada:', newAnnotation);
+        // Verificar se já existe uma anotação da anamnese with o mesmo prefixo
+        const existingAnnotation = annotations.find(ann => 
+          ann.category === 'Anamnese' && 
+          ann.content.startsWith(prefix)
+        );
+        
+        console.log('🎯 Anotação existente encontrada:', existingAnnotation);
+        
+        if (existingAnnotation) {
+          console.log('🔄 Atualizando anotação existente...');
+          // Atualizar anotação existente
+          const updatedAnnotation = await apiService.updateAnnotation(existingAnnotation.id, {
+            content: annotation.content,
+            category: annotation.category
+          });
+          
+          setAnnotations(prev => prev.map(ann => 
+            ann.id === existingAnnotation.id ? updatedAnnotation : ann
+          ));
+          console.log('✅ Anotação da anamnese atualizada:', updatedAnnotation);
+        } else {
+          console.log('➕ Criando nova anotação...');
+          // Criar nova anotação
+          const newAnnotation = await apiService.createAnnotation({
+            patient_id: selectedPatientData.id,
+            content: annotation.content,
+            category: annotation.category
+          });
+          
+          setAnnotations(prev => [newAnnotation, ...prev]);
+          console.log('✅ Anotação da anamnese adicionada:', newAnnotation);
+        }
       } catch (err) {
-        console.error('Erro ao adicionar anotação da anamnese:', err);
+        console.error('❌ Erro ao processar anotação da anamnese:', err);
       }
     }
   };
@@ -480,17 +509,16 @@ export default function Pacientes() {
         
         // Para atualização, incluir também os itens para que sejam atualizados no backend
         const cleanItems = treatmentPlan.items.map(item => {
-          // REMOVER TODOS os campos que não devem existir no backend
+          // REMOVER APENAS campos que causam problemas no backend, MAS MANTER sessions
           const {
-            id, 
-            sessions, 
             completedSessions,
             sessoes_estimadas,
             ...cleanItem
           } = item;
           
-          // Criar objeto apenas com campos permitidos pelo backend
+          // Criar objeto com campos permitidos pelo backend + sessions limpas
           const allowedItem = {
+            id: cleanItem.id || undefined, // Manter ID se existir para identificar o item
             procedure: cleanItem.procedure || '',
             description: cleanItem.description || '', // Garantir que não seja vazio
             tooth: cleanItem.tooth || '',
@@ -499,7 +527,17 @@ export default function Pacientes() {
             estimatedSessions: cleanItem.estimatedSessions || 1,
             status: cleanItem.status || 'planejado',
             notes: cleanItem.notes || '',
-            order: cleanItem.order || 1
+            order: cleanItem.order || 1,
+            // Limpar sessions - remover campos que o backend não aceita
+            sessions: (cleanItem.sessions || []).map(session => ({
+              id: session.id,
+              session_number: session.session_number || session.sessionNumber,
+              sessionNumber: session.sessionNumber || session.session_number,
+              date: session.date,
+              description: session.description || '',
+              completed: session.completed || false
+              // REMOVIDO: treatment_item_id, created_at, updated_at
+            }))
           };
           
           // Garantir que description não esteja vazio
@@ -976,7 +1014,7 @@ export default function Pacientes() {
                           setShowTreatmentPlan(true); 
                         }}>
                           <FileText className="w-4 h-4 mr-2" />
-                          Gerenciar Planos
+                          Criar Planos
                         </Button>
                       </div>
 
