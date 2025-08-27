@@ -132,12 +132,6 @@ class ApiService {
   ): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
     
-    console.log('API: Fazendo requisição para:', url);
-    console.log('API: Opções da requisição:', options);
-    if (options.body) {
-      console.log('API: Corpo da requisição:', options.body);
-    }
-    
     const response = await fetch(url, {
       headers: {
         'Content-Type': 'application/json',
@@ -146,8 +140,6 @@ class ApiService {
       ...options,
     });
 
-    console.log('API: Status da resposta:', response.status, response.statusText);
-    
     if (!response.ok) {
       const errorText = await response.text();
       console.error('API: Erro na resposta:', errorText);
@@ -155,7 +147,6 @@ class ApiService {
     }
 
     const result = await response.json();
-    console.log('API: Resposta JSON:', result);
     return result;
   }
 
@@ -212,11 +203,7 @@ class ApiService {
     return this.request<Patient[]>('/patients/upcoming-returns');
   }
 
-  // ===== TESTE DE CONEXÃO =====
-  
-  async testConnection(): Promise<{ success: boolean; message: string }> {
-    return this.request<{ success: boolean; message: string }>('/test-supabase');
-  }
+
 
   async getHealth(): Promise<{ status: string }> {
     return this.request<{ status: string }>('/health');
@@ -291,22 +278,15 @@ class ApiService {
     totalCost?: number;
     progress?: number;
   }): Promise<any> {
-    console.log('API: Dados sendo enviados para createTreatmentPlan:', planData);
-    console.log('API: JSON stringificado:', JSON.stringify(planData));
-    
     const result = await this.request('/treatment-plans', {
       method: 'POST',
       body: JSON.stringify(planData),
     });
-    
-    console.log('API: Resposta recebida:', result);
     return result;
   }
 
   async getTreatmentPlansByPatient(patientId: number): Promise<any[]> {
-    console.log('API: Buscando planos para paciente:', patientId);
     const result = await this.request(`/treatment-plans/patient/${patientId}`);
-    console.log('API: Planos encontrados (brutos):', result);
     
     // Verificar se result é um array
     if (!Array.isArray(result)) {
@@ -315,10 +295,7 @@ class ApiService {
     }
     
     // Mapear dados do backend (português) para frontend (inglês)
-    const mappedPlans = result.map((plan: any, index: number) => {
-      console.log(`API: Mapeando plano ${index + 1}:`, plan);
-      console.log(`API: Campo progresso do BD:`, plan.progresso);
-      console.log(`API: Campo progress do BD:`, plan.progress);
+    const mappedPlans = result.map((plan: any) => {
       
       const mappedPlan = {
         id: plan.id || `plan-${index}`,
@@ -346,40 +323,32 @@ class ApiService {
         })) : []
       };
       
-      console.log(`API: Plano mapeado ${index + 1}:`, mappedPlan);
       return mappedPlan;
     });
     
-    console.log('API: Planos mapeados:', mappedPlans);
     return mappedPlans;
   }
 
   async deleteTreatmentPlan(planId: string): Promise<{ message: string }> {
-    console.log('API: Excluindo plano de tratamento:', planId);
     const result = await this.request<{ message: string }>(`/treatment-plans/${planId}`, {
       method: 'DELETE',
     });
-    console.log('API: Plano excluído com sucesso:', result);
     return result;
   }
 
   async updateTreatmentPlan(planId: string, updateData: any): Promise<any> {
-    console.log(`📝 API: Atualizando plano ${planId}:`, updateData);
     const result = await this.request<any>(`/treatment-plans/${planId}`, {
       method: 'PATCH',
       body: JSON.stringify(updateData),
     });
-    console.log(`✅ API: Plano ${planId} atualizado:`, result);
     return result;
   }
 
   async updateTreatmentPlanProgress(planId: string, progress: number): Promise<any> {
-    console.log(`📊 API: Atualizando progresso do plano ${planId} para ${progress}%`);
     const result = await this.request<any>(`/treatment-plans/${planId}/progress`, {
       method: 'PATCH',
       body: JSON.stringify({ progress }),
     });
-    console.log(`✅ API: Progresso do plano ${planId} atualizado para ${progress}%`);
     return result;
   }
 
@@ -408,6 +377,60 @@ class ApiService {
 
   async getCompletedSessionsForPatient(patientId: string): Promise<any[]> {
     return this.request(`/treatment-sessions/patient/${patientId}/completed`);
+  }
+
+  // ===== ARQUIVOS =====
+  
+  async uploadFile(file: File, patientId: string, category: string, description?: string): Promise<any> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('patient_id', patientId);
+    formData.append('category', category);
+    if (description) {
+      formData.append('description', description);
+    }
+
+        const url = `${API_BASE_URL}/files/upload`;
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      body: formData,
+    });
+
+
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('API: Erro no upload:', errorText);
+      throw new Error(`Erro no upload: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    return await response.json();
+  }
+
+  async getPatientFiles(patientId: string): Promise<any[]> {
+    return this.request(`/files/patient/${patientId}`);
+  }
+
+  async getFilesByCategory(patientId: string, category: string): Promise<any[]> {
+    return this.request(`/files/patient/${patientId}/category/${category}`);
+  }
+
+  async getPatientFileStats(patientId: string): Promise<any> {
+    return this.request(`/files/patient/${patientId}/stats`);
+  }
+
+  async deleteFile(fileId: string): Promise<{ message: string }> {
+    return this.request(`/files/${fileId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async updateFile(fileId: string, description: string): Promise<any> {
+    return this.request(`/files/${fileId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ description }),
+    });
   }
 }
 

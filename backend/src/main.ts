@@ -13,10 +13,10 @@ async function bootstrap() {
     credentials: true,
   });
 
-  // Validação global
+  // Validação global - temporariamente mais permissiva
   app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    forbidNonWhitelisted: true,
+    whitelist: false, // Permitir propriedades extras temporariamente
+    forbidNonWhitelisted: false, // Não rejeitar propriedades extras
     transform: true,
     enableDebugMessages: true,
     disableErrorMessages: false,

@@ -8,14 +8,27 @@ export class AnnotationsService {
   constructor(private supabaseService: SupabaseService) {}
 
   async create(createAnnotationDto: CreateAnnotationDto) {
+    // Garantir que patient_id seja number
+    const processedDto = {
+      ...createAnnotationDto,
+      patient_id: Number(createAnnotationDto.patient_id)
+    };
+
+    console.log('📝 Service create - DTO processado:', processedDto);
+
     const { data, error } = await this.supabaseService
       .getClient()
       .from('annotations')
-      .insert(createAnnotationDto)
+      .insert(processedDto)
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Erro do Supabase:', error);
+      throw error;
+    }
+    
+    console.log('✅ Annotation criada:', data);
     return data;
   }
 
@@ -51,15 +64,28 @@ export class AnnotationsService {
   }
 
   async update(id: string, updateAnnotationDto: UpdateAnnotationDto) {
+    // Garantir que patient_id seja number se fornecido
+    const processedDto = {
+      ...updateAnnotationDto,
+      ...(updateAnnotationDto.patient_id ? { patient_id: Number(updateAnnotationDto.patient_id) } : {})
+    };
+
+    console.log('📝 Service update - DTO processado:', processedDto);
+
     const { data, error } = await this.supabaseService
       .getClient()
       .from('annotations')
-      .update(updateAnnotationDto)
+      .update(processedDto)
       .eq('id', id)
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Erro do Supabase no update:', error);
+      throw error;
+    }
+    
+    console.log('✅ Annotation atualizada:', data);
     return data;
   }
 
@@ -74,6 +100,7 @@ export class AnnotationsService {
     return { message: 'Anotação removida com sucesso' };
   }
 }
+
 
 
 

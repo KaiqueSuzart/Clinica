@@ -13,26 +13,14 @@ export class AnnotationsController {
   @ApiOperation({ summary: 'Criar nova anotação' })
   @ApiResponse({ status: 201, description: 'Anotação criada com sucesso' })
   create(@Body() createAnnotationDto: CreateAnnotationDto) {
-    console.log('🚀 AnnotationsController.create chamado com:', createAnnotationDto);
-    console.log('📋 Tipo dos dados:', {
+    console.log('🚀 RAW Body recebido:', createAnnotationDto);
+    console.log('🔍 Tipos:', {
       patient_id: typeof createAnnotationDto.patient_id,
+      patient_id_value: createAnnotationDto.patient_id,
       content: typeof createAnnotationDto.content,
       category: typeof createAnnotationDto.category
     });
-    console.log('🔍 Validação dos dados:', {
-      patient_id_valid: !isNaN(createAnnotationDto.patient_id),
-      content_valid: typeof createAnnotationDto.content === 'string' && createAnnotationDto.content.length > 0,
-      category_valid: typeof createAnnotationDto.category === 'string' && createAnnotationDto.category.length > 0
-    });
-    
-    try {
-      const result = this.annotationsService.create(createAnnotationDto);
-      console.log('✅ Anotação criada com sucesso:', result);
-      return result;
-    } catch (error) {
-      console.error('❌ Erro ao criar anotação:', error);
-      throw error;
-    }
+    return this.annotationsService.create(createAnnotationDto);
   }
 
   @Get()
@@ -54,6 +42,14 @@ export class AnnotationsController {
   @ApiOperation({ summary: 'Atualizar anotação' })
   @ApiResponse({ status: 200, description: 'Anotação atualizada com sucesso' })
   update(@Param('id') id: string, @Body() updateAnnotationDto: UpdateAnnotationDto) {
+    console.log('🔄 UPDATE annotation ID:', id);
+    console.log('🚀 UPDATE Body recebido:', updateAnnotationDto);
+    console.log('🔍 UPDATE Tipos:', {
+      patient_id: typeof updateAnnotationDto.patient_id,
+      patient_id_value: updateAnnotationDto.patient_id,
+      content: typeof updateAnnotationDto.content,
+      category: typeof updateAnnotationDto.category
+    });
     return this.annotationsService.update(id, updateAnnotationDto);
   }
 

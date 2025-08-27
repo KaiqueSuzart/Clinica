@@ -1,19 +1,100 @@
-import React, { useState } from 'react';
-import { Upload, File, Image, Download, Trash2, Eye, Plus } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Upload, File, Image, Download, Trash2, Eye, Plus, AlertCircle } from 'lucide-react';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
 import LoadingButton from '../components/UI/LoadingButton';
-import { patients } from '../data/mockData';
+import { apiService } from '../services/api';
+
+interface PatientFile {
+  id: string;
+  patient_id: string;
+  filename: string;
+  original_filename: string;
+  file_path: string;
+  file_type: string;
+  file_size: number;
+  mime_type: string;
+  category: 'image' | 'document' | 'xray' | 'report';
+  description?: string;
+  uploaded_by?: string;
+  uploaded_at: string;
+  public_url?: string;
+}
+
+interface PatientFileStats {
+  total_files: number;
+  total_size: number;
+  images: number;
+  documents: number;
+  xrays: number;
+  reports: number;
+}
 
 export default function Arquivos() {
+  const [patients, setPatients] = useState<any[]>([]);
   const [selectedPatient, setSelectedPatient] = useState('');
-  const [uploadType, setUploadType] = useState<'image' | 'document'>('image');
-  const [patientsList, setPatientsList] = useState(patients);
+  const [uploadType, setUploadType] = useState<'image' | 'document' | 'xray' | 'report'>('image');
+  const [files, setFiles] = useState<PatientFile[]>([]);
+  const [fileStats, setFileStats] = useState<PatientFileStats | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
+  const [description, setDescription] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
-  const selectedPatientData = patientsList.find(p => p.id === selectedPatient);
+  const selectedPatientData = patients.find(p => p.id === selectedPatient);
+
+  useEffect(() => {
+    loadPatients();
+  }, []);
+
+  useEffect(() => {
+    if (selectedPatient) {
+      loadPatientFiles();
+      loadPatientStats();
+    } else {
+      setFiles([]);
+      setFileStats(null);
+    }
+  }, [selectedPatient]);
+
+  const loadPatients = async () => {
+    try {
+      const patientsData = await apiService.getPatients();
+      setPatients(patientsData);
+    } catch (error) {
+      console.error('Erro ao carregar pacientes:', error);
+      setError('Erro ao carregar pacientes');
+    }
+  };
+
+  const loadPatientFiles = async () => {
+    if (!selectedPatient) return;
+    
+    setIsLoading(true);
+    try {
+      const filesData = await apiService.getPatientFiles(selectedPatient);
+      setFiles(filesData);
+      setError(null);
+    } catch (error) {
+      console.error('Erro ao carregar arquivos:', error);
+      setError('Erro ao carregar arquivos do paciente');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadPatientStats = async () => {
+    if (!selectedPatient) return;
+    
+    try {
+      const stats = await apiService.getPatientFileStats(selectedPatient);
+      setFileStats(stats);
+    } catch (error) {
+      console.error('Erro ao carregar estatísticas:', error);
+    }
+  };
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -48,82 +129,97 @@ export default function Arquivos() {
     }
 
     setIsUploading(true);
+    setError(null);
 
-    // Simular upload
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    try {
+      const uploadPromises = Array.from(selectedFiles).map(file => 
+        apiService.uploadFile(file, selectedPatient, uploadType, description)
+      );
 
-    // Adicionar arquivos ao paciente
-    const newFiles = Array.from(selectedFiles).map((file, index) => ({
-      id: (Date.now() + index).toString(),
-      patientId: selectedPatient,
-      name: file.name,
-      type: uploadType,
-      url: uploadType === 'image' 
-        ? 'https://images.pexels.com/photos/7659564/pexels-photo-7659564.jpeg?auto=compress&cs=tinysrgb&w=300'
-        : '#',
-      uploadDate: new Date().toISOString().split('T')[0]
-    }));
+      await Promise.all(uploadPromises);
+      
+      // Recarregar arquivos e estatísticas
+      await loadPatientFiles();
+      await loadPatientStats();
+      
+      // Limpar formulário
+      setSelectedFiles(null);
+      setDescription('');
+      
+      // Reset input
+      const fileInput = document.getElementById('file-input') as HTMLInputElement;
+      if (fileInput) fileInput.value = '';
 
-    // Atualizar lista de pacientes
-    setPatientsList(prev => prev.map(patient => {
-      if (patient.id === selectedPatient) {
-        return {
-          ...patient,
-          files: [...patient.files, ...newFiles],
-          timeline: [
-            {
-              id: Date.now().toString(),
-              patientId: selectedPatient,
-              type: 'arquivo',
-              title: `${newFiles.length} arquivo(s) adicionado(s)`,
-              description: `Upload de ${newFiles.map(f => f.name).join(', ')}`,
-              date: new Date().toISOString(),
-              professional: 'Dr. Ana Silva',
-              attachments: newFiles.map(f => f.name)
-            },
-            ...patient.timeline
-          ]
-        };
-      }
-      return patient;
-    }));
-
-    setIsUploading(false);
-    setSelectedFiles(null);
-    
-    // Reset input
-    const fileInput = document.getElementById('file-input') as HTMLInputElement;
-    if (fileInput) fileInput.value = '';
-
-    alert(`${newFiles.length} arquivo(s) enviado(s) com sucesso!`);
-  };
-
-  const handleDeleteFile = (fileId: string) => {
-    if (!confirm('Tem certeza que deseja excluir este arquivo?')) return;
-
-    setPatientsList(prev => prev.map(patient => {
-      if (patient.id === selectedPatient) {
-        return {
-          ...patient,
-          files: patient.files.filter(f => f.id !== fileId)
-        };
-      }
-      return patient;
-    }));
-
-    alert('Arquivo excluído com sucesso!');
-  };
-
-  const handleViewFile = (file: any) => {
-    if (file.type === 'image') {
-      window.open(file.url, '_blank');
-    } else {
-      alert(`Visualizando arquivo: ${file.name}`);
+      alert(`${selectedFiles.length} arquivo(s) enviado(s) com sucesso!`);
+    } catch (error) {
+      console.error('Erro no upload:', error);
+      setError('Erro ao fazer upload dos arquivos');
+    } finally {
+      setIsUploading(false);
     }
   };
 
-  const handleDownloadFile = (file: any) => {
-    alert(`Download iniciado: ${file.name}`);
+  const handleDeleteFile = async (fileId: string) => {
+    if (!confirm('Tem certeza que deseja excluir este arquivo?')) return;
+
+    try {
+      await apiService.deleteFile(fileId);
+      await loadPatientFiles();
+      await loadPatientStats();
+      alert('Arquivo excluído com sucesso!');
+    } catch (error) {
+      console.error('Erro ao excluir arquivo:', error);
+      setError('Erro ao excluir arquivo');
+    }
+  };
+
+  const handleViewFile = (file: PatientFile) => {
+    if (file.public_url) {
+      window.open(file.public_url, '_blank');
+    } else {
+      alert('URL do arquivo não disponível');
+    }
+  };
+
+  const handleDownloadFile = (file: PatientFile) => {
+    if (file.public_url) {
+      const link = document.createElement('a');
+      link.href = file.public_url;
+      link.download = file.original_filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      alert('URL do arquivo não disponível para download');
+    }
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const getCategoryLabel = (category: string): string => {
+    const labels = {
+      image: 'Imagem',
+      document: 'Documento',
+      xray: 'Raio-X',
+      report: 'Relatório'
+    };
+    return labels[category as keyof typeof labels] || category;
+  };
+
+  const getCategoryIcon = (category: string) => {
+    const icons = {
+      image: Image,
+      document: File,
+      xray: Image,
+      report: File
+    };
+    return icons[category as keyof typeof icons] || File;
   };
 
   return (
@@ -136,11 +232,18 @@ export default function Arquivos() {
         <Button 
           icon={Upload}
           onClick={handleUpload}
-          disabled={!selectedPatient || !selectedFiles}
+          disabled={!selectedPatient || !selectedFiles || isUploading}
         >
           Upload de Arquivo
         </Button>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-2">
+          <AlertCircle className="w-5 h-5 text-red-600" />
+          <span className="text-red-800">{error}</span>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Seleção de Paciente */}
@@ -153,18 +256,18 @@ export default function Arquivos() {
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               >
                 <option value="">Escolha um paciente</option>
-                {patientsList.map(patient => (
-                  <option key={patient.id} value={patient.id}>{patient.name}</option>
+                {patients.map(patient => (
+                  <option key={patient.id} value={patient.id}>{patient.nome}</option>
                 ))}
               </select>
               
               {selectedPatientData && (
                 <div className="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg animate-in fade-in duration-300">
                   <h4 className="font-semibold text-blue-900 dark:text-blue-100">Paciente Selecionado</h4>
-                  <p className="text-blue-700 dark:text-blue-200">{selectedPatientData.name}</p>
-                  <p className="text-sm text-blue-600 dark:text-blue-300">{selectedPatientData.phone}</p>
+                  <p className="text-blue-700 dark:text-blue-200">{selectedPatientData.nome}</p>
+                  <p className="text-sm text-blue-600 dark:text-blue-300">{selectedPatientData.telefone}</p>
                   <p className="text-sm text-blue-600 dark:text-blue-300 mt-2">
-                    {selectedPatientData.files.length} arquivo(s)
+                    {files.length} arquivo(s)
                   </p>
                 </div>
               )}
@@ -177,16 +280,31 @@ export default function Arquivos() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Tipo de Arquivo
+                    Categoria
                   </label>
                   <select
                     value={uploadType}
-                    onChange={(e) => setUploadType(e.target.value as 'image' | 'document')}
+                    onChange={(e) => setUploadType(e.target.value as any)}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   >
                     <option value="image">Imagem</option>
                     <option value="document">Documento</option>
+                    <option value="xray">Raio-X</option>
+                    <option value="report">Relatório</option>
                   </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Descrição (opcional)
+                  </label>
+                  <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Descreva o arquivo..."
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    rows={3}
+                  />
                 </div>
 
                 <div 
@@ -205,7 +323,7 @@ export default function Arquivos() {
                     id="file-input"
                     type="file"
                     multiple
-                    accept={uploadType === 'image' ? 'image/*' : '.pdf,.doc,.docx,.txt'}
+                    accept={uploadType === 'image' || uploadType === 'xray' ? 'image/*' : '.pdf,.doc,.docx,.txt'}
                     onChange={handleFileSelect}
                     className="hidden"
                   />
@@ -214,7 +332,7 @@ export default function Arquivos() {
                     Clique para selecionar ou arraste arquivos aqui
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {uploadType === 'image' ? 'PNG, JPG até 10MB' : 'PDF, DOC até 10MB'}
+                    {uploadType === 'image' || uploadType === 'xray' ? 'PNG, JPG até 10MB' : 'PDF, DOC até 10MB'}
                   </p>
                   {selectedFiles && (
                     <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/30 rounded-lg">
@@ -224,7 +342,7 @@ export default function Arquivos() {
                       <div className="mt-2 space-y-1">
                         {Array.from(selectedFiles).map((file, index) => (
                           <p key={index} className="text-xs text-green-700 dark:text-green-300">
-                            {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                            {file.name} ({formatFileSize(file.size)})
                           </p>
                         ))}
                       </div>
@@ -249,36 +367,95 @@ export default function Arquivos() {
         {/* Lista de Arquivos */}
         <div className="lg:col-span-3">
           {selectedPatientData ? (
-            <Card title={`Arquivos - ${selectedPatientData.name}`} 
-                  subtitle={`${selectedPatientData.files.length} arquivo(s) encontrado(s)`}>
-              {selectedPatientData.files.length > 0 ? (
+            <Card title={`Arquivos - ${selectedPatientData.nome}`} 
+                  subtitle={`${files.length} arquivo(s) encontrado(s)`}>
+              {isLoading ? (
+                <div className="text-center py-16">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="text-gray-500 mt-4">Carregando arquivos...</p>
+                </div>
+              ) : files.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {selectedPatientData.files.map((file) => (
-                    <div key={file.id} className="border border-gray-200 rounded-lg overflow-hidden">
-                      {file.type === 'image' ? (
-                        <div>
-                          <img
-                            src={file.url}
-                            alt={file.name}
-                            className="w-full h-48 object-cover"
-                          />
-                          <div className="p-4">
-                            <div className="flex items-center space-x-2 mb-2">
-                              <Image className="w-4 h-4 text-blue-600" />
-                              <h3 className="font-semibold text-gray-900">{file.name}</h3>
+                  {files.map((file) => {
+                    const CategoryIcon = getCategoryIcon(file.category);
+                    const isImage = file.category === 'image' || file.category === 'xray';
+                    
+                    return (
+                      <div key={file.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                        {isImage && file.public_url ? (
+                          <div>
+                            <img
+                              src={file.public_url}
+                              alt={file.original_filename}
+                              className="w-full h-48 object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                            <div className="p-4">
+                              <div className="flex items-center space-x-2 mb-2">
+                                <CategoryIcon className="w-4 h-4 text-blue-600" />
+                                <h3 className="font-semibold text-gray-900">{file.original_filename}</h3>
+                              </div>
+                              <p className="text-xs text-gray-500 mb-1">
+                                {getCategoryLabel(file.category)}
+                              </p>
+                              <p className="text-sm text-gray-600 mb-1">
+                                {formatFileSize(file.file_size)}
+                              </p>
+                              <p className="text-sm text-gray-600 mb-3">
+                                {new Date(file.uploaded_at).toLocaleDateString('pt-BR')}
+                              </p>
+                              {file.description && (
+                                <p className="text-sm text-gray-700 mb-3">{file.description}</p>
+                              )}
+                              <div className="flex space-x-2">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  icon={Eye}
+                                  onClick={() => handleViewFile(file)}
+                                >
+                                  Ver
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  icon={Download}
+                                  onClick={() => handleDownloadFile(file)}
+                                >
+                                  Baixar
+                                </Button>
+                                <Button 
+                                  variant="danger" 
+                                  size="sm" 
+                                  icon={Trash2}
+                                  onClick={() => handleDeleteFile(file.id)}
+                                >
+                                </Button>
+                              </div>
                             </div>
-                            <p className="text-sm text-gray-600 mb-3">
-                              Enviado em {new Date(file.uploadDate).toLocaleDateString('pt-BR')}
-                            </p>
+                          </div>
+                        ) : (
+                          <div className="p-4">
+                            <div className="flex items-center space-x-3 mb-3">
+                              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                                <CategoryIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                              </div>
+                              <div>
+                                <h3 className="font-semibold text-gray-900 dark:text-gray-100">{file.original_filename}</h3>
+                                <p className="text-xs text-gray-500">
+                                  {getCategoryLabel(file.category)} • {formatFileSize(file.file_size)}
+                                </p>
+                                <p className="text-sm text-gray-600 dark:text-gray-300">
+                                  {new Date(file.uploaded_at).toLocaleDateString('pt-BR')}
+                                </p>
+                              </div>
+                            </div>
+                            {file.description && (
+                              <p className="text-sm text-gray-700 mb-3">{file.description}</p>
+                            )}
                             <div className="flex space-x-2">
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                icon={Eye}
-                                onClick={() => handleViewFile(file)}
-                              >
-                                Ver
-                              </Button>
                               <Button 
                                 variant="outline" 
                                 size="sm" 
@@ -296,41 +473,10 @@ export default function Arquivos() {
                               </Button>
                             </div>
                           </div>
-                        </div>
-                      ) : (
-                        <div className="p-4">
-                          <div className="flex items-center space-x-3 mb-3">
-                            <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-                              <File className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                            </div>
-                            <div>
-                              <h3 className="font-semibold text-gray-900 dark:text-gray-100">{file.name}</h3>
-                              <p className="text-sm text-gray-600 dark:text-gray-300">
-                                {new Date(file.uploadDate).toLocaleDateString('pt-BR')}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex space-x-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              icon={Download}
-                              onClick={() => handleDownloadFile(file)}
-                            >
-                              Baixar
-                            </Button>
-                            <Button 
-                              variant="danger" 
-                              size="sm" 
-                              icon={Trash2}
-                              onClick={() => handleDeleteFile(file.id)}
-                            >
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-16 text-gray-500 dark:text-gray-400">
@@ -352,16 +498,16 @@ export default function Arquivos() {
         </div>
       </div>
 
-      {/* Categorias de Arquivos */}
-      {selectedPatientData && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      {/* Estatísticas de Arquivos */}
+      {selectedPatientData && fileStats && (
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
           <Card className="p-6">
             <div className="flex items-center">
               <Image className="w-8 h-8 text-blue-600 dark:text-blue-400 mr-3" />
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-300">Imagens</p>
                 <p className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                  {selectedPatientData.files.filter(f => f.type === 'image').length}
+                  {fileStats.images}
                 </p>
               </div>
             </div>
@@ -372,17 +518,30 @@ export default function Arquivos() {
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-300">Documentos</p>
                 <p className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                  {selectedPatientData.files.filter(f => f.type === 'document').length}
+                  {fileStats.documents}
                 </p>
               </div>
             </div>
           </Card>
           <Card className="p-6">
             <div className="flex items-center">
-              <Upload className="w-8 h-8 text-purple-600 dark:text-purple-400 mr-3" />
+              <Image className="w-8 h-8 text-purple-600 dark:text-purple-400 mr-3" />
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-300">Total</p>
-                <p className="text-xl font-bold text-gray-900 dark:text-gray-100">{selectedPatientData.files.length}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Raio-X</p>
+                <p className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                  {fileStats.xrays}
+                </p>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-6">
+            <div className="flex items-center">
+              <File className="w-8 h-8 text-orange-600 dark:text-orange-400 mr-3" />
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Relatórios</p>
+                <p className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                  {fileStats.reports}
+                </p>
               </div>
             </div>
           </Card>
@@ -392,8 +551,10 @@ export default function Arquivos() {
                 <span className="text-gray-600 dark:text-gray-300 font-bold text-sm">MB</span>
               </div>
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-300">Tamanho</p>
-                <p className="text-xl font-bold text-gray-900 dark:text-gray-100">2.5 MB</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Tamanho Total</p>
+                <p className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                  {formatFileSize(fileStats.total_size)}
+                </p>
               </div>
             </div>
           </Card>

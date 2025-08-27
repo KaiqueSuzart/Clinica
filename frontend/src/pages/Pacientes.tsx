@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, User, Phone, Calendar, Plus, FileText, Upload, Clock, MessageSquare, StickyNote, AlertCircle, Trash2, Edit2, Activity } from 'lucide-react';
+import { Search, User, Phone, Calendar, Plus, FileText, Upload, Clock, MessageSquare, StickyNote, AlertCircle, Trash2, Edit2, Activity, Download, Eye, Image, File, ZoomIn, ZoomOut, RotateCw, X } from 'lucide-react';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
 import StatusBadge from '../components/UI/StatusBadge';
@@ -11,7 +11,647 @@ import TreatmentProgressModal from '../components/Patients/TreatmentProgressModa
 import ScheduleReturnModal from '../components/Patients/ScheduleReturnModal';
 import LoadingSpinner from '../components/UI/LoadingSpinner';
 import ConfirmModal from '../components/UI/ConfirmModal';
+import LoadingButton from '../components/UI/LoadingButton';
+import { useToast } from '../components/UI/Toast';
 import { apiService, Patient, CreatePatientData, Annotation } from '../services/api';
+
+// Componente para gerenciar arquivos de um paciente específico
+function PatientFilesTab({ patient }: { patient: Patient }) {
+  const [files, setFiles] = useState<any[]>([]);
+  const [fileStats, setFileStats] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadType, setUploadType] = useState<'image' | 'document' | 'xray' | 'report'>('image');
+  const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
+  const [description, setDescription] = useState('');
+  const [dragActive, setDragActive] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [imageModal, setImageModal] = useState<{
+    isOpen: boolean;
+    imageUrl: string;
+    imageName: string;
+    onDownload?: () => void;
+  }>({
+    isOpen: false,
+    imageUrl: '',
+    imageName: ''
+  });
+  const [zoom, setZoom] = useState(100);
+  const [rotation, setRotation] = useState(0);
+  
+  const { showSuccess, showError, showInfo } = useToast();
+
+  useEffect(() => {
+    if (patient) {
+      loadPatientFiles();
+      loadPatientStats();
+    }
+  }, [patient]);
+
+  const loadPatientFiles = async () => {
+    if (!patient) return;
+    
+    setIsLoading(true);
+    try {
+      const filesData = await apiService.getPatientFiles(patient.id.toString());
+      setFiles(filesData);
+      setError(null);
+    } catch (error) {
+      console.error('Erro ao carregar arquivos:', error);
+      setError('Erro ao carregar arquivos do paciente');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadPatientStats = async () => {
+    if (!patient) return;
+    
+    try {
+      const stats = await apiService.getPatientFileStats(patient.id.toString());
+      setFileStats(stats);
+    } catch (error) {
+      console.error('Erro ao carregar estatísticas:', error);
+    }
+  };
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      setSelectedFiles(e.dataTransfer.files);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFiles(e.target.files);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!selectedFiles || !patient) {
+      showError('Selecione um arquivo primeiro');
+      return;
+    }
+
+    setIsUploading(true);
+    setError(null);
+
+    try {
+      const uploadPromises = Array.from(selectedFiles).map(file => 
+        apiService.uploadFile(file, patient.id.toString(), uploadType, description)
+      );
+
+      await Promise.all(uploadPromises);
+      
+      await loadPatientFiles();
+      await loadPatientStats();
+      
+      setSelectedFiles(null);
+      setDescription('');
+      
+      const fileInput = document.getElementById('patient-file-input') as HTMLInputElement;
+      if (fileInput) fileInput.value = '';
+
+      showSuccess(`${selectedFiles.length} arquivo(s) enviado(s) com sucesso!`);
+    } catch (error) {
+      console.error('Erro no upload:', error);
+      showError('Erro ao fazer upload dos arquivos');
+      setError('Erro ao fazer upload dos arquivos');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDeleteFile = async (fileId: string) => {
+    if (!confirm('Tem certeza que deseja excluir este arquivo?')) return;
+
+    try {
+      await apiService.deleteFile(fileId);
+      await loadPatientFiles();
+      await loadPatientStats();
+      showSuccess('Arquivo excluído com sucesso!');
+    } catch (error) {
+      console.error('Erro ao excluir arquivo:', error);
+      showError('Erro ao excluir arquivo');
+      setError('Erro ao excluir arquivo');
+    }
+  };
+
+  const handleViewFile = (file: any) => {
+    if (!file.public_url) {
+      showError('URL do arquivo não disponível');
+      return;
+    }
+
+    const isImage = file.category === 'image' || file.category === 'xray';
+    
+    if (isImage) {
+      // Resetar zoom e rotação
+      setZoom(100);
+      setRotation(0);
+      // Abrir modal
+      setImageModal({
+        isOpen: true,
+        imageUrl: file.public_url,
+        imageName: file.original_filename,
+        onDownload: () => handleDownloadFile(file)
+      });
+    } else {
+      // Para documentos, abrir em nova aba
+      window.open(file.public_url, '_blank');
+    }
+  };
+
+  const closeImageModal = () => {
+    setImageModal({
+      isOpen: false,
+      imageUrl: '',
+      imageName: ''
+    });
+    setZoom(100);
+    setRotation(0);
+  };
+
+  const handleZoomIn = () => {
+    setZoom(prev => Math.min(prev + 25, 300));
+  };
+
+  const handleZoomOut = () => {
+    setZoom(prev => Math.max(prev - 25, 25));
+  };
+
+  const handleRotate = () => {
+    setRotation(prev => (prev + 90) % 360);
+  };
+
+  const handleReset = () => {
+    setZoom(100);
+    setRotation(0);
+  };
+
+  const handleDownloadFile = async (file: any) => {
+    if (!file.public_url) {
+      showError('URL do arquivo não disponível para download');
+      return;
+    }
+
+    try {
+      showInfo('Iniciando download...');
+      
+      const response = await fetch(file.public_url);
+      if (!response.ok) {
+        throw new Error('Erro ao baixar arquivo');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = file.original_filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      showSuccess('Download concluído!');
+    } catch (error) {
+      console.error('Erro no download:', error);
+      showError('Erro ao fazer download do arquivo');
+    }
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const getCategoryLabel = (category: string): string => {
+    const labels = {
+      image: 'Imagem',
+      document: 'Documento',
+      xray: 'Raio-X',
+      report: 'Relatório'
+    };
+    return labels[category as keyof typeof labels] || category;
+  };
+
+  const getCategoryIcon = (category: string) => {
+    const icons = {
+      image: Image,
+      document: File,
+      xray: Image,
+      report: File
+    };
+    return icons[category as keyof typeof icons] || File;
+  };
+
+  // Fechar modal com ESC
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && imageModal.isOpen) {
+        closeImageModal();
+      }
+    };
+
+    if (imageModal.isOpen) {
+      document.addEventListener('keydown', handleEsc);
+      return () => document.removeEventListener('keydown', handleEsc);
+    }
+  }, [imageModal.isOpen]);
+
+  return (
+    <>
+      {/* Modal de Visualização de Imagem */}
+      {imageModal.isOpen && (
+        <div className="fixed inset-0 z-[9999] overflow-y-auto">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-75 transition-opacity"
+            onClick={closeImageModal}
+          />
+          
+          {/* Modal */}
+          <div className="flex min-h-full items-center justify-center p-4">
+            <div className="relative bg-white rounded-lg shadow-xl max-w-6xl max-h-[90vh] w-full">
+              {/* Header */}
+              <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">{imageModal.imageName}</h3>
+                  <p className="text-sm text-gray-500">Zoom: {zoom}%</p>
+                </div>
+                
+                {/* Controles */}
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={handleZoomOut}
+                    className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded"
+                    title="Diminuir zoom"
+                  >
+                    <ZoomOut className="w-5 h-5" />
+                  </button>
+                  
+                  <button
+                    onClick={handleZoomIn}
+                    className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded"
+                    title="Aumentar zoom"
+                  >
+                    <ZoomIn className="w-5 h-5" />
+                  </button>
+                  
+                  <button
+                    onClick={handleRotate}
+                    className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded"
+                    title="Rotacionar"
+                  >
+                    <RotateCw className="w-5 h-5" />
+                  </button>
+                  
+                  <button
+                    onClick={handleReset}
+                    className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded"
+                    title="Resetar"
+                  >
+                    Reset
+                  </button>
+                  
+                  {imageModal.onDownload && (
+                    <button
+                      onClick={imageModal.onDownload}
+                      className="p-2 text-blue-600 hover:text-blue-900 hover:bg-blue-100 rounded"
+                      title="Download"
+                    >
+                      <Download className="w-5 h-5" />
+                    </button>
+                  )}
+                  
+                  <button
+                    onClick={closeImageModal}
+                    className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded"
+                    title="Fechar"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+              
+              {/* Conteúdo da imagem */}
+              <div className="relative overflow-auto max-h-[70vh] bg-gray-100">
+                <div className="flex items-center justify-center min-h-[400px] p-4">
+                  <img
+                    src={imageModal.imageUrl}
+                    alt={imageModal.imageName}
+                    className="max-w-none transition-transform duration-200"
+                    style={{
+                      transform: `scale(${zoom / 100}) rotate(${rotation}deg)`,
+                      transformOrigin: 'center'
+                    }}
+                  />
+                </div>
+              </div>
+              
+              {/* Footer */}
+              <div className="p-4 border-t border-gray-200 bg-gray-50">
+                <div className="flex justify-between items-center text-sm text-gray-600">
+                  <span>Use os controles acima para ajustar a visualização</span>
+                  <span>ESC para fechar</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    
+      <div className="space-y-6">
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-2">
+            <AlertCircle className="w-5 h-5 text-red-600" />
+            <span className="text-red-800">{error}</span>
+          </div>
+        )}
+
+      {/* Upload de Arquivo */}
+      <Card title="Upload de Arquivo">
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Categoria
+              </label>
+              <select
+                value={uploadType}
+                onChange={(e) => setUploadType(e.target.value as any)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="image">Imagem</option>
+                <option value="document">Documento</option>
+                <option value="xray">Raio-X</option>
+                <option value="report">Relatório</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Descrição (opcional)
+              </label>
+              <input
+                type="text"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Descreva o arquivo..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          <div 
+            className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${
+              dragActive 
+                ? 'border-blue-500 bg-blue-50' 
+                : 'border-gray-300 hover:border-blue-400 hover:bg-gray-50'
+            }`}
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+            onClick={() => document.getElementById('patient-file-input')?.click()}
+          >
+            <input
+              id="patient-file-input"
+              type="file"
+              multiple
+              accept={uploadType === 'image' || uploadType === 'xray' ? 'image/*' : '.pdf,.doc,.docx,.txt'}
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-sm text-gray-600 mb-2">
+              Clique para selecionar ou arraste arquivos aqui
+            </p>
+            <p className="text-xs text-gray-500">
+              {uploadType === 'image' || uploadType === 'xray' ? 'PNG, JPG até 10MB' : 'PDF, DOC até 10MB'}
+            </p>
+            {selectedFiles && (
+              <div className="mt-4 p-3 bg-green-50 rounded-lg">
+                <p className="text-sm text-green-800 font-medium">
+                  {selectedFiles.length} arquivo(s) selecionado(s):
+                </p>
+                <div className="mt-2 space-y-1">
+                  {Array.from(selectedFiles).map((file, index) => (
+                    <p key={index} className="text-xs text-green-700">
+                      {file.name} ({formatFileSize(file.size)})
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <LoadingButton 
+            className="w-full" 
+            icon={Upload}
+            onClick={handleUpload}
+            loading={isUploading}
+            disabled={!selectedFiles}
+          >
+            {isUploading ? 'Enviando...' : 'Fazer Upload'}
+          </LoadingButton>
+        </div>
+      </Card>
+
+      {/* Lista de Arquivos */}
+      <Card title={`Arquivos de ${patient.nome}`} subtitle={`${files.length} arquivo(s) encontrado(s)`}>
+        {isLoading ? (
+          <div className="text-center py-16">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="text-gray-500 mt-4">Carregando arquivos...</p>
+          </div>
+        ) : files.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {files.map((file) => {
+              const CategoryIcon = getCategoryIcon(file.category);
+              const isImage = file.category === 'image' || file.category === 'xray';
+              
+              return (
+                <div key={file.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                  {isImage && file.public_url ? (
+                    <div>
+                      <img
+                        src={file.public_url}
+                        alt={file.original_filename}
+                        className="w-full h-32 object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                      <div className="p-3">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <CategoryIcon className="w-4 h-4 text-blue-600" />
+                          <h4 className="font-medium text-sm text-gray-900 truncate">{file.original_filename}</h4>
+                        </div>
+                        <p className="text-xs text-gray-500 mb-1">
+                          {getCategoryLabel(file.category)} • {formatFileSize(file.file_size)}
+                        </p>
+                        <p className="text-xs text-gray-500 mb-3">
+                          {new Date(file.uploaded_at).toLocaleDateString('pt-BR')}
+                        </p>
+                        {file.description && (
+                          <p className="text-xs text-gray-700 mb-3">{file.description}</p>
+                        )}
+                        <div className="flex space-x-1">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            icon={Eye}
+                            onClick={() => handleViewFile(file)}
+                            className="text-xs px-2 py-1"
+                          >
+                            Ver
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            icon={Download}
+                            onClick={() => handleDownloadFile(file)}
+                            className="text-xs px-2 py-1"
+                          >
+                            Baixar
+                          </Button>
+                          <Button 
+                            variant="danger" 
+                            size="sm" 
+                            icon={Trash2}
+                            onClick={() => handleDeleteFile(file.id)}
+                            className="text-xs px-2 py-1"
+                          >
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-3">
+                      <div className="flex items-center space-x-3 mb-3">
+                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                          <CategoryIcon className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-sm text-gray-900 truncate">{file.original_filename}</h4>
+                          <p className="text-xs text-gray-500">
+                            {getCategoryLabel(file.category)} • {formatFileSize(file.file_size)}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {new Date(file.uploaded_at).toLocaleDateString('pt-BR')}
+                          </p>
+                        </div>
+                      </div>
+                      {file.description && (
+                        <p className="text-xs text-gray-700 mb-3">{file.description}</p>
+                      )}
+                      <div className="flex space-x-1">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          icon={Download}
+                          onClick={() => handleDownloadFile(file)}
+                          className="text-xs px-2 py-1"
+                        >
+                          Baixar
+                        </Button>
+                        <Button 
+                          variant="danger" 
+                          size="sm" 
+                          icon={Trash2}
+                          onClick={() => handleDeleteFile(file.id)}
+                          className="text-xs px-2 py-1"
+                        >
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="text-center py-16 text-gray-500">
+            <Upload className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum arquivo encontrado</h3>
+            <p>Este paciente ainda não possui arquivos enviados</p>
+          </div>
+        )}
+      </Card>
+
+      {/* Estatísticas */}
+      {fileStats && (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <Card className="p-4">
+            <div className="flex items-center">
+              <Image className="w-6 h-6 text-blue-600 mr-2" />
+              <div>
+                <p className="text-xs text-gray-600">Imagens</p>
+                <p className="text-lg font-bold text-gray-900">{fileStats.images}</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-4">
+            <div className="flex items-center">
+              <File className="w-6 h-6 text-green-600 mr-2" />
+              <div>
+                <p className="text-xs text-gray-600">Documentos</p>
+                <p className="text-lg font-bold text-gray-900">{fileStats.documents}</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-4">
+            <div className="flex items-center">
+              <Image className="w-6 h-6 text-purple-600 mr-2" />
+              <div>
+                <p className="text-xs text-gray-600">Raio-X</p>
+                <p className="text-lg font-bold text-gray-900">{fileStats.xrays}</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-4">
+            <div className="flex items-center">
+              <File className="w-6 h-6 text-orange-600 mr-2" />
+              <div>
+                <p className="text-xs text-gray-600">Relatórios</p>
+                <p className="text-lg font-bold text-gray-900">{fileStats.reports}</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-4">
+            <div className="flex items-center">
+              <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center mr-2">
+                <span className="text-gray-600 font-bold text-xs">MB</span>
+              </div>
+              <div>
+                <p className="text-xs text-gray-600">Total</p>
+                <p className="text-lg font-bold text-gray-900">{formatFileSize(fileStats.total_size)}</p>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+      </div>
+    </>
+  );
+}
 
 export default function Pacientes() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -21,6 +661,8 @@ export default function Pacientes() {
   const [patientsList, setPatientsList] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  const { ToastContainer } = useToast();
   const [showNewPatient, setShowNewPatient] = useState(false);
   const [showAnamnese, setShowAnamnese] = useState(false);
   const [selectedAnamnesePatient, setSelectedAnamnesePatient] = useState<number | null>(null);
@@ -261,18 +903,18 @@ export default function Pacientes() {
           `📝 **Realizado na Sessão:**\n${updates.sessionDescription}`;
         
         await apiService.createAnnotation({
-          patient_id: selectedPatientData.id,
+          patient_id: Number(selectedPatientData.id),
           content: sessionContent,
           category: 'tratamento'
         });
         
         // Recarregar anotações para aparecer na timeline
-        await loadAnnotations(selectedPatientData.id);
+        await loadAnnotations(Number(selectedPatientData.id));
         
         // Atualizar também o estado local das anotações de tratamento
         setTreatmentAnnotations(prev => [{
           id: Date.now(), // ID temporário
-          patient_id: selectedPatientData.id,
+          patient_id: Number(selectedPatientData.id),
           content: sessionContent,
           category: 'tratamento',
           created_at: new Date().toISOString(),
@@ -304,14 +946,13 @@ export default function Pacientes() {
     if (newNote.trim() && selectedPatientData) {
       try {
         const newAnnotation = await apiService.createAnnotation({
-          patient_id: selectedPatientData.id,
+          patient_id: Number(selectedPatientData.id),
           content: newNote,
           category: 'Geral'
         });
         
         setAnnotations(prev => [newAnnotation, ...prev]);
         setNewNote('');
-        console.log('Nova anotação adicionada:', newAnnotation);
       } catch (err) {
         console.error('Erro ao adicionar anotação:', err);
         setError('Erro ao salvar anotação');
@@ -324,19 +965,14 @@ export default function Pacientes() {
       try {
         // Extrair o prefixo da anotação (ex: "Diabetes:", "Alergias:", etc.)
         const prefix = annotation.content.split(':')[0] + ':';
-        console.log('🔍 Buscando anotação com prefixo:', prefix);
-        console.log('📋 Anotações atuais:', annotations);
         
-        // Verificar se já existe uma anotação da anamnese with o mesmo prefixo
+        // Verificar se já existe uma anotação da anamnese com o mesmo prefixo
         const existingAnnotation = annotations.find(ann => 
           ann.category === 'Anamnese' && 
           ann.content.startsWith(prefix)
         );
         
-        console.log('🎯 Anotação existente encontrada:', existingAnnotation);
-        
         if (existingAnnotation) {
-          console.log('🔄 Atualizando anotação existente...');
           // Atualizar anotação existente
           const updatedAnnotation = await apiService.updateAnnotation(existingAnnotation.id, {
             content: annotation.content,
@@ -346,21 +982,18 @@ export default function Pacientes() {
           setAnnotations(prev => prev.map(ann => 
             ann.id === existingAnnotation.id ? updatedAnnotation : ann
           ));
-          console.log('✅ Anotação da anamnese atualizada:', updatedAnnotation);
         } else {
-          console.log('➕ Criando nova anotação...');
           // Criar nova anotação
           const newAnnotation = await apiService.createAnnotation({
-            patient_id: selectedPatientData.id,
+            patient_id: Number(selectedPatientData.id),
             content: annotation.content,
             category: annotation.category
           });
           
           setAnnotations(prev => [newAnnotation, ...prev]);
-          console.log('✅ Anotação da anamnese adicionada:', newAnnotation);
         }
       } catch (err) {
-        console.error('❌ Erro ao processar anotação da anamnese:', err);
+        console.error('Erro ao processar anotação da anamnese:', err);
       }
     }
   };
@@ -868,12 +1501,14 @@ export default function Pacientes() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Pacientes</h1>
-          <p className="text-gray-600">Gerencie os dados dos pacientes</p>
-        </div>
+    <>
+      <ToastContainer />
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Pacientes</h1>
+            <p className="text-gray-600">Gerencie os dados dos pacientes</p>
+          </div>
         <Button icon={Plus} onClick={() => setShowNewPatient(true)}>
           Novo Paciente
         </Button>
@@ -1448,12 +2083,7 @@ export default function Pacientes() {
 
               {/* Arquivos */}
               {activeTab === 'files' && (
-                <Card title="Arquivos do Paciente">
-                  <div className="text-center py-8 text-gray-500">
-                    <Upload className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                    <p>Funcionalidade de arquivos em desenvolvimento</p>
-                  </div>
-                </Card>
+                <PatientFilesTab patient={selectedPatientData} />
               )}
 
               {/* Anotações Internas */}
@@ -1543,21 +2173,7 @@ export default function Pacientes() {
          onSave={handleNewPatient}
        />
 
-       {console.log('=== RENDERIZANDO MODAL ===')}
-       
-       {/* TESTE DE CLIQUE SIMPLES */}
-       <button 
-         onClick={() => {
-           console.log('🔴 CLIQUE DE TESTE FUNCIONOU!');
-           alert('Clique funcionou!');
-         }}
-         style={{position: 'fixed', top: '10px', right: '10px', zIndex: 9999, backgroundColor: 'red', color: 'white', padding: '10px'}}
-       >
-         TESTE CLIQUE
-       </button>
-       {console.log('selectedTreatmentPatient:', selectedTreatmentPatient)}
-       {console.log('showTreatmentPlan:', showTreatmentPlan)}
-       {console.log('================================')}
+
        
        {selectedTreatmentPatient && (
         <TreatmentPlanModal
@@ -1646,6 +2262,7 @@ export default function Pacientes() {
         cancelText="Cancelar"
         variant="danger"
       />
-    </div>
+      </div>
+    </>
   );
 }

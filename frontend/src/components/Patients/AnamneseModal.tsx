@@ -14,7 +14,6 @@ interface AnamneseModalProps {
 }
 
 export default function AnamneseModal({ isOpen, onClose, patientName, patientId, onSave, existingAnamnese, onAddAnnotation }: AnamneseModalProps) {
-  console.log('🎭 AnamneseModal renderizado:', { isOpen, patientName, patientId, existingAnamnese });
   
   const [formData, setFormData] = useState({
     alergias: '',
@@ -109,7 +108,7 @@ export default function AnamneseModal({ isOpen, onClose, patientName, patientId,
 
   // Debug: monitorar mudanças no estado
   useEffect(() => {
-    console.log('🔄 Estado do formulário atualizado:', formData);
+
   }, [formData]);
 
   const handleInputChange = (field: string, value: string | boolean) => {
@@ -129,10 +128,7 @@ export default function AnamneseModal({ isOpen, onClose, patientName, patientId,
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('🚀 Iniciando salvamento da anamnese...');
-    console.log('📋 Dados do formulário:', formData);
-    console.log('🆔 ID do paciente:', patientId, 'Tipo:', typeof patientId);
-    console.log('✅ Consentimento:', formData.consentimento);
+
     
     // Verificar se o patientId é válido
     if (!patientId || typeof patientId !== 'number') {
@@ -151,22 +147,16 @@ export default function AnamneseModal({ isOpen, onClose, patientName, patientId,
         data_consentimento: formData.consentimento ? formData.data_consentimento || new Date().toISOString().split('T')[0] : undefined
       };
 
-      console.log('📤 Dados para enviar para API:', anamneseData);
-      console.log('🔄 Anamnese existente?', existingAnamnese?.id ? 'Sim' : 'Não');
+
 
       let savedAnamnese: AnamneseData;
       
       if (existingAnamnese?.id) {
-        console.log('🔄 Atualizando anamnese existente...');
         savedAnamnese = await apiService.updateAnamnese(existingAnamnese.id, anamneseData);
-        console.log('✅ Anamnese atualizada:', savedAnamnese);
       } else {
-        console.log('🆕 Criando nova anamnese...');
         savedAnamnese = await apiService.createAnamnese(anamneseData);
-        console.log('✅ Nova anamnese criada:', savedAnamnese);
       }
 
-      console.log('🎉 Salvamento bem-sucedido!');
       onSave(savedAnamnese);
       onClose();
     } catch (err) {
@@ -974,14 +964,14 @@ export default function AnamneseModal({ isOpen, onClose, patientName, patientId,
                   checked={formData.consentimento}
                   onChange={(e) => {
                     const checked = e.target.checked;
-                    console.log('🔒 Checkbox consentimento alterado:', checked);
+
                     handleInputChange('consentimento', checked);
                     if (checked) {
                       const today = new Date().toISOString().split('T')[0];
-                      console.log('📅 Definindo data de consentimento:', today);
+
                       handleInputChange('data_consentimento', today);
                     } else {
-                      console.log('❌ Limpando data de consentimento');
+
                       handleInputChange('data_consentimento', '');
                     }
                   }}
@@ -1012,7 +1002,7 @@ export default function AnamneseModal({ isOpen, onClose, patientName, patientId,
               loading={isSubmitting}
               disabled={!formData.consentimento}
               icon={Save}
-              onClick={() => console.log('🖱️ Botão salvar clicado!')}
+              onClick={handleSubmit}
             >
               Salvar Anamnese {isSubmitting ? '(Salvando...)' : ''}
             </LoadingButton>

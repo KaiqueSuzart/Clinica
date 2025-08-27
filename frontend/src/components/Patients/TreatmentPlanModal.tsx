@@ -652,30 +652,6 @@ export default function TreatmentPlanModal({
                 <div className="flex space-x-2">
                   <button
                     type="button"
-                    onClick={loadPatientPlans}
-                    className="text-xs px-2 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-700 transition-colors"
-                    title="Recarregar planos da API"
-                  >
-                    🔄
-                  </button>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      console.log('=== TESTE DE CONEXÃO ===');
-                      try {
-                        const result = await apiService.getHealth();
-                        console.log('Health check:', result);
-                      } catch (error) {
-                        console.error('Erro no health check:', error);
-                      }
-                    }}
-                    className="text-xs px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
-                    title="Testar conexão com API"
-                  >
-                    🧪
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => setShowPlanSelector(!showPlanSelector)}
                     className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
                   >
