@@ -1,0 +1,108 @@
+### =========================================
+### EXEMPLOS DE API - SISTEMA DE AGENDAMENTO
+### =========================================
+
+### 1. Listar todas as consultas
+GET http://localhost:3001/appointments
+
+### 2. Buscar consulta por ID (substitua pelo ID real)
+GET http://localhost:3001/appointments/CONSULTA_ID_AQUI
+
+### 3. Criar nova consulta
+POST http://localhost:3001/appointments
+Content-Type: application/json
+
+{
+  "patient_id": "1",
+  "date": "2024-01-30",
+  "time": "14:00",
+  "duration": 60,
+  "procedure": "Consulta de rotina",
+  "professional": "Dr. Ana Silva",
+  "status": "pendente",
+  "notes": "Consulta criada via API"
+}
+
+### 4. Atualizar consulta (substitua pelo ID real)
+PUT http://localhost:3001/appointments/CONSULTA_ID_AQUI
+Content-Type: application/json
+
+{
+  "status": "confirmado",
+  "notes": "Consulta confirmada pelo paciente"
+}
+
+### 5. Verificar disponibilidade de horário
+POST http://localhost:3001/appointments/check-availability
+Content-Type: application/json
+
+{
+  "date": "2024-01-30",
+  "time": "15:00",
+  "professional": "Dr. Ana Silva"
+}
+
+### 6. Buscar horários disponíveis
+GET http://localhost:3001/appointments/available-times?date=2024-01-30&professional=Dr. Ana Silva
+
+### 7. Buscar horários disponíveis (qualquer profissional)
+GET http://localhost:3001/appointments/available-times?date=2024-01-30
+
+### 8. Buscar consultas por paciente
+GET http://localhost:3001/appointments/patient/1
+
+### 9. Buscar consultas da próxima hora (para N8N)
+GET http://localhost:3001/appointments/next-hour
+
+### 10. Confirmar consulta via WhatsApp (para N8N)
+PUT http://localhost:3001/appointments/CONSULTA_ID_AQUI/confirm
+Content-Type: application/json
+
+{
+  "confirmed": true
+}
+
+### 11. Cancelar consulta via WhatsApp (para N8N)  
+PUT http://localhost:3001/appointments/CONSULTA_ID_AQUI/confirm
+Content-Type: application/json
+
+{
+  "confirmed": false
+}
+
+### 12. Remover consulta
+DELETE http://localhost:3001/appointments/CONSULTA_ID_AQUI
+
+### =========================================
+### EXEMPLOS PARA INTEGRAÇÃO N8N
+### =========================================
+
+### Criar consulta via N8N (formato simplificado)
+POST http://localhost:3001/appointments
+Content-Type: application/json
+
+{
+  "patient_id": "2",
+  "date": "2024-01-31", 
+  "time": "10:00",
+  "procedure": "Consulta",
+  "professional": "Dr. Ana Silva",
+  "notes": "Agendamento via WhatsApp - N8N"
+}
+
+### Buscar consultas para confirmação (1 hora antes)
+GET http://localhost:3001/appointments/next-hour
+
+### Workflow N8N - Resposta esperada:
+# [
+#   {
+#     "id": "uuid",
+#     "patientName": "Nome do Paciente",
+#     "patientPhone": "(11) 99999-9999",
+#     "date": "2024-01-31",
+#     "time": "10:00",
+#     "procedure": "Consulta",
+#     "professional": "Dr. Ana Silva"
+#   }
+# ]
+

@@ -89,19 +89,36 @@ export interface Database {
           empresa_id: string | null;
           cliente_id: string | null;
           dentista_id: string | null;
-          data_consulta: string | null;
-          hora_inicio: string | null;
+          data_consulta: string | null; // date
+          hora_inicio: string | null; // time
           duracao_minutos: number | null;
           tipo_consulta: string | null;
           procedimento: string | null;
           observacoes: string | null;
-          status: string | null;
+          status: string | null; // 'pendente' | 'confirmado' | 'cancelado' | 'realizado'
           valor: number | null;
           forma_pagamento: string | null;
           pago: boolean | null;
         };
-        Insert: Partial<Database['public']['Tables']['consultas']['Row']> & { id?: string };
-        Update: Partial<Database['public']['Tables']['consultas']['Row']>;
+        Insert: {
+          id?: string;
+          created_at?: string | null;
+          updated_at?: string | null;
+          empresa_id?: string | null;
+          cliente_id: string;
+          dentista_id?: string | null;
+          data_consulta: string;
+          hora_inicio: string;
+          duracao_minutos?: number | null;
+          tipo_consulta?: string | null;
+          procedimento: string;
+          observacoes?: string | null;
+          status?: string | null;
+          valor?: number | null;
+          forma_pagamento?: string | null;
+          pago?: boolean | null;
+        };
+        Update: Partial<Database['public']['Tables']['consultas']['Insert']>;
       };
 
       // Retornos

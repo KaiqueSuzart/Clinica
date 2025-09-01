@@ -1,0 +1,10 @@
+{
+  "patient_id": 12,
+  "date": "2025-01-01",
+  "time": "14:00",
+  "duration": 60,
+  "procedure": "Consulta",
+  "professional": "Dr. Ana Silva",
+  "status": "pendente",
+  "notes": "Teste de agendamento"
+}

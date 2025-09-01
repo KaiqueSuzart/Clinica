@@ -89,3 +89,5 @@ COMMENT ON COLUMN treatment_sessions.completed IS 'Se a sessão foi concluída';
 
 
 
+
+

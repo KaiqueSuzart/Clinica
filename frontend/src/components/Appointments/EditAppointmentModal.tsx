@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { X, Calendar, Clock, User, Save, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Calendar, Clock, User, Save, ChevronLeft, ChevronRight, Lock, AlertCircle } from 'lucide-react';
 import LoadingButton from '../UI/LoadingButton';
-import { patients } from '../../data/mockData';
+import { apiService } from '../../services/api';
 
 interface EditAppointmentModalProps {
   isOpen: boolean;
@@ -11,7 +11,14 @@ interface EditAppointmentModalProps {
 }
 
 export default function EditAppointmentModal({ isOpen, onClose, appointment, onSave }: EditAppointmentModalProps) {
-  const [selectedDate, setSelectedDate] = useState(new Date(appointment?.date || new Date()));
+  // Função para criar data segura
+  const createSafeDate = (dateString?: string) => {
+    if (!dateString) return new Date();
+    const [year, month, day] = dateString.split('-');
+    return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+  };
+
+  const [selectedDate, setSelectedDate] = useState(createSafeDate(appointment?.date));
   const [selectedTime, setSelectedTime] = useState(appointment?.time || '');
   const [selectedPatient, setSelectedPatient] = useState(appointment?.patientId || '');
   const [procedure, setProcedure] = useState(appointment?.procedure || '');
@@ -20,7 +27,115 @@ export default function EditAppointmentModal({ isOpen, onClose, appointment, onS
   const [status, setStatus] = useState(appointment?.status || 'pendente');
   const [notes, setNotes] = useState(appointment?.notes || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [currentMonth, setCurrentMonth] = useState(new Date(appointment?.date || new Date()));
+  const [currentMonth, setCurrentMonth] = useState(createSafeDate(appointment?.date));
+  const [patients, setPatients] = useState<any[]>([]);
+  const [loadingPatients, setLoadingPatients] = useState(false);
+  const [occupiedTimes, setOccupiedTimes] = useState<string[]>([]);
+  const [loadingTimes, setLoadingTimes] = useState(false);
+
+  // Carregar pacientes quando o modal abrir
+  useEffect(() => {
+    if (isOpen) {
+      loadPatients();
+    }
+  }, [isOpen]);
+
+  // Carregar horários ocupados quando a data mudar
+  useEffect(() => {
+    if (selectedDate) {
+      loadOccupiedTimes();
+    }
+  }, [selectedDate]);
+
+  // Recarregar horários ocupados quando o horário selecionado mudar (para atualizar interface)
+  useEffect(() => {
+    if (selectedDate && selectedTime) {
+      // Aguardar um pouco para evitar muitas chamadas
+      const timeoutId = setTimeout(() => {
+        loadOccupiedTimes();
+      }, 100);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [selectedTime]);
+
+  // Atualizar dados quando o appointment mudar
+  useEffect(() => {
+    if (appointment) {
+      const localDate = createSafeDate(appointment.date);
+      
+      console.log('Inicializando modal com appointment.date:', appointment.date);
+      console.log('Data local criada:', localDate);
+      console.log('Dia da data local:', localDate.getDate());
+      
+      setSelectedDate(localDate);
+      setSelectedTime(appointment.time);
+      setSelectedPatient(appointment.patientId);
+      setProcedure(appointment.procedure);
+      setProfessional(appointment.professional);
+      setDuration(appointment.duration);
+      setStatus(appointment.status);
+      setNotes(appointment.notes || '');
+      setCurrentMonth(localDate);
+    }
+  }, [appointment]);
+
+  const loadPatients = async () => {
+    try {
+      setLoadingPatients(true);
+      const patientsData = await apiService.getAllPatients();
+      setPatients(patientsData);
+    } catch (error) {
+      console.error('Erro ao carregar pacientes:', error);
+    } finally {
+      setLoadingPatients(false);
+    }
+  };
+
+  const loadOccupiedTimes = async () => {
+    try {
+      setLoadingTimes(true);
+      
+      // Formatar data para busca
+      const year = selectedDate.getFullYear();
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const day = String(selectedDate.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+      
+      // Buscar todas as consultas da data selecionada
+      const allAppointments = await apiService.getAllAppointments();
+      
+      // Filtrar consultas do dia selecionado (excluindo a consulta atual e canceladas)
+      const dayAppointments = allAppointments.filter(apt => 
+        apt.date === dateStr && 
+        apt.id !== appointment?.id &&
+        apt.status !== 'cancelado'
+      );
+      
+      console.log('=== DEBUG HORÁRIOS OCUPADOS ===');
+      console.log('Consulta sendo editada:', appointment?.id);
+      console.log('Horário original da consulta:', appointment?.time);
+      console.log('Horário selecionado atual:', selectedTime);
+      console.log('Total de consultas do dia:', allAppointments.filter(apt => apt.date === dateStr).length);
+      console.log('Consultas filtradas (sem a atual):', dayAppointments.length);
+      
+      // Extrair os horários ocupados e normalizar formato
+      const occupied = dayAppointments.map(apt => {
+        // Normalizar formato: 09:00:00 -> 09:00
+        const time = apt.time;
+        return time.length > 5 ? time.substring(0, 5) : time;
+      });
+      setOccupiedTimes(occupied);
+      
+      console.log('Horários ocupados para', dateStr, ':', occupied);
+      console.log('Horários originais do banco:', dayAppointments.map(apt => apt.time));
+    } catch (error) {
+      console.error('Erro ao carregar horários ocupados:', error);
+      setOccupiedTimes([]);
+    } finally {
+      setLoadingTimes(false);
+    }
+  };
 
   const timeSlots = [
     '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
@@ -109,26 +224,42 @@ export default function EditAppointmentModal({ isOpen, onClose, appointment, onS
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Simular salvamento
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      // Debug detalhado da data
+      console.log('=== DEBUG DATA ===');
+      console.log('selectedDate original:', selectedDate);
+      console.log('selectedDate toString():', selectedDate.toString());
+      console.log('selectedDate getDate():', selectedDate.getDate());
+      console.log('selectedDate getMonth():', selectedDate.getMonth());
+      console.log('selectedDate getFullYear():', selectedDate.getFullYear());
+      
+      // Usar uma abordagem mais segura para a data
+      const year = selectedDate.getFullYear();
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const day = String(selectedDate.getDate()).padStart(2, '0');
+      const formattedDate = `${year}-${month}-${day}`;
 
-    const updatedAppointment = {
-      ...appointment,
-      patientId: selectedPatient,
-      patientName: patients.find(p => p.id === selectedPatient)?.name || appointment.patientName,
-      patientPhone: patients.find(p => p.id === selectedPatient)?.phone || appointment.patientPhone,
-      date: selectedDate.toISOString().split('T')[0],
-      time: selectedTime,
-      duration,
-      procedure,
-      professional,
-      status,
-      notes
-    };
+      console.log('Data formatada final:', formattedDate);
+      console.log('=== FIM DEBUG ===');
 
-    onSave(updatedAppointment);
-    setIsSubmitting(false);
-    onClose();
+      const updatedAppointment = {
+        ...appointment,
+        date: formattedDate,
+        time: selectedTime,
+        duration,
+        procedure,
+        professional,
+        status,
+        notes
+      };
+
+      onSave(updatedAppointment);
+      onClose();
+    } catch (error) {
+      console.error('Erro ao salvar alterações:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!isOpen || !appointment) return null;
@@ -191,7 +322,14 @@ export default function EditAppointmentModal({ isOpen, onClose, appointment, onS
                   <button
                     key={index}
                     type="button"
-                    onClick={() => setSelectedDate(date)}
+                    onClick={() => {
+                      // Criar uma nova data "limpa" para evitar problemas de referência
+                      const cleanDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                      console.log('Clicou na data original:', date);
+                      console.log('Data limpa criada:', cleanDate);
+                      console.log('Data limpa getDate():', cleanDate.getDate());
+                      setSelectedDate(cleanDate);
+                    }}
                     disabled={isWeekend(date)}
                     className={`p-2 text-sm rounded-lg transition-all duration-200 ${
                       isSameDate(date, selectedDate)
@@ -217,21 +355,38 @@ export default function EditAppointmentModal({ isOpen, onClose, appointment, onS
                   Alterar Horário - {selectedDate.toLocaleDateString('pt-BR')}
                 </h5>
                 <div className="grid grid-cols-4 gap-2">
-                  {timeSlots.map((time) => (
-                    <button
-                      key={time}
-                      type="button"
-                      onClick={() => setSelectedTime(time)}
-                      className={`p-2 text-sm rounded-lg border transition-all duration-200 ${
-                        selectedTime === time
-                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 transform scale-105'
-                          : 'border-gray-200 dark:border-gray-600 hover:border-blue-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                      }`}
-                    >
-                      {time}
-                    </button>
-                  ))}
+                  {timeSlots.map((time) => {
+                    const isOccupied = occupiedTimes.includes(time);
+                    const isCurrentTime = selectedTime === time;
+                    
+                    return (
+                      <button
+                        key={time}
+                        type="button"
+                        onClick={() => !isOccupied && setSelectedTime(time)}
+                        disabled={isOccupied}
+                        className={`p-2 text-sm rounded-lg border transition-all duration-200 ${
+                          isCurrentTime
+                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 transform scale-105'
+                            : isOccupied
+                            ? 'border-red-200 bg-red-50 dark:bg-red-900/30 text-red-500 dark:text-red-400 cursor-not-allowed opacity-60'
+                            : 'border-gray-200 dark:border-gray-600 hover:border-blue-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                        }`}
+                      >
+                        {time}
+                        {isOccupied && (
+                          <div className="text-xs mt-1 text-red-500">Ocupado</div>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
+                
+                {loadingTimes && (
+                  <div className="text-center text-sm text-gray-500 mt-2">
+                    Verificando horários disponíveis...
+                  </div>
+                )}
               </div>
             </div>
 
@@ -243,22 +398,18 @@ export default function EditAppointmentModal({ isOpen, onClose, appointment, onS
               </h4>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Paciente *
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center">
+                  <Lock className="w-4 h-4 mr-1" />
+                  Paciente (não pode ser alterado)
                 </label>
-                <select
-                  value={selectedPatient}
-                  onChange={(e) => setSelectedPatient(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                >
-                  <option value="">Selecione um paciente</option>
-                  {patients.map(patient => (
-                    <option key={patient.id} value={patient.id}>
-                      {patient.name} - {patient.phone}
-                    </option>
-                  ))}
-                </select>
+                <div className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300 flex items-center">
+                  <User className="w-4 h-4 mr-2 text-gray-500" />
+                  <span className="font-medium">{appointment?.patientName}</span>
+                  <span className="ml-2 text-gray-500">({appointment?.patientPhone})</span>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Para alterar o paciente, crie uma nova consulta
+                </p>
               </div>
 
               <div>
@@ -293,37 +444,61 @@ export default function EditAppointmentModal({ isOpen, onClose, appointment, onS
                 </select>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Duração (minutos)
-                  </label>
-                  <select
-                    value={duration}
-                    onChange={(e) => setDuration(Number(e.target.value))}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                  >
-                    <option value={30}>30 minutos</option>
-                    <option value={60}>60 minutos</option>
-                    <option value={90}>90 minutos</option>
-                    <option value={120}>120 minutos</option>
-                  </select>
-                </div>
+              {/* Campo de Status em destaque */}
+              <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center">
+                  <AlertCircle className="w-4 h-4 mr-1" />
+                  Status da Consulta
+                </label>
+                <select
+                  value={status}
+                  onChange={(e) => {
+                    setStatus(e.target.value);
+                    console.log('Status alterado para:', e.target.value);
+                    // Recarregar horários ocupados quando status mudar
+                    if (e.target.value === 'cancelado' || status === 'cancelado') {
+                      setTimeout(() => loadOccupiedTimes(), 100);
+                    }
+                  }}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 ${
+                    status === 'cancelado' 
+                      ? 'border-red-300 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+                      : status === 'confirmado'
+                      ? 'border-green-300 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                      : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100'
+                  }`}
+                >
+                  {statusOptions.map(option => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+                {status === 'cancelado' && (
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-2 flex items-center">
+                    <AlertCircle className="w-3 h-3 mr-1" />
+                    Horário será liberado automaticamente para outros agendamentos
+                  </p>
+                )}
+                {status === 'confirmado' && (
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                    ✅ Consulta confirmada
+                  </p>
+                )}
+              </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Status
-                  </label>
-                  <select
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                  >
-                    {statusOptions.map(option => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Duração (minutos)
+                </label>
+                <select
+                  value={duration}
+                  onChange={(e) => setDuration(Number(e.target.value))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                >
+                  <option value={30}>30 minutos</option>
+                  <option value={60}>60 minutos</option>
+                  <option value={90}>90 minutos</option>
+                  <option value={120}>120 minutos</option>
+                </select>
               </div>
 
               <div>
@@ -345,7 +520,7 @@ export default function EditAppointmentModal({ isOpen, onClose, appointment, onS
                   Resumo da Consulta
                 </h5>
                 <div className="space-y-1 text-sm text-blue-800 dark:text-blue-200">
-                  <p><strong>Paciente:</strong> {patients.find(p => p.id === selectedPatient)?.name || appointment.patientName}</p>
+                  <p><strong>Paciente:</strong> {appointment?.patientName}</p>
                   <p><strong>Data:</strong> {selectedDate.toLocaleDateString('pt-BR')}</p>
                   <p><strong>Horário:</strong> {selectedTime}</p>
                   <p><strong>Procedimento:</strong> {procedure}</p>
@@ -368,7 +543,7 @@ export default function EditAppointmentModal({ isOpen, onClose, appointment, onS
             <LoadingButton
               type="submit"
               loading={isSubmitting}
-              disabled={!selectedDate || !selectedTime || !selectedPatient || !procedure}
+              disabled={!selectedDate || !selectedTime || !procedure}
               icon={Save}
             >
               Salvar Alterações

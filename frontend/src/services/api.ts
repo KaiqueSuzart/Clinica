@@ -123,6 +123,20 @@ export interface Annotation {
   category: string;
   created_at?: string;
   updated_at?: string;
+  }
+
+export interface Appointment {
+  id: string;
+  patientId: string;
+  patientName: string;
+  patientPhone: string;
+  date: string;
+  time: string;
+  duration: number;
+  procedure: string;
+  professional: string;
+  status: 'pendente' | 'confirmado' | 'cancelado' | 'realizado';
+  notes?: string;
 }
 
 class ApiService {
@@ -153,6 +167,10 @@ class ApiService {
   // ===== PACIENTES =====
   
   async getPatients(): Promise<Patient[]> {
+    return this.request<Patient[]>('/patients');
+  }
+
+  async getAllPatients(): Promise<Patient[]> {
     return this.request<Patient[]>('/patients');
   }
 
@@ -430,6 +448,78 @@ class ApiService {
     return this.request(`/files/${fileId}`, {
       method: 'PATCH',
       body: JSON.stringify({ description }),
+    });
+  }
+
+  // Appointments
+  async getAllAppointments(): Promise<Appointment[]> {
+    return this.request<Appointment[]>('/appointments');
+  }
+
+  async getAppointmentById(id: string): Promise<Appointment> {
+    return this.request<Appointment>(`/appointments/${id}`);
+  }
+
+  async createAppointment(appointment: Omit<Appointment, 'id' | 'patientName' | 'patientPhone'>): Promise<Appointment> {
+    return this.request<Appointment>('/appointments', {
+      method: 'POST',
+      body: JSON.stringify({
+        patient_id: appointment.patientId,
+        date: appointment.date,
+        time: appointment.time,
+        duration: appointment.duration,
+        procedure: appointment.procedure,
+        professional: appointment.professional,
+        status: appointment.status,
+        notes: appointment.notes
+      }),
+    });
+  }
+
+  async updateAppointment(id: string, appointment: Partial<Appointment>): Promise<Appointment> {
+    return this.request<Appointment>(`/appointments/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        patient_id: appointment.patientId,
+        date: appointment.date,
+        time: appointment.time,
+        duration: appointment.duration,
+        procedure: appointment.procedure,
+        professional: appointment.professional,
+        status: appointment.status,
+        notes: appointment.notes
+      }),
+    });
+  }
+
+  async deleteAppointment(id: string): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`/appointments/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async checkAvailability(date: string, time: string, professional?: string): Promise<boolean> {
+    const response = await this.request<{ available: boolean }>(`/appointments/check-availability`, {
+      method: 'POST',
+      body: JSON.stringify({ date, time, professional }),
+    });
+    return response.available;
+  }
+
+  async getAvailableTimes(date: string, professional?: string): Promise<string[]> {
+    const params = new URLSearchParams({ date });
+    if (professional) params.append('professional', professional);
+    return this.request<string[]>(`/appointments/available-times?${params}`);
+  }
+
+  async getNextHourAppointments(): Promise<Appointment[]> {
+    return this.request<Appointment[]>('/appointments/next-hour');
+  }
+
+  async confirmAppointment(id: string, confirmed: boolean): Promise<Appointment> {
+    return this.request<Appointment>(`/appointments/${id}/confirm`, {
+      method: 'PUT',
+      body: JSON.stringify({ confirmed }),
     });
   }
 }
