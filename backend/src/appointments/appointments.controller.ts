@@ -37,6 +37,44 @@ class CheckAvailabilityDto {
 export class AppointmentsController {
   constructor(private readonly appointmentsService: AppointmentsService) {}
 
+  @Get('today')
+  @ApiOperation({ summary: 'Buscar consultas do dia' })
+  @ApiResponse({ status: 200, description: 'Consultas do dia retornadas' })
+  findTodayAppointments() {
+    return this.appointmentsService.findTodayAppointments();
+  }
+
+  @Get('completed')
+  @ApiOperation({ summary: 'Buscar histórico de consultas realizadas' })
+  @ApiResponse({ status: 200, description: 'Histórico de consultas retornado' })
+  findCompletedAppointments() {
+    return this.appointmentsService.findCompletedAppointments();
+  }
+
+  @Get('week')
+  @ApiOperation({ summary: 'Buscar consultas da semana atual' })
+  @ApiResponse({ status: 200, description: 'Consultas da semana retornadas' })
+  findWeekAppointments() {
+    return this.appointmentsService.findWeekAppointments();
+  }
+
+  @Get('month')
+  @ApiOperation({ summary: 'Buscar consultas do mês atual' })
+  @ApiResponse({ status: 200, description: 'Consultas do mês retornadas' })
+  findMonthAppointments() {
+    return this.appointmentsService.findMonthAppointments();
+  }
+
+  @Get('period')
+  @ApiOperation({ summary: 'Buscar consultas por período personalizado' })
+  @ApiResponse({ status: 200, description: 'Consultas do período retornadas' })
+  findAppointmentsByPeriod(
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string
+  ) {
+    return this.appointmentsService.findAppointmentsByPeriod(startDate, endDate);
+  }
+
   @Get()
   @ApiOperation({ summary: 'Listar todas as consultas' })
   @ApiResponse({ status: 200, description: 'Lista de consultas retornada' })
@@ -122,6 +160,13 @@ export class AppointmentsController {
   @ApiResponse({ status: 200, description: 'Histórico de procedimentos retornado' })
   getPatientProcedures(@Param('patientId') patientId: string) {
     return this.appointmentsService.getPatientProcedures(patientId);
+  }
+
+  @Put(':id/complete')
+  @ApiOperation({ summary: 'Marcar consulta como realizada' })
+  @ApiResponse({ status: 200, description: 'Consulta marcada como realizada' })
+  markAsCompleted(@Param('id') id: string) {
+    return this.appointmentsService.markAsCompleted(id);
   }
 }
 

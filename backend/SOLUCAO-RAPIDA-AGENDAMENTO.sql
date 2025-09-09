@@ -74,3 +74,6 @@ FROM consultas c
 LEFT JOIN clientelA cl ON c.cliente_id = cl.id
 ORDER BY c.data_consulta, c.hora_inicio;
 
+
+
+

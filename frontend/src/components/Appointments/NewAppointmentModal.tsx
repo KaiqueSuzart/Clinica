@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, Clock, User, Save, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Calendar, Clock, User, Save, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
 import LoadingButton from '../UI/LoadingButton';
 import { apiService } from '../../services/api';
+import { useBusinessHours } from '../../contexts/BusinessHoursContext';
 
 interface NewAppointmentModalProps {
   isOpen: boolean;
@@ -26,6 +27,8 @@ export default function NewAppointmentModal({ isOpen, onClose, onSave }: NewAppo
   const [selectedPatientData, setSelectedPatientData] = useState<any>(null);
   const [occupiedTimes, setOccupiedTimes] = useState<string[]>([]);
   const [loadingTimes, setLoadingTimes] = useState(false);
+  
+  const { getAvailableTimeSlots, isWorkingDay } = useBusinessHours();
 
   // Carregar pacientes quando o modal abrir
   useEffect(() => {
@@ -92,12 +95,36 @@ export default function NewAppointmentModal({ isOpen, onClose, onSave }: NewAppo
         apt.date === dateStr && apt.status !== 'cancelado'
       );
       
-      // Extrair os horários ocupados e normalizar formato
-      const occupied = dayAppointments.map(apt => {
-        // Normalizar formato: 09:00:00 -> 09:00
-        const time = apt.time;
-        return time.length > 5 ? time.substring(0, 5) : time;
-      });
+      // Função para gerar intervalos ocupados baseado na duração
+      const generateOccupiedIntervals = (appointments: any[]) => {
+        const intervals: string[] = [];
+        
+        appointments.forEach(apt => {
+          const startTime = apt.time;
+          const duration = apt.duration || 60; // Duração padrão de 60 minutos
+          
+          // Normalizar formato: 09:00:00 -> 09:00
+          const normalizedStartTime = startTime.length > 5 ? startTime.substring(0, 5) : startTime;
+          
+          // Converter para minutos desde meia-noite
+          const [hours, minutes] = normalizedStartTime.split(':').map(Number);
+          const startMinutes = hours * 60 + minutes;
+          const endMinutes = startMinutes + duration;
+          
+          // Gerar intervalos de 30 minutos ocupados
+          for (let minutes = startMinutes; minutes < endMinutes; minutes += 30) {
+            const intervalHours = Math.floor(minutes / 60);
+            const intervalMinutes = minutes % 60;
+            const intervalTime = `${intervalHours.toString().padStart(2, '0')}:${intervalMinutes.toString().padStart(2, '0')}`;
+            intervals.push(intervalTime);
+          }
+        });
+        
+        return intervals;
+      };
+      
+      // Gerar intervalos ocupados baseado na duração
+      const occupied = generateOccupiedIntervals(dayAppointments);
       setOccupiedTimes(occupied);
       
       console.log('Horários ocupados encontrados (normalizados):', occupied);
@@ -128,10 +155,8 @@ export default function NewAppointmentModal({ isOpen, onClose, onSave }: NewAppo
     }
   };
 
-  const timeSlots = [
-    '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
-    '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30'
-  ];
+  // Usar slots de tempo baseados nas configurações de horário de funcionamento para a data selecionada
+  const timeSlots = getAvailableTimeSlots(selectedDate);
 
   const procedures = [
     'Consulta',
@@ -184,8 +209,8 @@ export default function NewAppointmentModal({ isOpen, onClose, onSave }: NewAppo
   };
 
   const isWeekend = (date: Date) => {
-    const day = date.getDay();
-    return day === 0 || day === 6; // Domingo ou Sábado
+    // Usar as configurações de business hours em vez de hardcoded
+    return !isWorkingDay(date);
   };
 
   const isPastDate = (date: Date) => {
@@ -336,21 +361,36 @@ export default function NewAppointmentModal({ isOpen, onClose, onSave }: NewAppo
                     <Clock className="w-4 h-4 mr-2" />
                     Horários Disponíveis - {selectedDate.toLocaleDateString('pt-BR')}
                   </h5>
+                  
+                  {selectedDate && !isWorkingDay(selectedDate) && (
+                    <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700 rounded-lg p-4 mb-4">
+                      <div className="flex items-center">
+                        <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mr-2" />
+                        <p className="text-yellow-800 dark:text-yellow-200 text-sm">
+                          A clínica não funciona neste dia da semana. Escolha outro dia.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  
                   <div className="grid grid-cols-4 gap-2">
                     {timeSlots.map((time) => {
                       const isOccupied = occupiedTimes.includes(time);
                       const isCurrentTime = selectedTime === time;
+                      const isWorkingDaySelected = selectedDate ? isWorkingDay(selectedDate) : true;
+                      const isDisabled = isOccupied || !isWorkingDaySelected;
                       
                       return (
                         <button
                           key={time}
                           type="button"
-                          onClick={() => !isOccupied && setSelectedTime(time)}
-                          disabled={isOccupied}
+                          onClick={() => !isDisabled && setSelectedTime(time)}
+                          disabled={isDisabled}
                           className={`p-2 text-sm rounded-lg border transition-all duration-200 ${
                             isCurrentTime
                               ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 transform scale-105'
-                              : isOccupied
+                              : isDisabled
                               ? 'border-red-200 bg-red-50 dark:bg-red-900/30 text-red-500 dark:text-red-400 cursor-not-allowed opacity-60'
                               : 'border-gray-200 dark:border-gray-600 hover:border-blue-300 hover:bg-gray-50 dark:hover:bg-gray-700'
                           }`}

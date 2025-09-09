@@ -86,3 +86,6 @@ JOIN clientelA cl ON c.cliente_id = cl.id
 WHERE c.data_consulta BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '7 days'
 ORDER BY c.data_consulta, c.hora_inicio;
 
+
+
+

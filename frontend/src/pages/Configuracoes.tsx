@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
-import { Settings, Save, User, MessageSquare, Bell, Shield } from 'lucide-react';
+import { Settings, Save, User, MessageSquare, Bell, Shield, Clock, Calendar } from 'lucide-react';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
 import { clinicSettings } from '../data/mockData';
+import { useBusinessHours } from '../contexts/BusinessHoursContext';
 
 export default function Configuracoes() {
   const [activeTab, setActiveTab] = useState('clinic');
   const [settings, setSettings] = useState(clinicSettings);
+  const { businessHours, setBusinessHours } = useBusinessHours();
 
   const tabs = [
     { id: 'clinic', label: 'Dados da Clínica', icon: Settings },
+    { id: 'schedule', label: 'Horário de Funcionamento', icon: Clock },
     { id: 'messages', label: 'Templates de Mensagens', icon: MessageSquare },
     { id: 'users', label: 'Usuários', icon: User },
     { id: 'notifications', label: 'Notificações', icon: Bell }
@@ -22,7 +25,10 @@ export default function Configuracoes() {
           <h1 className="text-2xl font-bold text-gray-900">Configurações</h1>
           <p className="text-gray-600">Gerencie as configurações do sistema</p>
         </div>
-        <Button icon={Save}>Salvar Alterações</Button>
+        <Button icon={Save} onClick={() => {
+          // Forçar re-renderização
+          setBusinessHours({...businessHours});
+        }}>Salvar Alterações</Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -111,6 +117,211 @@ export default function Configuracoes() {
                   </label>
                   <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                     <p className="text-sm text-gray-600">Clique para fazer upload da logo</p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {activeTab === 'schedule' && (
+            <Card title="Horário de Funcionamento" subtitle="Configure os horários individuais para cada dia da semana">
+              <div className="space-y-6">
+                {/* Configurações por Dia */}
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-4 flex items-center">
+                    <Calendar className="w-5 h-5 mr-2" />
+                    Configurações por Dia da Semana
+                  </h4>
+                  
+                  <div className="space-y-6">
+                    {[
+                      { key: 'monday', label: 'Segunda-feira' },
+                      { key: 'tuesday', label: 'Terça-feira' },
+                      { key: 'wednesday', label: 'Quarta-feira' },
+                      { key: 'thursday', label: 'Quinta-feira' },
+                      { key: 'friday', label: 'Sexta-feira' },
+                      { key: 'saturday', label: 'Sábado' },
+                      { key: 'sunday', label: 'Domingo' }
+                    ].map((day) => {
+                      const daySchedule = businessHours[day.key as keyof typeof businessHours] || {
+                        isWorking: true,
+                        startTime: '08:00',
+                        endTime: '18:00',
+                        lunchBreak: {
+                          enabled: true,
+                          startTime: '12:00',
+                          endTime: '13:00'
+                        }
+                      };
+                      
+                      return (
+                        <div key={day.key} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-4">
+                            <h5 className="font-medium text-gray-900 dark:text-gray-100">{day.label}</h5>
+                            <label className="flex items-center space-x-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={daySchedule.isWorking}
+                                onChange={(e) => setBusinessHours({
+                                  ...businessHours,
+                                  [day.key]: {
+                                    ...daySchedule,
+                                    isWorking: e.target.checked
+                                  }
+                                })}
+                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                              />
+                              <span className="text-sm text-gray-700">Funciona</span>
+                            </label>
+                          </div>
+                          
+                          {daySchedule.isWorking && (
+                            <div className="space-y-4">
+                              {/* Horários de Funcionamento */}
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Horário de Abertura
+                                  </label>
+                                  <input
+                                    type="time"
+                                    value={daySchedule.startTime}
+                                    onChange={(e) => setBusinessHours({
+                                      ...businessHours,
+                                      [day.key]: {
+                                        ...daySchedule,
+                                        startTime: e.target.value
+                                      }
+                                    })}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Horário de Fechamento
+                                  </label>
+                                  <input
+                                    type="time"
+                                    value={daySchedule.endTime}
+                                    onChange={(e) => setBusinessHours({
+                                      ...businessHours,
+                                      [day.key]: {
+                                        ...daySchedule,
+                                        endTime: e.target.value
+                                      }
+                                    })}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                  />
+                                </div>
+                              </div>
+                              
+                              {/* Horário de Almoço */}
+                              <div>
+                                <label className="flex items-center space-x-2 cursor-pointer mb-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={daySchedule.lunchBreak.enabled}
+                                    onChange={(e) => setBusinessHours({
+                                      ...businessHours,
+                                      [day.key]: {
+                                        ...daySchedule,
+                                        lunchBreak: {
+                                          ...daySchedule.lunchBreak,
+                                          enabled: e.target.checked
+                                        }
+                                      }
+                                    })}
+                                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                                  />
+                                  <span className="text-sm text-gray-700">Ativar horário de almoço</span>
+                                </label>
+                                
+                                {daySchedule.lunchBreak.enabled && (
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 ml-6">
+                                    <div>
+                                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Início do Almoço
+                                      </label>
+                                      <input
+                                        type="time"
+                                        value={daySchedule.lunchBreak.startTime}
+                                        onChange={(e) => setBusinessHours({
+                                          ...businessHours,
+                                          [day.key]: {
+                                            ...daySchedule,
+                                            lunchBreak: {
+                                              ...daySchedule.lunchBreak,
+                                              startTime: e.target.value
+                                            }
+                                          }
+                                        })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Fim do Almoço
+                                      </label>
+                                      <input
+                                        type="time"
+                                        value={daySchedule.lunchBreak.endTime}
+                                        onChange={(e) => setBusinessHours({
+                                          ...businessHours,
+                                          [day.key]: {
+                                            ...daySchedule,
+                                            lunchBreak: {
+                                              ...daySchedule.lunchBreak,
+                                              endTime: e.target.value
+                                            }
+                                          }
+                                        })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Preview dos Horários */}
+                <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg">
+                  <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">Preview dos Horários</h4>
+                  <div className="text-sm text-blue-800 dark:text-blue-200 space-y-2">
+                    {Object.entries(businessHours).map(([dayKey, schedule]) => {
+                      const dayNames = {
+                        monday: 'Segunda-feira',
+                        tuesday: 'Terça-feira',
+                        wednesday: 'Quarta-feira',
+                        thursday: 'Quinta-feira',
+                        friday: 'Sexta-feira',
+                        saturday: 'Sábado',
+                        sunday: 'Domingo'
+                      };
+                      
+                      return (
+                        <div key={dayKey} className="flex justify-between items-center">
+                          <span className="font-medium">{dayNames[dayKey as keyof typeof dayNames]}:</span>
+                          <span>
+                            {schedule.isWorking ? (
+                              <>
+                                {schedule.startTime} às {schedule.endTime}
+                                {schedule.lunchBreak.enabled && (
+                                  <span className="text-gray-600"> (Almoço: {schedule.lunchBreak.startTime} às {schedule.lunchBreak.endTime})</span>
+                                )}
+                              </>
+                            ) : (
+                              <span className="text-red-600">Fechado</span>
+                            )}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>

@@ -380,6 +380,292 @@ export class AppointmentsService {
       return [];
     }
   }
+
+  // Método para buscar consultas do dia
+  async findTodayAppointments() {
+    try {
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      
+      const { data, error } = await this.supabaseService
+        .getClient()
+        .from('consultas')
+        .select('*')
+        .eq('data_consulta', today)
+        .neq('status', 'realizado') // Excluir consultas realizadas
+        .order('hora_inicio', { ascending: true });
+
+      if (error) {
+        console.error('Erro ao buscar consultas do dia:', error);
+        return [];
+      }
+
+      // Buscar dados dos pacientes para cada consulta
+      const consultasComPacientes = await Promise.all(
+        data.map(async (consulta) => {
+          try {
+            const { data: pacienteData, error: pacienteError } = await this.supabaseService
+              .getClient()
+              .from('clientelA')
+              .select('id, nome, telefone, Email')
+              .eq('id', consulta.cliente_id)
+              .single();
+
+            if (pacienteError) {
+              console.error(`Erro ao buscar paciente ID ${consulta.cliente_id}:`, pacienteError);
+            }
+
+            return {
+              id: consulta.id,
+              patientId: consulta.cliente_id,
+              patientName: pacienteData?.nome || `Paciente ${consulta.cliente_id}`,
+              patientPhone: pacienteData?.telefone || '',
+              date: consulta.data_consulta,
+              time: consulta.hora_inicio,
+              duration: consulta.duracao_minutos || 60,
+              procedure: consulta.procedimento,
+              professional: consulta.dentista_id || 'Dr. Ana Silva',
+              status: consulta.status || 'pendente',
+              notes: consulta.observacoes
+            };
+          } catch (error) {
+            console.error(`Erro geral ao buscar paciente ID ${consulta.cliente_id}:`, error);
+            return {
+              id: consulta.id,
+              patientId: consulta.cliente_id,
+              patientName: `Paciente ${consulta.cliente_id}`,
+              patientPhone: '',
+              date: consulta.data_consulta,
+              time: consulta.hora_inicio,
+              duration: consulta.duracao_minutos || 60,
+              procedure: consulta.procedimento,
+              professional: consulta.dentista_id || 'Dr. Ana Silva',
+              status: consulta.status || 'pendente',
+              notes: consulta.observacoes
+            };
+          }
+        })
+      );
+
+      return consultasComPacientes;
+    } catch (error) {
+      console.error('Erro geral ao buscar consultas do dia:', error);
+      return [];
+    }
+  }
+
+  // Método para buscar histórico de consultas (realizadas)
+  async findCompletedAppointments() {
+    try {
+      const { data, error } = await this.supabaseService
+        .getClient()
+        .from('consultas')
+        .select('*')
+        .eq('status', 'realizado')
+        .order('data_consulta', { ascending: false })
+        .order('hora_inicio', { ascending: false });
+
+      if (error) {
+        console.error('Erro ao buscar consultas realizadas:', error);
+        return [];
+      }
+
+      // Buscar dados dos pacientes para cada consulta
+      const consultasComPacientes = await Promise.all(
+        data.map(async (consulta) => {
+          try {
+            const { data: pacienteData, error: pacienteError } = await this.supabaseService
+              .getClient()
+              .from('clientelA')
+              .select('id, nome, telefone, Email')
+              .eq('id', consulta.cliente_id)
+              .single();
+
+            if (pacienteError) {
+              console.error(`Erro ao buscar paciente ID ${consulta.cliente_id}:`, pacienteError);
+            }
+
+            return {
+              id: consulta.id,
+              patientId: consulta.cliente_id,
+              patientName: pacienteData?.nome || `Paciente ${consulta.cliente_id}`,
+              patientPhone: pacienteData?.telefone || '',
+              date: consulta.data_consulta,
+              time: consulta.hora_inicio,
+              duration: consulta.duracao_minutos || 60,
+              procedure: consulta.procedimento,
+              professional: consulta.dentista_id || 'Dr. Ana Silva',
+              status: consulta.status || 'realizado',
+              notes: consulta.observacoes
+            };
+          } catch (error) {
+            console.error(`Erro geral ao buscar paciente ID ${consulta.cliente_id}:`, error);
+            return {
+              id: consulta.id,
+              patientId: consulta.cliente_id,
+              patientName: `Paciente ${consulta.cliente_id}`,
+              patientPhone: '',
+              date: consulta.data_consulta,
+              time: consulta.hora_inicio,
+              duration: consulta.duracao_minutos || 60,
+              procedure: consulta.procedimento,
+              professional: consulta.dentista_id || 'Dr. Ana Silva',
+              status: consulta.status || 'realizado',
+              notes: consulta.observacoes
+            };
+          }
+        })
+      );
+
+      return consultasComPacientes;
+    } catch (error) {
+      console.error('Erro geral ao buscar consultas realizadas:', error);
+      return [];
+    }
+  }
+
+  // Método para marcar consulta como realizada
+  async markAsCompleted(id: string) {
+    try {
+      const { data, error } = await this.supabaseService
+        .getClient()
+        .from('consultas')
+        .update({ status: 'realizado' })
+        .eq('id', id)
+        .select('*')
+        .single();
+
+      if (error) {
+        console.error('Erro ao marcar consulta como realizada:', error);
+        throw error;
+      }
+
+      // Buscar dados do paciente
+      const { data: patientData } = await this.supabaseService
+        .getClient()
+        .from('clientelA')
+        .select('id, nome, telefone, Email')
+        .eq('id', data.cliente_id)
+        .single();
+
+      return {
+        id: data.id,
+        patientId: data.cliente_id,
+        patientName: patientData?.nome || 'Nome não encontrado',
+        patientPhone: patientData?.telefone || '',
+        date: data.data_consulta,
+        time: data.hora_inicio,
+        duration: data.duracao_minutos || 60,
+        procedure: data.procedimento,
+        professional: data.dentista_id || 'Dr. Ana Silva',
+        status: 'realizado',
+        notes: data.observacoes
+      };
+    } catch (error) {
+      console.error('Erro geral ao marcar consulta como realizada:', error);
+      throw error;
+    }
+  }
+
+  // Método para buscar consultas por período
+  async findAppointmentsByPeriod(startDate: string, endDate: string) {
+    try {
+      const { data, error } = await this.supabaseService
+        .getClient()
+        .from('consultas')
+        .select('*')
+        .gte('data_consulta', startDate)
+        .lte('data_consulta', endDate)
+        .neq('status', 'realizado') // Excluir consultas realizadas
+        .order('data_consulta', { ascending: true })
+        .order('hora_inicio', { ascending: true });
+
+      if (error) {
+        console.error('Erro ao buscar consultas por período:', error);
+        return [];
+      }
+
+      // Buscar dados dos pacientes para cada consulta
+      const consultasComPacientes = await Promise.all(
+        data.map(async (consulta) => {
+          try {
+            const { data: pacienteData, error: pacienteError } = await this.supabaseService
+              .getClient()
+              .from('clientelA')
+              .select('id, nome, telefone, Email')
+              .eq('id', consulta.cliente_id)
+              .single();
+
+            if (pacienteError) {
+              console.error(`Erro ao buscar paciente ID ${consulta.cliente_id}:`, pacienteError);
+            }
+
+            return {
+              id: consulta.id,
+              patientId: consulta.cliente_id,
+              patientName: pacienteData?.nome || `Paciente ${consulta.cliente_id}`,
+              patientPhone: pacienteData?.telefone || '',
+              date: consulta.data_consulta,
+              time: consulta.hora_inicio,
+              duration: consulta.duracao_minutos || 60,
+              procedure: consulta.procedimento,
+              professional: consulta.dentista_id || 'Dr. Ana Silva',
+              status: consulta.status || 'pendente',
+              notes: consulta.observacoes
+            };
+          } catch (error) {
+            console.error(`Erro geral ao buscar paciente ID ${consulta.cliente_id}:`, error);
+            return {
+              id: consulta.id,
+              patientId: consulta.cliente_id,
+              patientName: `Paciente ${consulta.cliente_id}`,
+              patientPhone: '',
+              date: consulta.data_consulta,
+              time: consulta.hora_inicio,
+              duration: consulta.duracao_minutos || 60,
+              procedure: consulta.procedimento,
+              professional: consulta.dentista_id || 'Dr. Ana Silva',
+              status: consulta.status || 'pendente',
+              notes: consulta.observacoes
+            };
+          }
+        })
+      );
+
+      return consultasComPacientes;
+    } catch (error) {
+      console.error('Erro geral ao buscar consultas por período:', error);
+      return [];
+    }
+  }
+
+  // Método para buscar consultas da semana atual
+  async findWeekAppointments() {
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay()); // Domingo
+    startOfWeek.setHours(0, 0, 0, 0);
+    
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6); // Sábado
+    endOfWeek.setHours(23, 59, 59, 999);
+
+    return this.findAppointmentsByPeriod(
+      startOfWeek.toISOString().split('T')[0],
+      endOfWeek.toISOString().split('T')[0]
+    );
+  }
+
+  // Método para buscar consultas do mês atual
+  async findMonthAppointments() {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    return this.findAppointmentsByPeriod(
+      startOfMonth.toISOString().split('T')[0],
+      endOfMonth.toISOString().split('T')[0]
+    );
+  }
 }
 
 

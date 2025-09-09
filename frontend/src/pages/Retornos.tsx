@@ -1,96 +1,233 @@
 import React from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { RotateCcw, Calendar, Clock, Phone, CheckCircle, AlertCircle, MessageSquare, User } from 'lucide-react';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
 import StatusBadge from '../components/UI/StatusBadge';
 import NewReturnModal from '../components/Returns/NewReturnModal';
 import ScheduleAppointmentModal from '../components/Returns/ScheduleAppointmentModal';
-import { returnVisits } from '../data/mockData';
+import { useToast } from '../components/UI/Toast';
+import { apiService, ReturnVisit } from '../services/api';
 
 export default function Retornos() {
+  const { showSuccess, showError } = useToast();
   const [showNewReturn, setShowNewReturn] = useState(false);
-  const [returnsList, setReturnsList] = useState(returnVisits);
-  const [activeTab, setActiveTab] = useState<'confirmed' | 'possible'>('confirmed');
+  const [returnsList, setReturnsList] = useState<ReturnVisit[]>([]);
+  const [possibleReturns, setPossibleReturns] = useState<ReturnVisit[]>([]);
+  const [completedReturns, setCompletedReturns] = useState<ReturnVisit[]>([]);
+  const [overdueReturns, setOverdueReturns] = useState<ReturnVisit[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'confirmed' | 'possible' | 'completed' | 'overdue'>('confirmed');
   const [showScheduleModal, setShowScheduleModal] = useState(false);
-  const [selectedPossibleReturn, setSelectedPossibleReturn] = useState<any>(null);
+  const [selectedPossibleReturn, setSelectedPossibleReturn] = useState<ReturnVisit | null>(null);
   const [showReagendarModal, setShowReagendarModal] = useState(false);
-  const [selectedReturnToReschedule, setSelectedReturnToReschedule] = useState<any>(null);
+  const [selectedReturnToReschedule, setSelectedReturnToReschedule] = useState<ReturnVisit | null>(null);
 
-  const handleNewReturn = (newReturn: any) => {
-    setReturnsList(prev => [...prev, newReturn]);
+  // Carregar dados da API
+  useEffect(() => {
+    loadReturnsData();
+  }, []);
+
+  const loadReturnsData = async () => {
+    try {
+      setLoading(true);
+      const [confirmedReturns, possibleReturnsData, completedReturnsData, overdueReturnsData] = await Promise.all([
+        apiService.getConfirmedReturns(),
+        apiService.getPossibleReturns(),
+        apiService.getCompletedReturns(),
+        apiService.getOverdueReturns()
+      ]);
+      
+      setReturnsList(confirmedReturns);
+      setPossibleReturns(possibleReturnsData);
+      setCompletedReturns(completedReturnsData);
+      setOverdueReturns(overdueReturnsData);
+    } catch (error) {
+      console.error('Erro ao carregar retornos:', error);
+      showError('Erro ao carregar dados dos retornos');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleMarcarConsulta = (possibleReturn: any) => {
+  const handleNewReturn = async (newReturn: any) => {
+    try {
+      const createdReturn = await apiService.createReturn(newReturn);
+      setReturnsList(prev => [...prev, createdReturn]);
+      await loadReturnsData(); // Recarregar dados para garantir consistência
+    } catch (error) {
+      console.error('Erro ao criar retorno:', error);
+      showError('Erro ao criar retorno');
+    }
+  };
+
+  const handleMarcarConsulta = (possibleReturn: ReturnVisit) => {
     setSelectedPossibleReturn(possibleReturn);
     setShowScheduleModal(true);
   };
 
-  const handleReagendar = (returnVisit: any) => {
+  const handleReagendar = (returnVisit: ReturnVisit) => {
     setSelectedReturnToReschedule(returnVisit);
     setShowReagendarModal(true);
   };
-  const handleSaveAppointment = (appointmentData: any) => {
-    console.log('Consulta agendada:', appointmentData);
-    // Aqui você salvaria no backend e removeria da lista de possíveis retornos
-    alert(`Consulta agendada com sucesso!\n\nPaciente: ${appointmentData.patientName}\nData: ${new Date(appointmentData.date).toLocaleDateString('pt-BR')}\nHorário: ${appointmentData.time}`);
+
+      const handleSaveAppointment = async (appointmentData: any) => {
+      try {
+        console.log('Iniciando agendamento de retorno:', appointmentData);
+        console.log('Retorno selecionado:', selectedPossibleReturn);
+        
+        // Criar consulta real na agenda
+        let appointment;
+        try {
+          appointment = await apiService.createAppointment({
+            patientId: selectedPossibleReturn?.cliente_id,
+            date: appointmentData.date,
+            time: appointmentData.time,
+            duration: appointmentData.duration || 60,
+            procedure: selectedPossibleReturn?.procedimento || appointmentData.procedure,
+            professional: appointmentData.professional || 'Dr. Ana Silva',
+            status: 'confirmado',
+            notes: `Retorno confirmado - ${selectedPossibleReturn?.motivo || ''}`
+          });
+          console.log('Consulta criada com sucesso:', appointment);
+        } catch (appointmentError) {
+          console.error('Erro ao criar consulta:', appointmentError);
+          showError('Erro ao criar consulta na agenda');
+          return;
+        }
+
+        // Confirmar o retorno como agendado e atualizar horário
+        if (selectedPossibleReturn) {
+          try {
+            console.log('Atualizando retorno com ID:', selectedPossibleReturn.id);
+            console.log('Dados para atualização:', {
+              status: 'pendente',
+              hora_retorno: appointmentData.time,
+              data_retorno: appointmentData.date
+            });
+            
+            // Atualizar o retorno com o horário da consulta criada
+            // Manter status 'pendente' para confirmação posterior
+            const updatedReturn = await apiService.updateReturn(selectedPossibleReturn.id, {
+              status: 'pendente',
+              hora_retorno: appointmentData.time,
+              data_retorno: appointmentData.date
+            });
+            console.log('Retorno confirmado e atualizado com sucesso:', updatedReturn);
+          } catch (confirmError) {
+            console.error('Erro ao confirmar retorno:', confirmError);
+            showError('Erro ao atualizar retorno');
+            return;
+          }
+          
+          // Recarregar dados para atualizar a lista
+          console.log('Recarregando dados...');
+          await loadReturnsData();
+        }
+        
+        showSuccess(`Retorno agendado com sucesso! Paciente: ${appointmentData.patientName} - ${new Date(appointmentData.date).toLocaleDateString('pt-BR')} às ${appointmentData.time}. Será enviada uma mensagem de confirmação no dia da consulta.`);
+      } catch (error) {
+        console.error('Erro ao agendar consulta:', error);
+        showError('Erro ao agendar consulta');
+      }
+    };
+
+  const handleSaveReschedule = async (appointmentData: any) => {
+    try {
+      // Criar nova consulta na agenda
+      const appointment = await apiService.createAppointment({
+        patientId: selectedReturnToReschedule?.cliente_id,
+        date: appointmentData.date,
+        time: appointmentData.time,
+        duration: appointmentData.duration || 60,
+        procedure: selectedReturnToReschedule?.procedimento || appointmentData.procedure,
+        professional: appointmentData.professional || 'Dr. Ana Silva',
+        status: 'confirmado',
+        notes: `Retorno reagendado - ${selectedReturnToReschedule?.motivo || ''}`
+      });
+
+      if (selectedReturnToReschedule) {
+        await apiService.updateReturn(selectedReturnToReschedule.id, {
+          data_retorno: appointmentData.date,
+          hora_retorno: appointmentData.time,
+          status: 'confirmado'
+        });
+        await loadReturnsData(); // Recarregar dados
+      }
+      
+      showSuccess(`Consulta reagendada com sucesso! Paciente: ${appointmentData.patientName} - ${new Date(appointmentData.date).toLocaleDateString('pt-BR')} às ${appointmentData.time}`);
+    } catch (error) {
+      console.error('Erro ao reagendar consulta:', error);
+      showError('Erro ao reagendar consulta');
+    }
   };
 
-  const handleSaveReschedule = (appointmentData: any) => {
-    console.log('Consulta reagendada:', appointmentData);
-    // Aqui você atualizaria o retorno no backend
-    alert(`Consulta reagendada com sucesso!\n\nPaciente: ${appointmentData.patientName}\nNova Data: ${new Date(appointmentData.date).toLocaleDateString('pt-BR')}\nNovo Horário: ${appointmentData.time}`);
-    
-    // Atualizar a lista local
-    setReturnsList(prev => prev.map(ret => 
-      ret.id === selectedReturnToReschedule?.id 
-        ? { ...ret, returnDate: appointmentData.date, status: 'confirmado' }
-        : ret
-    ));
-  };
-  // Simular possíveis retornos (em uma aplicação real, viria do backend)
-  const possibleReturns = [
-    {
-      id: '3',
-      patientPhone: '(11) 99999-1111',
-      patientName: 'Ana Costa',
-      procedure: 'Consulta de rotina',
-      scheduledDate: '2024-02-01',
-      reminderDate: '2024-01-25',
-      daysSinceReminder: 0,
-      status: 'aguardando'
-    },
-    {
-      id: '4',
-      patientPhone: '(11) 99999-2222',
-      patientName: 'Roberto Silva',
-      procedure: 'Controle periodontal',
-      scheduledDate: '2024-02-05',
-      reminderDate: '2024-01-22',
-      daysSinceReminder: 3,
-      status: 'atrasado'
-    },
-    {
-      id: '5',
-      patientPhone: '(11) 99999-3333',
-      patientName: 'Maria Santos',
-      procedure: 'Avaliação pós-limpeza',
-      scheduledDate: '2024-02-10',
-      reminderDate: '2024-01-27',
-      daysSinceReminder: -2,
-      status: 'aguardando'
-    },
-    {
-      id: '6',
-      patientPhone: '(11) 99999-4444',
-      patientName: 'Carlos Oliveira',
-      procedure: 'Controle do canal',
-      scheduledDate: '2024-01-30',
-      reminderDate: '2024-01-16',
-      daysSinceReminder: 9,
-      status: 'atrasado'
+  const handleConfirmReturn = async (returnId: string) => {
+    try {
+      // Buscar dados do retorno para criar consulta
+      const returnData = returnsList.find(r => r.id === returnId);
+      if (returnData) {
+        // Criar consulta real na agenda
+        await apiService.createAppointment({
+          patientId: returnData.cliente_id,
+          date: returnData.data_retorno,
+          time: returnData.hora_retorno,
+          duration: 60,
+          procedure: returnData.procedimento,
+          professional: 'Dr. Ana Silva',
+          status: 'confirmado',
+          notes: `Retorno confirmado - ${returnData.motivo || ''}`
+        });
+      }
+
+      await apiService.confirmReturn(returnId);
+      await loadReturnsData();
+      showSuccess('Retorno confirmado com sucesso! A consulta agora aparece na agenda!');
+    } catch (error) {
+      console.error('Erro ao confirmar retorno:', error);
+      showError('Erro ao confirmar retorno');
     }
-  ];
+  };
+
+  const handleCompleteReturn = async (returnId: string) => {
+    try {
+      await apiService.completeReturn(returnId);
+      await loadReturnsData();
+      showSuccess('Retorno marcado como realizado!');
+    } catch (error) {
+      console.error('Erro ao marcar retorno como realizado:', error);
+      showError('Erro ao marcar retorno como realizado');
+    }
+  };
+
+  // Função para calcular dias desde o lembrete
+  const calculateDaysSinceReminder = (returnDate: string) => {
+    const today = new Date();
+    const returnDateObj = new Date(returnDate + 'T00:00:00');
+    const diffTime = today.getTime() - returnDateObj.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  const calculateReminderDate = (returnDate: string, observations: string) => {
+    // Extrair dias de lembrete das observações
+    const reminderMatch = observations?.match(/Lembrete: (\d+) dias antes/);
+    const reminderDays = reminderMatch ? parseInt(reminderMatch[1]) : 7; // Default 7 dias
+    
+    const returnDateObj = new Date(returnDate + 'T00:00:00');
+    const reminderDate = new Date(returnDateObj);
+    reminderDate.setDate(reminderDate.getDate() - reminderDays);
+    
+    return reminderDate.toLocaleDateString('pt-BR');
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="text-lg text-gray-600">Carregando retornos...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -136,6 +273,34 @@ export default function Retornos() {
                 {possibleReturns.length}
               </span>
             </button>
+            <button
+              onClick={() => setActiveTab('completed')}
+              className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'completed'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+              }`}
+            >
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Histórico
+              <span className="ml-2 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-2 py-1 rounded-full text-xs">
+                {completedReturns.length}
+              </span>
+            </button>
+            <button
+              onClick={() => setActiveTab('overdue')}
+              className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'overdue'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+              }`}
+            >
+              <AlertCircle className="w-4 h-4 mr-2" />
+              Atrasados
+              <span className="ml-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-2 py-1 rounded-full text-xs">
+                {overdueReturns.length}
+              </span>
+            </button>
           </nav>
         </div>
       </div>
@@ -179,24 +344,58 @@ export default function Retornos() {
 
       {activeTab === 'possible' && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="p-6">
-            <div className="flex items-center">
-              <AlertCircle className="w-8 h-8 text-yellow-600 mr-3" />
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-300">Aguardando Agendamento</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                  {possibleReturns.filter(r => r.status === 'aguardando').length}
-                </p>
-              </div>
+                  <Card className="p-6">
+          <div className="flex items-center">
+            <AlertCircle className="w-8 h-8 text-yellow-600 mr-3" />
+            <div>
+              <p className="text-sm text-gray-600 dark:text-gray-300">Aguardando Agendamento</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                {possibleReturns.filter(r => r.status === 'pendente').length}
+              </p>
             </div>
-          </Card>
+          </div>
+        </Card>
+        <Card className="p-6">
+          <div className="flex items-center">
+            <Clock className="w-8 h-8 text-red-600 mr-3" />
+            <div>
+              <p className="text-sm text-gray-600 dark:text-gray-300">Atrasados</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                {possibleReturns.filter(r => {
+                  const reminderDate = calculateReminderDate(r.data_retorno, r.observacoes);
+                  const reminderDateObj = new Date(reminderDate.split('/').reverse().join('-') + 'T00:00:00');
+                  const today = new Date();
+                  const diffTime = today.getTime() - reminderDateObj.getTime();
+                  const daysSinceReminder = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                  return daysSinceReminder > 0;
+                }).length}
+              </p>
+            </div>
+          </div>
+        </Card>
+        <Card className="p-6">
+          <div className="flex items-center">
+            <Calendar className="w-8 h-8 text-blue-600 mr-3" />
+            <div>
+              <p className="text-sm text-gray-600 dark:text-gray-300">Este Mês</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                {possibleReturns.filter(r => new Date(r.data_retorno + 'T00:00:00').getMonth() === new Date().getMonth()).length}
+              </p>
+            </div>
+          </div>
+        </Card>
+        </div>
+      )}
+
+      {activeTab === 'completed' && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card className="p-6">
             <div className="flex items-center">
-              <Clock className="w-8 h-8 text-red-600 mr-3" />
+              <CheckCircle className="w-8 h-8 text-green-600 mr-3" />
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-300">Atrasados</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Total Realizados</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                  {possibleReturns.filter(r => r.daysSinceReminder > 0).length}
+                  {completedReturns.length}
                 </p>
               </div>
             </div>
@@ -207,13 +406,81 @@ export default function Retornos() {
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-300">Este Mês</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                  {possibleReturns.filter(r => new Date(r.scheduledDate).getMonth() === new Date().getMonth()).length}
+                  {completedReturns.filter(r => new Date(r.data_retorno + 'T00:00:00').getMonth() === new Date().getMonth()).length}
+                </p>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-6">
+            <div className="flex items-center">
+              <Clock className="w-8 h-8 text-purple-600 mr-3" />
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Esta Semana</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  {completedReturns.filter(r => {
+                    const returnDate = new Date(r.data_retorno + 'T00:00:00');
+                    const today = new Date();
+                    const weekAgo = new Date(today);
+                    weekAgo.setDate(today.getDate() - 7);
+                    return returnDate >= weekAgo && returnDate <= today;
+                  }).length}
                 </p>
               </div>
             </div>
           </Card>
         </div>
       )}
+
+      {activeTab === 'overdue' && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="p-6">
+            <div className="flex items-center">
+              <AlertCircle className="w-8 h-8 text-red-600 mr-3" />
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Total Atrasados</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  {overdueReturns.length}
+                </p>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-6">
+            <div className="flex items-center">
+              <Clock className="w-8 h-8 text-orange-600 mr-3" />
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Mais de 1 Dia</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  {overdueReturns.filter(r => {
+                    const returnDate = new Date(r.data_retorno + 'T' + (r.hora_retorno || '00:00:00'));
+                    const today = new Date();
+                    const diffTime = today.getTime() - returnDate.getTime();
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    return diffDays > 1;
+                  }).length}
+                </p>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-6">
+            <div className="flex items-center">
+              <Calendar className="w-8 h-8 text-purple-600 mr-3" />
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Esta Semana</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  {overdueReturns.filter(r => {
+                    const returnDate = new Date(r.data_retorno + 'T00:00:00');
+                    const today = new Date();
+                    const weekAgo = new Date(today);
+                    weekAgo.setDate(today.getDate() - 7);
+                    return returnDate >= weekAgo && returnDate <= today;
+                  }).length}
+                </p>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
 
       {/* Lista de Possíveis Retornos */}
       {activeTab === 'possible' && (
@@ -243,70 +510,79 @@ export default function Retornos() {
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {possibleReturns.map((possibleReturn) => (
-                  <tr key={possibleReturn.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className={`w-3 h-3 rounded-full mr-3 ${
-                          possibleReturn.status === 'atrasado' ? 'bg-red-500' : 'bg-yellow-500'
-                        }`}></div>
-                        <div>
-                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                            {possibleReturn.patientName}
-                          </div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">
-                            {possibleReturn.patientPhone}
+                {possibleReturns.map((possibleReturn) => {
+                  const reminderDate = calculateReminderDate(possibleReturn.data_retorno, possibleReturn.observacoes);
+                  const reminderDateObj = new Date(reminderDate.split('/').reverse().join('-') + 'T00:00:00');
+                  const today = new Date();
+                  const diffTime = today.getTime() - reminderDateObj.getTime();
+                  const daysSinceReminder = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                  const isOverdue = daysSinceReminder > 0;
+                  
+                  return (
+                    <tr key={possibleReturn.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className={`w-3 h-3 rounded-full mr-3 ${
+                            isOverdue ? 'bg-red-500' : 'bg-yellow-500'
+                          }`}></div>
+                          <div>
+                            <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                              {possibleReturn.paciente_nome}
+                            </div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">
+                              {possibleReturn.paciente_telefone}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 dark:text-gray-100">{possibleReturn.procedure}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 dark:text-gray-100">
-                        {new Date(possibleReturn.scheduledDate).toLocaleDateString('pt-BR')}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 dark:text-gray-100">
-                        {new Date(possibleReturn.reminderDate).toLocaleDateString('pt-BR')}
-                      </div>
-                      {possibleReturn.daysSinceReminder > 0 && (
-                        <div className="text-xs text-red-600 dark:text-red-400 font-medium">
-                          {possibleReturn.daysSinceReminder} dias atrasado
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900 dark:text-gray-100">{possibleReturn.procedimento}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900 dark:text-gray-100">
+                          {new Date(possibleReturn.data_retorno + 'T00:00:00').toLocaleDateString('pt-BR')}
                         </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        possibleReturn.status === 'atrasado' 
-                          ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200'
-                          : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200'
-                      }`}>
-                        {possibleReturn.status === 'atrasado' ? 'Atrasado' : 'Aguardando'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
-                        <Button variant="outline" size="sm" icon={Phone}>
-                          Ligar
-                        </Button>
-                        <Button variant="outline" size="sm" icon={MessageSquare}>
-                          WhatsApp
-                        </Button>
-                        <Button 
-                          variant="success" 
-                          size="sm" 
-                          icon={Calendar}
-                          onClick={() => handleMarcarConsulta(possibleReturn)}
-                        >
-                          Marcar
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900 dark:text-gray-100">
+                          {calculateReminderDate(possibleReturn.data_retorno, possibleReturn.observacoes)}
+                        </div>
+                        {isOverdue && (
+                          <div className="text-xs text-red-600 dark:text-red-400 font-medium">
+                            {daysSinceReminder} dias atrasado
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          isOverdue 
+                            ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200'
+                            : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200'
+                        }`}>
+                          {isOverdue ? 'Atrasado' : 'Aguardando'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex space-x-2">
+                          <Button variant="outline" size="sm" icon={Phone}>
+                            Ligar
+                          </Button>
+                          <Button variant="outline" size="sm" icon={MessageSquare}>
+                            WhatsApp
+                          </Button>
+                          <Button 
+                            variant="success" 
+                            size="sm" 
+                            icon={Calendar}
+                            onClick={() => handleMarcarConsulta(possibleReturn)}
+                          >
+                            Marcar
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -327,9 +603,6 @@ export default function Retornos() {
                   Procedimento
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Data Original
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Data de Retorno
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -346,21 +619,22 @@ export default function Retornos() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div>
                       <div className="text-sm font-medium text-gray-900">
-                        {returnVisit.patientName}
+                        {returnVisit.paciente_nome}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {returnVisit.paciente_telefone}
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{returnVisit.procedure}</div>
+                    <div className="text-sm text-gray-900">{returnVisit.procedimento}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">
-                      {new Date(returnVisit.originalDate).toLocaleDateString('pt-BR')}
+                      {new Date(returnVisit.data_retorno + 'T00:00:00').toLocaleDateString('pt-BR')}
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {new Date(returnVisit.returnDate).toLocaleDateString('pt-BR')}
+                    <div className="text-xs text-gray-500">
+                      {returnVisit.hora_retorno}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -368,7 +642,6 @@ export default function Retornos() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">
-                      <Button variant="outline" size="sm">
                       <Button 
                         variant="outline" 
                         size="sm"
@@ -376,13 +649,25 @@ export default function Retornos() {
                       >
                         Reagendar
                       </Button>
-                      </Button>
                       <Button variant="outline" size="sm" icon={Phone}>
                         Ligar
                       </Button>
                       {returnVisit.status === 'pendente' && (
-                        <Button variant="success" size="sm">
+                        <Button 
+                          variant="success" 
+                          size="sm"
+                          onClick={() => handleConfirmReturn(returnVisit.id)}
+                        >
                           Confirmar
+                        </Button>
+                      )}
+                      {returnVisit.status === 'confirmado' && (
+                        <Button 
+                          variant="primary" 
+                          size="sm"
+                          onClick={() => handleCompleteReturn(returnVisit.id)}
+                        >
+                          Realizar
                         </Button>
                       )}
                     </div>
@@ -394,6 +679,193 @@ export default function Retornos() {
         </div>
       </Card>
       )}
+
+      {/* Lista de Retornos Realizados (Histórico) */}
+      {activeTab === 'completed' && (
+        <Card title="Histórico de Retornos" subtitle={`${completedReturns.length} retornos realizados`}>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-700">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Paciente
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Procedimento
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Data Realizada
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Ações
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                {completedReturns.map((returnVisit) => (
+                  <tr key={returnVisit.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {returnVisit.paciente_nome}
+                        </div>
+                        <div className="text-sm text-gray-500 dark:text-gray-400">
+                          {returnVisit.paciente_telefone}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900 dark:text-gray-100">{returnVisit.procedimento}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900 dark:text-gray-100">
+                        {new Date(returnVisit.data_retorno + 'T00:00:00').toLocaleDateString('pt-BR')}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        {returnVisit.hora_retorno}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200">
+                        Realizado
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex space-x-2">
+                        <Button variant="outline" size="sm" icon={Phone}>
+                          Ligar
+                        </Button>
+                        <Button variant="outline" size="sm" icon={MessageSquare}>
+                          WhatsApp
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      {/* Lista de Retornos Atrasados */}
+      {activeTab === 'overdue' && (
+        <Card title="Retornos Atrasados" subtitle={`${overdueReturns.length} retornos que passaram da data/hora`}>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-700">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Paciente
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Procedimento
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Data/Hora Agendada
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Atraso
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Ações
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                {overdueReturns.map((returnVisit) => {
+                  const returnDateTime = new Date(`${returnVisit.data_retorno}T${returnVisit.hora_retorno || '00:00:00'}`);
+                  const now = new Date();
+                  const diffTime = now.getTime() - returnDateTime.getTime();
+                  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                  const diffHours = Math.ceil(diffTime / (1000 * 60 * 60));
+                  
+                  return (
+                    <tr key={returnVisit.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                            {returnVisit.paciente_nome}
+                          </div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            {returnVisit.paciente_telefone}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900 dark:text-gray-100">{returnVisit.procedimento}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900 dark:text-gray-100">
+                          {new Date(returnVisit.data_retorno + 'T00:00:00').toLocaleDateString('pt-BR')}
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          {returnVisit.hora_retorno}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-red-600 dark:text-red-400 font-medium">
+                          {diffDays > 1 ? `${diffDays} dias` : `${diffHours} horas`}
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          atrasado
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200">
+                          Atrasado
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex space-x-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleReagendar(returnVisit)}
+                          >
+                            Reagendar
+                          </Button>
+                          <Button variant="outline" size="sm" icon={Phone}>
+                            Ligar
+                          </Button>
+                          <Button variant="outline" size="sm" icon={MessageSquare}>
+                            WhatsApp
+                          </Button>
+                          {returnVisit.status === 'pendente' && (
+                            <Button 
+                              variant="success" 
+                              size="sm"
+                              onClick={() => handleConfirmReturn(returnVisit.id)}
+                            >
+                              Confirmar
+                            </Button>
+                          )}
+                          {returnVisit.status === 'confirmado' && (
+                            <Button 
+                              variant="primary" 
+                              size="sm"
+                              onClick={() => handleCompleteReturn(returnVisit.id)}
+                            >
+                              Realizar
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
       
       <NewReturnModal
         isOpen={showNewReturn}
@@ -408,9 +880,9 @@ export default function Retornos() {
             setShowScheduleModal(false);
             setSelectedPossibleReturn(null);
           }}
-          patientName={selectedPossibleReturn.patientName}
-          patientPhone={selectedPossibleReturn.patientPhone}
-          procedure={selectedPossibleReturn.procedure}
+          patientName={selectedPossibleReturn.paciente_nome}
+          patientPhone={selectedPossibleReturn.paciente_telefone}
+          procedure={selectedPossibleReturn.procedimento}
           onSave={handleSaveAppointment}
         />
       )}
@@ -422,9 +894,9 @@ export default function Retornos() {
             setShowReagendarModal(false);
             setSelectedReturnToReschedule(null);
           }}
-          patientName={selectedReturnToReschedule.patientName}
-          patientPhone="(11) 99999-9999" // Em uma aplicação real, viria do backend
-          procedure={selectedReturnToReschedule.procedure}
+          patientName={selectedReturnToReschedule.paciente_nome}
+          patientPhone={selectedReturnToReschedule.paciente_telefone}
+          procedure={selectedReturnToReschedule.procedimento}
           onSave={handleSaveReschedule}
         />
       )}

@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock, User, Save, ChevronLeft, ChevronRight } from 'lucide-react';
 import LoadingButton from '../UI/LoadingButton';
+import { apiService, Appointment } from '../../services/api';
+import { useBusinessHours } from '../../contexts/BusinessHoursContext';
 
 interface ScheduleAppointmentModalProps {
   isOpen: boolean;
@@ -19,6 +21,7 @@ export default function ScheduleAppointmentModal({
   procedure,
   onSave 
 }: ScheduleAppointmentModalProps) {
+  const { isWorkingDay } = useBusinessHours();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedTime, setSelectedTime] = useState('');
   const [professional, setProfessional] = useState('Dr. Ana Silva');
@@ -26,6 +29,10 @@ export default function ScheduleAppointmentModal({
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [existingAppointments, setExistingAppointments] = useState<Appointment[]>([]);
+  const [loadingAppointments, setLoadingAppointments] = useState(false);
+  const [occupiedTimes, setOccupiedTimes] = useState<string[]>([]);
+  const [loadingTimes, setLoadingTimes] = useState(false);
 
   const timeSlots = [
     '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
@@ -37,6 +44,121 @@ export default function ScheduleAppointmentModal({
     'Dr. Pedro Costa',
     'Dra. Maria Santos'
   ];
+
+  // Carregar consultas existentes quando o modal abrir
+  useEffect(() => {
+    if (isOpen) {
+      loadExistingAppointments();
+    }
+  }, [isOpen]);
+
+  // Recarregar horários quando a data ou profissional mudar
+  useEffect(() => {
+    if (isOpen && selectedDate) {
+      loadOccupiedTimes();
+      setSelectedTime(''); // Limpar seleção quando mudar data/profissional
+    }
+  }, [selectedDate, professional, isOpen]);
+
+  // Inicializar com lista vazia de horários ocupados
+  useEffect(() => {
+    if (isOpen) {
+      setOccupiedTimes([]);
+    }
+  }, [isOpen]);
+
+  const loadExistingAppointments = async () => {
+    try {
+      setLoadingAppointments(true);
+      const appointments = await apiService.getAllAppointments();
+      setExistingAppointments(appointments);
+    } catch (error) {
+      console.error('Erro ao carregar consultas existentes:', error);
+    } finally {
+      setLoadingAppointments(false);
+    }
+  };
+
+  const loadOccupiedTimes = async () => {
+    try {
+      setLoadingTimes(true);
+      
+      // Formatar data para busca
+      const year = selectedDate.getFullYear();
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const day = String(selectedDate.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+      
+      console.log('Verificando horários ocupados para data:', dateStr, 'Profissional:', professional);
+      
+      // Buscar todas as consultas e retornos da data selecionada
+      const [allAppointments, confirmedReturns] = await Promise.all([
+        apiService.getAllAppointments(),
+        apiService.getConfirmedReturns()
+      ]);
+      
+      // Filtrar consultas do dia selecionado para o profissional específico (excluindo canceladas)
+      const dayAppointments = allAppointments.filter(apt => 
+        apt.date === dateStr && 
+        apt.professional === professional &&
+        apt.status !== 'cancelado'
+      );
+      
+      // Filtrar retornos do dia selecionado para o profissional específico (excluindo cancelados)
+      const dayReturns = confirmedReturns.filter(ret => 
+        ret.data_retorno === dateStr && 
+        ret.status !== 'cancelado'
+      );
+      
+      // Função para gerar intervalos ocupados baseado na duração
+      const generateOccupiedIntervals = (appointments: any[], isReturn = false) => {
+        const intervals: string[] = [];
+        
+        appointments.forEach(apt => {
+          const startTime = isReturn ? (apt.hora_retorno || '09:00') : apt.time;
+          const duration = isReturn ? 60 : (apt.duration || 60); // Retornos têm 60min padrão
+          
+          // Normalizar formato: 09:00:00 -> 09:00
+          const normalizedStartTime = startTime.length > 5 ? startTime.substring(0, 5) : startTime;
+          
+          // Converter para minutos desde meia-noite
+          const [hours, minutes] = normalizedStartTime.split(':').map(Number);
+          const startMinutes = hours * 60 + minutes;
+          const endMinutes = startMinutes + duration;
+          
+          // Gerar intervalos de 30 minutos ocupados
+          for (let minutes = startMinutes; minutes < endMinutes; minutes += 30) {
+            const intervalHours = Math.floor(minutes / 60);
+            const intervalMinutes = minutes % 60;
+            const intervalTime = `${intervalHours.toString().padStart(2, '0')}:${intervalMinutes.toString().padStart(2, '0')}`;
+            intervals.push(intervalTime);
+          }
+        });
+        
+        return intervals;
+      };
+      
+      // Gerar intervalos ocupados das consultas
+      const occupiedAppointments = generateOccupiedIntervals(dayAppointments, false);
+      
+      // Gerar intervalos ocupados dos retornos
+      const occupiedReturns = generateOccupiedIntervals(dayReturns, true);
+      
+      // Combinar horários ocupados de consultas e retornos
+      const allOccupied = [...occupiedAppointments, ...occupiedReturns];
+      setOccupiedTimes(allOccupied);
+      
+      console.log('Horários ocupados encontrados (normalizados):', allOccupied);
+      console.log('Consultas do dia para', professional, ':', dayAppointments);
+      console.log('Retornos do dia para', professional, ':', dayReturns);
+    } catch (error) {
+      console.error('Erro ao carregar horários ocupados:', error);
+      // Em caso de erro, não mostrar horários ocupados
+      setOccupiedTimes([]);
+    } finally {
+      setLoadingTimes(false);
+    }
+  };
 
   // Função para gerar o calendário
   const generateCalendar = () => {
@@ -72,14 +194,24 @@ export default function ScheduleAppointmentModal({
   };
 
   const isWeekend = (date: Date) => {
-    const day = date.getDay();
-    return day === 0 || day === 6; // Domingo ou Sábado
+    // Usar as configurações de business hours em vez de hardcoded
+    return !isWorkingDay(date);
   };
 
   const isPastDate = (date: Date) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return date < today;
+  };
+
+  // Verificar se um horário está ocupado (usando a mesma lógica da agenda)
+  const isTimeSlotOccupied = (time: string) => {
+    return occupiedTimes.includes(time);
+  };
+
+  // Verificar se um horário está disponível
+  const isTimeSlotAvailable = (time: string) => {
+    return !isTimeSlotOccupied(time) && !isPastDate(selectedDate);
   };
 
   const navigateMonth = (direction: 'prev' | 'next') => {
@@ -230,23 +362,35 @@ export default function ScheduleAppointmentModal({
                 <div className="animate-in fade-in duration-300">
                   <h5 className="text-md font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center">
                     <Clock className="w-4 h-4 mr-2" />
-                    Horários - {selectedDate.toLocaleDateString('pt-BR')}
+                    Horários - {selectedDate.toLocaleDateString('pt-BR')} - {professional}
+                    {loadingTimes && <span className="ml-2 text-sm text-gray-500">(Carregando...)</span>}
                   </h5>
                   <div className="grid grid-cols-4 gap-2">
-                    {timeSlots.map((time) => (
-                      <button
-                        key={time}
-                        type="button"
-                        onClick={() => setSelectedTime(time)}
-                        className={`p-2 text-sm rounded-lg border transition-all duration-200 ${
-                          selectedTime === time
-                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 transform scale-105'
-                            : 'border-gray-200 dark:border-gray-600 hover:border-blue-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                        }`}
-                      >
-                        {time}
-                      </button>
-                    ))}
+                    {timeSlots.map((time) => {
+                      const isOccupied = isTimeSlotOccupied(time);
+                      const isAvailable = isTimeSlotAvailable(time);
+                      
+                      return (
+                        <button
+                          key={time}
+                          type="button"
+                          onClick={() => isAvailable && setSelectedTime(time)}
+                          disabled={!isAvailable}
+                          className={`p-2 text-sm rounded-lg border transition-all duration-200 ${
+                            selectedTime === time
+                              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 transform scale-105'
+                              : isOccupied
+                              ? 'border-red-200 bg-red-50 dark:bg-red-900/30 text-red-500 dark:text-red-400 cursor-not-allowed opacity-60'
+                              : isAvailable
+                              ? 'border-gray-200 dark:border-gray-600 hover:border-blue-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                              : 'border-gray-200 dark:border-gray-600 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                          }`}
+                        >
+                          {time}
+                          {isOccupied && <span className="block text-xs">Ocupado</span>}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}

@@ -13,11 +13,13 @@ import Arquivos from './pages/Arquivos';
 import Relatorios from './pages/Relatorios';
 import Configuracoes from './pages/Configuracoes';
 import AgendaOnline from './pages/AgendaOnline';
+import { BusinessHoursProvider } from './contexts/BusinessHoursContext';
 
 function App() {
   return (
-    <Router>
-      <Routes>
+    <BusinessHoursProvider>
+      <Router>
+        <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/agendar" element={<AgendaOnline />} />
         <Route path="/" element={<Layout />}>
@@ -35,6 +37,7 @@ function App() {
         </Route>
       </Routes>
     </Router>
+    </BusinessHoursProvider>
   );
 }
 

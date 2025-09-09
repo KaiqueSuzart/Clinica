@@ -1071,7 +1071,10 @@ export default function Pacientes() {
     ));
   };
 
-  const handleScheduleReturn = (returnData: any) => {
+  const handleScheduleReturn = async (returnData: any) => {
+    console.log('handleScheduleReturn chamado com dados:', returnData);
+    
+    // Atualizar lista de pacientes
     setPatientsList(prev => prev.map(patient => {
       if (patient.id === returnData.patientId) {
         return {
@@ -1093,6 +1096,22 @@ export default function Pacientes() {
       }
       return patient;
     }));
+
+    // Recarregar dados da agenda para incluir o novo retorno
+    try {
+      console.log('Buscando retornos confirmados...');
+      // Buscar retornos confirmados atualizados
+      const confirmedReturns = await apiService.getConfirmedReturns();
+      console.log('Retornos confirmados encontrados:', confirmedReturns);
+      
+      // Disparar evento customizado para atualizar a agenda
+      console.log('Disparando evento returnScheduled...');
+      window.dispatchEvent(new CustomEvent('returnScheduled', { 
+        detail: { confirmedReturns } 
+      }));
+    } catch (error) {
+      console.error('Erro ao recarregar dados da agenda:', error);
+    }
   };
 
   const handleSaveTreatmentPlan = async (treatmentPlan: any) => {
@@ -2216,6 +2235,8 @@ export default function Pacientes() {
           }}
           patientName={selectedReturnPatient.nome}
           patientId={selectedReturnPatient.id}
+          patientPhone={selectedReturnPatient.telefone}
+          patientEmail={selectedReturnPatient.email}
           onSave={handleScheduleReturn}
         />
       )}

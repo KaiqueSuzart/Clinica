@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock, User, Save, ChevronLeft, ChevronRight, Lock, AlertCircle } from 'lucide-react';
 import LoadingButton from '../UI/LoadingButton';
 import { apiService } from '../../services/api';
+import { useBusinessHours } from '../../contexts/BusinessHoursContext';
 
 interface EditAppointmentModalProps {
   isOpen: boolean;
@@ -11,6 +12,8 @@ interface EditAppointmentModalProps {
 }
 
 export default function EditAppointmentModal({ isOpen, onClose, appointment, onSave }: EditAppointmentModalProps) {
+  const { isWorkingDay } = useBusinessHours();
+  
   // Função para criar data segura
   const createSafeDate = (dateString?: string) => {
     if (!dateString) return new Date();
@@ -119,12 +122,36 @@ export default function EditAppointmentModal({ isOpen, onClose, appointment, onS
       console.log('Total de consultas do dia:', allAppointments.filter(apt => apt.date === dateStr).length);
       console.log('Consultas filtradas (sem a atual):', dayAppointments.length);
       
-      // Extrair os horários ocupados e normalizar formato
-      const occupied = dayAppointments.map(apt => {
-        // Normalizar formato: 09:00:00 -> 09:00
-        const time = apt.time;
-        return time.length > 5 ? time.substring(0, 5) : time;
-      });
+      // Função para gerar intervalos ocupados baseado na duração
+      const generateOccupiedIntervals = (appointments: any[]) => {
+        const intervals: string[] = [];
+        
+        appointments.forEach(apt => {
+          const startTime = apt.time;
+          const duration = apt.duration || 60; // Duração padrão de 60 minutos
+          
+          // Normalizar formato: 09:00:00 -> 09:00
+          const normalizedStartTime = startTime.length > 5 ? startTime.substring(0, 5) : startTime;
+          
+          // Converter para minutos desde meia-noite
+          const [hours, minutes] = normalizedStartTime.split(':').map(Number);
+          const startMinutes = hours * 60 + minutes;
+          const endMinutes = startMinutes + duration;
+          
+          // Gerar intervalos de 30 minutos ocupados
+          for (let minutes = startMinutes; minutes < endMinutes; minutes += 30) {
+            const intervalHours = Math.floor(minutes / 60);
+            const intervalMinutes = minutes % 60;
+            const intervalTime = `${intervalHours.toString().padStart(2, '0')}:${intervalMinutes.toString().padStart(2, '0')}`;
+            intervals.push(intervalTime);
+          }
+        });
+        
+        return intervals;
+      };
+      
+      // Gerar intervalos ocupados baseado na duração
+      const occupied = generateOccupiedIntervals(dayAppointments);
       setOccupiedTimes(occupied);
       
       console.log('Horários ocupados para', dateStr, ':', occupied);
@@ -200,8 +227,8 @@ export default function EditAppointmentModal({ isOpen, onClose, appointment, onS
   };
 
   const isWeekend = (date: Date) => {
-    const day = date.getDay();
-    return day === 0 || day === 6; // Domingo ou Sábado
+    // Usar as configurações de business hours em vez de hardcoded
+    return !isWorkingDay(date);
   };
 
   const isPastDate = (date: Date) => {

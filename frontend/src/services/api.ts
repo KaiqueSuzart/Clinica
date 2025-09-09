@@ -139,6 +139,41 @@ export interface Appointment {
   notes?: string;
 }
 
+export interface ReturnVisit {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  empresa_id: string;
+  cliente_id: string;
+  consulta_original_id?: string;
+  data_retorno: string;
+  hora_retorno: string;
+  motivo: string;
+  procedimento: string;
+  status: 'pendente' | 'confirmado' | 'realizado' | 'cancelado';
+  observacoes?: string;
+  data_consulta_original?: string; // Data da consulta original
+  // Dados do paciente
+  paciente_nome: string;
+  paciente_telefone: string;
+  paciente_email?: string;
+  // Dados da consulta original (se existir)
+  consulta_original_data?: string;
+  consulta_original_procedimento?: string;
+}
+
+export interface CreateReturnData {
+  cliente_id: string;
+  consulta_original_id?: string;
+  data_retorno: string;
+  hora_retorno: string;
+  motivo: string;
+  procedimento: string;
+  status: string;
+  observacoes?: string;
+  data_consulta_original?: string; // Data da consulta original
+}
+
 class ApiService {
   private async request<T>(
     endpoint: string,
@@ -521,6 +556,111 @@ class ApiService {
       method: 'PUT',
       body: JSON.stringify({ confirmed }),
     });
+  }
+
+  // ===== RETORNOS =====
+  
+  async getAllReturns(): Promise<ReturnVisit[]> {
+    return this.request<ReturnVisit[]>('/returns');
+  }
+
+  // ===== CONFIGURAÇÕES DE HORÁRIO =====
+  
+  async getBusinessHours(): Promise<any> {
+    return this.request<any>('/business-hours');
+  }
+
+  async updateBusinessHours(businessHours: any): Promise<any> {
+    return this.request<any>('/business-hours', {
+      method: 'PUT',
+      body: JSON.stringify(businessHours),
+    });
+  }
+
+  async getConfirmedReturns(): Promise<ReturnVisit[]> {
+    return this.request<ReturnVisit[]>('/returns/confirmed');
+  }
+
+  async getPossibleReturns(): Promise<ReturnVisit[]> {
+    return this.request<ReturnVisit[]>('/returns/possible');
+  }
+
+  async getCompletedReturns(): Promise<ReturnVisit[]> {
+    return this.request<ReturnVisit[]>('/returns/completed');
+  }
+
+  async getOverdueReturns(): Promise<ReturnVisit[]> {
+    return this.request<ReturnVisit[]>('/returns/overdue');
+  }
+
+  async getReturnById(id: string): Promise<ReturnVisit> {
+    return this.request<ReturnVisit>(`/returns/${id}`);
+  }
+
+  async createReturn(data: CreateReturnData): Promise<ReturnVisit> {
+    return this.request<ReturnVisit>('/returns', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateReturn(id: string, data: Partial<CreateReturnData>): Promise<ReturnVisit> {
+    return this.request<ReturnVisit>(`/returns/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteReturn(id: string): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`/returns/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async confirmReturn(id: string): Promise<ReturnVisit> {
+    return this.request<ReturnVisit>(`/returns/${id}/confirm`, {
+      method: 'PATCH',
+    });
+  }
+
+  async completeReturn(id: string): Promise<ReturnVisit> {
+    return this.request<ReturnVisit>(`/returns/${id}/complete`, {
+      method: 'PATCH',
+    });
+  }
+
+  async cancelReturn(id: string): Promise<ReturnVisit> {
+    return this.request<ReturnVisit>(`/returns/${id}/cancel`, {
+      method: 'PATCH',
+    });
+  }
+
+  // ===== CONSULTAS/AGENDA =====
+  
+  async getTodayAppointments(): Promise<Appointment[]> {
+    return this.request<Appointment[]>('/appointments/today');
+  }
+
+  async getCompletedAppointments(): Promise<Appointment[]> {
+    return this.request<Appointment[]>('/appointments/completed');
+  }
+
+  async markAppointmentAsCompleted(id: string): Promise<Appointment> {
+    return this.request<Appointment>(`/appointments/${id}/complete`, {
+      method: 'PUT',
+    });
+  }
+
+  async getWeekAppointments(): Promise<Appointment[]> {
+    return this.request<Appointment[]>('/appointments/week');
+  }
+
+  async getMonthAppointments(): Promise<Appointment[]> {
+    return this.request<Appointment[]>('/appointments/month');
+  }
+
+  async getAppointmentsByPeriod(startDate: string, endDate: string): Promise<Appointment[]> {
+    return this.request<Appointment[]>(`/appointments/period?startDate=${startDate}&endDate=${endDate}`);
   }
 }
 

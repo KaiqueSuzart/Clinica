@@ -9,7 +9,10 @@ import { AnamneseModule } from './anamnese/anamnese.module';
 import { AnnotationsModule } from './annotations/annotations.module';
 import { TreatmentPlansModule } from './treatment-plans/treatment-plans.module';
 import { FilesModule } from './files/files.module';
+import { ReturnsModule } from './returns/returns.module';
+import { BusinessHoursModule } from './business-hours/business-hours.module';
 import { SupabaseModule } from './supabase/supabase.module';
+import { TestController } from './test.controller';
 
 @Module({
   imports: [
@@ -22,8 +25,10 @@ import { SupabaseModule } from './supabase/supabase.module';
     AnnotationsModule,
     TreatmentPlansModule,
     FilesModule,
+    ReturnsModule,
+    BusinessHoursModule,
   ],
-  controllers: [AppController],
+  controllers: [AppController, TestController],
   providers: [AppService],
 })
 export class AppModule {}

@@ -5,23 +5,30 @@ import Button from '../components/UI/Button';
 import StatusBadge from '../components/UI/StatusBadge';
 import NewAppointmentModal from '../components/Appointments/NewAppointmentModal';
 import EditAppointmentModal from '../components/Appointments/EditAppointmentModal';
-import { apiService, Appointment } from '../services/api';
+import { apiService, Appointment, ReturnVisit } from '../services/api';
 
 export default function Agenda() {
-  const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
+  const [activeTab, setActiveTab] = useState<'today' | 'history'>('today');
   const [selectedProfessional, setSelectedProfessional] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [showNewAppointment, setShowNewAppointment] = useState(false);
-  const [appointmentsList, setAppointmentsList] = useState<Appointment[]>([]);
+  const [todayAppointments, setTodayAppointments] = useState<Appointment[]>([]);
+  const [historyAppointments, setHistoryAppointments] = useState<ReturnVisit[]>([]);
+  const [weekAppointments, setWeekAppointments] = useState<Appointment[]>([]);
+  const [monthAppointments, setMonthAppointments] = useState<Appointment[]>([]);
+  const [confirmedReturns, setConfirmedReturns] = useState<ReturnVisit[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showEditAppointment, setShowEditAppointment] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [showPastAppointments, setShowPastAppointments] = useState(false);
+  const [periodFilter, setPeriodFilter] = useState<'today' | 'week' | 'month'>('today');
 
   // Função para corrigir problema de fuso horário na exibição de datas
-  const formatDateSafe = (dateString: string, options: Intl.DateTimeFormatOptions) => {
+  const formatDateSafe = (dateString: string | undefined, options: Intl.DateTimeFormatOptions) => {
+    if (!dateString) {
+      return 'Data não disponível';
+    }
     const [year, month, day] = dateString.split('-');
     const localDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
     return localDate.toLocaleDateString('pt-BR', options);
@@ -35,12 +42,39 @@ export default function Agenda() {
     loadAppointments();
   }, []);
 
+  // Escutar evento de retorno agendado
+  useEffect(() => {
+    const handleReturnScheduled = (event: CustomEvent) => {
+      console.log('Retorno agendado, recarregando dados da agenda...');
+      loadAppointments();
+    };
+
+    window.addEventListener('returnScheduled', handleReturnScheduled as EventListener);
+    
+    return () => {
+      window.removeEventListener('returnScheduled', handleReturnScheduled as EventListener);
+    };
+  }, []);
+
   const loadAppointments = async () => {
     try {
       setLoading(true);
       setError(null);
-      const appointments = await apiService.getAllAppointments();
-      setAppointmentsList(appointments);
+      
+      // Carregar consultas do dia, semana, mês, retornos confirmados e histórico de retornos realizados
+      const [todayData, weekData, monthData, confirmedReturnsData, historyData] = await Promise.all([
+        apiService.getTodayAppointments(),
+        apiService.getWeekAppointments(),
+        apiService.getMonthAppointments(),
+        apiService.getConfirmedReturns(), // Retornos confirmados para a agenda
+        apiService.getCompletedReturns() // Usar retornos realizados no histórico
+      ]);
+      
+      setTodayAppointments(todayData);
+      setWeekAppointments(weekData);
+      setMonthAppointments(monthData);
+      setConfirmedReturns(confirmedReturnsData);
+      setHistoryAppointments(historyData);
     } catch (err) {
       setError('Erro ao carregar agendamentos. Verifique se o backend está rodando.');
       console.error('Erro ao carregar agendamentos:', err);
@@ -57,29 +91,116 @@ export default function Agenda() {
   };
 
   // Filtrar e ordenar consultas
-  const filteredAppointments = appointmentsList
-    .filter(apt => {
-      const professionalMatch = selectedProfessional === 'all' || apt.professional === selectedProfessional;
-      const statusMatch = selectedStatus === 'all' || apt.status === selectedStatus;
-      const searchMatch = searchTerm === '' || 
-        apt.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        apt.procedure.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      return professionalMatch && statusMatch && searchMatch;
-    })
-    .sort((a, b) => {
-      // Ordenar por data e horário
-      const dateA = new Date(`${a.date}T${a.time}`);
-      const dateB = new Date(`${b.date}T${b.time}`);
+  const getFilteredAppointments = (appointments: Appointment[]) => {
+    return appointments
+      .filter(apt => {
+        const professionalMatch = selectedProfessional === 'all' || apt.professional === selectedProfessional;
+        const statusMatch = selectedStatus === 'all' || apt.status === selectedStatus;
+        const searchMatch = searchTerm === '' || 
+          apt.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          apt.procedure.toLowerCase().includes(searchTerm.toLowerCase());
+        
+        // Filtrar consultas realizadas da agenda do dia
+        const notCompleted = apt.status !== 'realizado';
+        
+        return professionalMatch && statusMatch && searchMatch && notCompleted;
+      })
+      .sort((a, b) => {
+        // Ordenar por data e horário
+        const dateA = new Date(`${a.date}T${a.time}`);
+        const dateB = new Date(`${b.date}T${b.time}`);
+        return dateA.getTime() - dateB.getTime();
+      });
+  };
+
+  // Função para filtrar retornos (histórico)
+  const getFilteredReturns = (returns: ReturnVisit[]) => {
+    return returns
+      .filter(ret => {
+        const searchMatch = searchTerm === '' || 
+          ret.paciente_nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          ret.procedimento.toLowerCase().includes(searchTerm.toLowerCase());
+        
+        return searchMatch;
+      })
+      .sort((a, b) => {
+        // Ordenar por data e horário
+        const dateA = new Date(`${a.data_retorno}T${a.hora_retorno || '00:00:00'}`);
+        const dateB = new Date(`${b.data_retorno}T${b.hora_retorno || '00:00:00'}`);
+        return dateB.getTime() - dateA.getTime(); // Mais recente primeiro
+      });
+  };
+
+  // Função para mesclar consultas e retornos confirmados
+  const mergeAppointmentsAndReturns = (appointments: Appointment[], returns: ReturnVisit[]) => {
+    // Converter retornos para o formato de consulta e filtrar realizados
+    const convertedReturns = returns
+      .filter(ret => ret.status !== 'realizado') // Filtrar retornos realizados
+      .map(ret => {
+        return {
+          id: `return_${ret.id}`,
+          patientId: ret.cliente_id,
+          patientName: ret.paciente_nome,
+          patientPhone: ret.paciente_telefone,
+          date: ret.data_retorno,
+          time: ret.hora_retorno,
+          duration: 60, // Duração padrão para retornos
+          procedure: ret.procedimento,
+          professional: 'Dr. Ana Silva', // Profissional padrão
+          status: ret.status as 'pendente' | 'confirmado' | 'cancelado' | 'realizado',
+          notes: ret.observacoes,
+          isReturn: true // Flag para identificar que é um retorno
+        };
+      });
+
+    // Mesclar e ordenar por data e horário
+    const merged = [...appointments, ...convertedReturns].sort((a, b) => {
+      // Verificar se as datas existem antes de criar os objetos Date
+      if (!a.date || !b.date) {
+        console.warn('Data não encontrada:', { a: a.date, b: b.date });
+        return 0;
+      }
+      const dateA = new Date(`${a.date}T${a.time || '00:00:00'}`);
+      const dateB = new Date(`${b.date}T${b.time || '00:00:00'}`);
       return dateA.getTime() - dateB.getTime();
     });
 
-  // Separar consultas futuras e passadas
-  const upcomingAppointments = filteredAppointments.filter(apt => !isPastAppointment(apt));
-  const pastAppointments = filteredAppointments.filter(apt => isPastAppointment(apt));
+    return merged;
+  };
 
-  // Escolher qual lista mostrar
-  const appointmentsToShow = showPastAppointments ? pastAppointments : upcomingAppointments;
+  const filteredTodayAppointments = getFilteredAppointments(todayAppointments);
+  const filteredWeekAppointments = getFilteredAppointments(weekAppointments);
+  const filteredMonthAppointments = getFilteredAppointments(monthAppointments);
+  const filteredHistoryReturns = getFilteredReturns(historyAppointments);
+  const filteredConfirmedReturns = getFilteredReturns(confirmedReturns);
+
+  // Escolher qual lista mostrar baseado na aba ativa e filtro de período
+  const getAppointmentsToShow = () => {
+    if (activeTab === 'history') {
+      return filteredHistoryReturns;
+    }
+    
+    // Para a aba de consultas, mesclar consultas com retornos confirmados
+    let appointments = [];
+    switch (periodFilter) {
+      case 'today':
+        appointments = filteredTodayAppointments;
+        break;
+      case 'week':
+        appointments = filteredWeekAppointments;
+        break;
+      case 'month':
+        appointments = filteredMonthAppointments;
+        break;
+      default:
+        appointments = filteredTodayAppointments;
+    }
+    
+    // Mesclar consultas com retornos confirmados
+    return mergeAppointmentsAndReturns(appointments, filteredConfirmedReturns);
+  };
+
+  const appointmentsToShow = getAppointmentsToShow();
 
   const handleNewAppointment = async (newAppointment: any) => {
     try {
@@ -93,10 +214,76 @@ export default function Agenda() {
         status: newAppointment.status || 'pendente',
         notes: newAppointment.notes
       });
-      setAppointmentsList(prev => [...prev, created]);
+      
+      // Adicionar à lista apropriada baseado na data
+      const today = new Date().toISOString().split('T')[0];
+      const appointmentDate = new Date(created.date);
+      const todayDate = new Date(today);
+      
+      // Calcular início da semana (segunda-feira)
+      const startOfWeek = new Date(todayDate);
+      const day = todayDate.getDay();
+      const diff = todayDate.getDate() - day + (day === 0 ? -6 : 1); // Ajustar para segunda-feira
+      startOfWeek.setDate(diff);
+      startOfWeek.setHours(0, 0, 0, 0);
+      
+      // Calcular fim da semana (domingo)
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
+      endOfWeek.setHours(23, 59, 59, 999);
+      
+      // Calcular início do mês
+      const startOfMonth = new Date(todayDate.getFullYear(), todayDate.getMonth(), 1);
+      
+      // Calcular fim do mês
+      const endOfMonth = new Date(todayDate.getFullYear(), todayDate.getMonth() + 1, 0);
+      endOfMonth.setHours(23, 59, 59, 999);
+      
+      // Adicionar à lista de hoje se for hoje
+      if (created.date === today) {
+        setTodayAppointments(prev => [...prev, created]);
+      }
+      
+      // Adicionar à lista da semana se estiver na semana atual
+      if (appointmentDate >= startOfWeek && appointmentDate <= endOfWeek) {
+        setWeekAppointments(prev => [...prev, created]);
+      }
+      
+      // Adicionar à lista do mês se estiver no mês atual
+      if (appointmentDate >= startOfMonth && appointmentDate <= endOfMonth) {
+        setMonthAppointments(prev => [...prev, created]);
+      }
+      
+      console.log('Consulta criada e adicionada às listas apropriadas:', created);
     } catch (err) {
       setError('Erro ao criar agendamento');
       console.error('Erro ao criar agendamento:', err);
+    }
+  };
+
+  const handleMarkAsCompleted = async (appointment: Appointment) => {
+    try {
+      console.log('Marcando consulta como realizada:', appointment);
+      console.log('ID da consulta:', appointment.id);
+      
+      if (!appointment.id) {
+        throw new Error('ID da consulta não encontrado');
+      }
+      
+      const updated = await apiService.markAppointmentAsCompleted(appointment.id);
+      
+      // Remover de todas as listas de consultas
+      setTodayAppointments(prev => prev.filter(apt => apt.id !== appointment.id));
+      setWeekAppointments(prev => prev.filter(apt => apt.id !== appointment.id));
+      setMonthAppointments(prev => prev.filter(apt => apt.id !== appointment.id));
+      
+      // Adicionar ao histórico
+      setHistoryAppointments(prev => [updated, ...prev]);
+      
+      console.log('Consulta marcada como realizada:', updated);
+    } catch (err) {
+      setError('Erro ao marcar consulta como realizada');
+      console.error('Erro ao marcar consulta como realizada:', err);
     }
   };
 
@@ -108,9 +295,18 @@ export default function Agenda() {
   const handleSaveEditAppointment = async (updatedAppointment: Appointment) => {
     try {
       const updated = await apiService.updateAppointment(updatedAppointment.id, updatedAppointment);
-      setAppointmentsList(prev => prev.map(apt => 
-        apt.id === updated.id ? updated : apt
-      ));
+      
+      // Atualizar na lista correta baseado na data
+      const today = new Date().toISOString().split('T')[0];
+      if (updated.date === today) {
+        setTodayAppointments(prev => prev.map(apt => 
+          apt.id === updated.id ? updated : apt
+        ));
+      } else {
+        setHistoryAppointments(prev => prev.map(apt => 
+          apt.id === updated.id ? updated : apt
+        ));
+      }
     } catch (err) {
       setError('Erro ao atualizar agendamento');
       console.error('Erro ao atualizar agendamento:', err);
@@ -176,7 +372,7 @@ export default function Agenda() {
         </Button>
       </div>
 
-      {/* Barra de Pesquisa */}
+      {/* Abas de Navegação */}
       <Card>
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1">
@@ -194,26 +390,26 @@ export default function Agenda() {
           
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setShowPastAppointments(false)}
+              onClick={() => setActiveTab('today')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
-                !showPastAppointments
+                activeTab === 'today'
                   ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300'
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
             >
               <Clock className="w-4 h-4" />
-              Próximas ({upcomingAppointments.length})
+              Consultas ({appointmentsToShow.length})
             </button>
             <button
-              onClick={() => setShowPastAppointments(true)}
+              onClick={() => setActiveTab('history')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
-                showPastAppointments
+                activeTab === 'history'
                   ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300'
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
             >
               <History className="w-4 h-4" />
-              Histórico ({pastAppointments.length})
+              Histórico ({filteredHistoryReturns.length})
             </button>
           </div>
         </div>
@@ -225,29 +421,6 @@ export default function Agenda() {
           <div className="flex items-center space-x-2">
             <Filter className="w-4 h-4 text-gray-500 dark:text-gray-400" />
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Filtros:</span>
-          </div>
-          
-          <div className="flex space-x-2">
-            <button
-              onClick={() => setViewMode('week')}
-              className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                viewMode === 'week'
-                  ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-              }`}
-            >
-              Semana
-            </button>
-            <button
-              onClick={() => setViewMode('month')}
-              className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                viewMode === 'month'
-                  ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-              }`}
-            >
-              Mês
-            </button>
           </div>
 
           <select
@@ -271,34 +444,90 @@ export default function Agenda() {
               <option key={status} value={status}>{status}</option>
             ))}
           </select>
+
+          {/* Filtros de Período - só aparecem na aba de consultas */}
+          {activeTab === 'today' && (
+            <>
+              <div className="border-l border-gray-300 dark:border-gray-600 h-6"></div>
+              <div className="flex items-center space-x-2">
+                <Calendar className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Período:</span>
+              </div>
+              
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => setPeriodFilter('today')}
+                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                    periodFilter === 'today'
+                      ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  Hoje
+                </button>
+                <button
+                  onClick={() => setPeriodFilter('week')}
+                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                    periodFilter === 'week'
+                      ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  Esta Semana
+                </button>
+                <button
+                  onClick={() => setPeriodFilter('month')}
+                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                    periodFilter === 'month'
+                      ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  Este Mês
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </Card>
 
       {/* Lista de Agendamentos */}
       <Card 
-        title={showPastAppointments ? "Histórico de Consultas" : "Próximas Consultas"} 
-        subtitle={`${appointmentsToShow.length} consultas encontradas${searchTerm ? ` para "${searchTerm}"` : ''}`}
+        title={activeTab === 'today' ? 
+          (periodFilter === 'today' ? "Agenda do Dia" : 
+           periodFilter === 'week' ? "Agenda da Semana" : 
+           "Agenda do Mês") : 
+          "Histórico de Retornos"} 
+        subtitle={`${appointmentsToShow.length} ${activeTab === 'today' ? 'itens' : 'retornos'} encontrados${searchTerm ? ` para "${searchTerm}"` : ''}`}
       >
         {appointmentsToShow.length === 0 ? (
           <div className="text-center py-8">
             <div className="text-gray-400 mb-2">
-              {showPastAppointments ? <History className="w-8 h-8 mx-auto" /> : <Clock className="w-8 h-8 mx-auto" />}
+              {activeTab === 'history' ? <History className="w-8 h-8 mx-auto" /> : <Clock className="w-8 h-8 mx-auto" />}
             </div>
             <p className="text-gray-500 dark:text-gray-400">
               {searchTerm 
-                ? `Nenhuma consulta encontrada para "${searchTerm}"`
-                : showPastAppointments 
-                ? 'Nenhuma consulta no histórico'
-                : 'Nenhuma consulta próxima agendada'
+                ? `Nenhum ${activeTab === 'today' ? 'item' : 'retorno'} encontrado para "${searchTerm}"`
+                : activeTab === 'history'
+                ? 'Nenhum retorno no histórico'
+                : periodFilter === 'today'
+                ? 'Nenhuma consulta ou retorno agendado para hoje'
+                : periodFilter === 'week'
+                ? 'Nenhuma consulta ou retorno agendado para esta semana'
+                : 'Nenhuma consulta ou retorno agendado para este mês'
               }
             </p>
           </div>
         ) : (
           <div className="space-y-4">
-            {appointmentsToShow.map((appointment) => {
-              const isPast = isPastAppointment(appointment);
+            {appointmentsToShow.map((item) => {
+              // Verificar se é um retorno ou consulta
+              const isReturn = 'isReturn' in item || 'paciente_nome' in item;
+              const isPast = isReturn ? false : isPastAppointment(item as Appointment);
+              
+              
               return (
-            <div key={appointment.id} className={`border rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
+            <div key={item.id} className={`border rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
                 isPast 
                   ? 'border-gray-300 dark:border-gray-600 bg-gray-50/50 dark:bg-gray-800/50 opacity-75' 
                   : 'border-gray-200 dark:border-gray-700'
@@ -307,38 +536,48 @@ export default function Agenda() {
                 <div className="flex items-center space-x-4">
                   <div className="flex flex-col items-center bg-blue-50 dark:bg-blue-900/30 rounded-lg p-3">
                     <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-                      {formatDateSafe(appointment.date, { day: '2-digit' })}
+                      {formatDateSafe(
+                        isReturn 
+                          ? (item as any).data_retorno || (item as any).date
+                          : (item as Appointment).date, 
+                        { day: '2-digit' }
+                      )}
                     </span>
                     <span className="text-xs text-blue-600 dark:text-blue-400">
-                      {formatDateSafe(appointment.date, { month: 'short' })}
+                      {formatDateSafe(
+                        isReturn 
+                          ? (item as any).data_retorno || (item as any).date
+                          : (item as Appointment).date, 
+                        { month: 'short' }
+                      )}
                     </span>
                   </div>
                   
                   <div className="flex-1">
                     <div className="flex items-center space-x-2 mb-1">
                       <User className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-                      <h3 className="font-semibold text-gray-900 dark:text-gray-100">{appointment.patientName}</h3>
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100">{(item as Appointment).patientName}</h3>
                       <div className="flex items-center space-x-1 ml-2">
-                        {getStatusIcon(appointment.status)}
+                        {getStatusIcon((item as Appointment).status)}
                         <MessageCircle className="w-4 h-4 text-blue-500" />
                       </div>
                     </div>
                     <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-300">
                       <div className="flex items-center space-x-1">
                         <Clock className="w-4 h-4" />
-                        <span>{appointment.time}</span>
+                        <span>{(item as Appointment).time}</span>
                       </div>
                       <span>•</span>
-                      <span>{appointment.procedure}</span>
+                      <span>{(item as Appointment).procedure}</span>
                       <span>•</span>
-                      <span>{appointment.professional}</span>
+                      <span>{(item as Appointment).professional}</span>
                     </div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{appointment.patientPhone}</p>
-                    {!isPast && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{(item as Appointment).patientPhone}</p>
+                    {!isPast && !isReturn && (
                       <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
                         {(() => {
                           const now = new Date();
-                          const appointmentDateTime = new Date(`${appointment.date}T${appointment.time}`);
+                          const appointmentDateTime = new Date(`${(item as Appointment).date}T${(item as Appointment).time}`);
                           const diffMs = appointmentDateTime.getTime() - now.getTime();
                           const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
                           const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
@@ -354,16 +593,45 @@ export default function Agenda() {
                 </div>
                 
                 <div className="flex items-center space-x-3">
-                  <StatusBadge status={appointment.status} />
+                  <StatusBadge status={(item as Appointment).status} />
                   <div className="flex space-x-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => handleEditAppointment(appointment)}
-                    >
-                      Editar
-                    </Button>
+                    {!isReturn && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleEditAppointment(item as Appointment)}
+                      >
+                        Editar
+                      </Button>
+                    )}
                     <Button variant="outline" size="sm">WhatsApp</Button>
+                    {activeTab === 'today' && !isReturn && (item as Appointment).status !== 'realizado' && (
+                      <Button 
+                        variant="primary" 
+                        size="sm"
+                        onClick={() => {
+                          const appointment = item as Appointment;
+                          if (!appointment.id) {
+                            console.error('ID não encontrado no item:', appointment);
+                            setError('Erro: ID da consulta não encontrado');
+                            return;
+                          }
+                          handleMarkAsCompleted(appointment);
+                        }}
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        Realizar
+                      </Button>
+                    )}
+                    {isReturn && (
+                      <Button 
+                        variant="primary" 
+                        size="sm"
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                      >
+                        Realizar Retorno
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>
