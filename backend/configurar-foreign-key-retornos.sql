@@ -49,3 +49,4 @@ LEFT JOIN clientelA c ON r.cliente_id = c.id
 LIMIT 5;
 
 
+

@@ -70,3 +70,4 @@ LEFT JOIN consultas c ON r.consulta_original_id = c.id
 ORDER BY r.data_retorno, r.hora_retorno;
 
 
+

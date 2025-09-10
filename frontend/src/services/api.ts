@@ -174,6 +174,77 @@ export interface CreateReturnData {
   data_consulta_original?: string; // Data da consulta original
 }
 
+// ===== ORÇAMENTOS =====
+
+export interface BudgetItem {
+  id?: string;
+  descricao: string;
+  quantidade: number;
+  valor_unitario: number;
+  valor_total: number;
+  observacoes?: string;
+}
+
+export interface Budget {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  empresa_id: string;
+  cliente_id: string;
+  dentista_id?: string;
+  descricao?: string;
+  valor_total: number;
+  desconto: number;
+  tipo_desconto?: string;
+  valor_final: number;
+  status: 'rascunho' | 'enviado' | 'aprovado' | 'recusado' | 'cancelado';
+  data_validade: string;
+  observacoes?: string;
+  forma_pagamento?: string;
+  parcelas: number;
+  itens?: BudgetItem[];
+  // Dados do paciente (join)
+  clientelA?: {
+    id: string;
+    nome: string;
+    telefone?: string;
+    email?: string;
+  };
+}
+
+export interface CreateBudgetData {
+  cliente_id: string;
+  dentista_id?: string;
+  descricao?: string;
+  valor_total: number;
+  desconto?: number;
+  tipo_desconto?: string;
+  valor_final: number;
+  status?: string;
+  data_validade: string;
+  observacoes?: string;
+  forma_pagamento?: string;
+  parcelas?: number;
+  itens: {
+    descricao: string;
+    quantidade: number;
+    valor_unitario: number;
+    valor_total: number;
+    observacoes?: string;
+  }[];
+}
+
+export interface UpdateBudgetData extends Partial<CreateBudgetData> {
+  itens?: {
+    id?: string;
+    descricao: string;
+    quantidade: number;
+    valor_unitario: number;
+    valor_total: number;
+    observacoes?: string;
+  }[];
+}
+
 class ApiService {
   private async request<T>(
     endpoint: string,
@@ -661,6 +732,46 @@ class ApiService {
 
   async getAppointmentsByPeriod(startDate: string, endDate: string): Promise<Appointment[]> {
     return this.request<Appointment[]>(`/appointments/period?startDate=${startDate}&endDate=${endDate}`);
+  }
+
+  // ===== ORÇAMENTOS =====
+  
+  async getAllBudgets(): Promise<Budget[]> {
+    return this.request<Budget[]>('/budgets');
+  }
+
+  async getBudgetById(id: string): Promise<Budget> {
+    return this.request<Budget>(`/budgets/${id}`);
+  }
+
+  async getBudgetsByPatient(patientId: string): Promise<Budget[]> {
+    return this.request<Budget[]>(`/budgets/patient/${patientId}`);
+  }
+
+  async createBudget(data: CreateBudgetData): Promise<Budget> {
+    return this.request<Budget>('/budgets', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateBudget(id: string, data: UpdateBudgetData): Promise<Budget> {
+    return this.request<Budget>(`/budgets/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateBudgetStatus(id: string, status: string): Promise<Budget> {
+    return this.request<Budget>(`/budgets/${id}/status?status=${status}`, {
+      method: 'PUT',
+    });
+  }
+
+  async deleteBudget(id: string): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`/budgets/${id}`, {
+      method: 'DELETE',
+    });
   }
 }
 

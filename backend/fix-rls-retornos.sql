@@ -37,3 +37,4 @@ SELECT COUNT(*) as total_retornos FROM retornos;
 -- 5. Mostrar os retornos inseridos
 SELECT * FROM retornos ORDER BY created_at DESC LIMIT 5;
 
+

@@ -11,6 +11,7 @@ import { TreatmentPlansModule } from './treatment-plans/treatment-plans.module';
 import { FilesModule } from './files/files.module';
 import { ReturnsModule } from './returns/returns.module';
 import { BusinessHoursModule } from './business-hours/business-hours.module';
+import { BudgetsModule } from './budgets/budgets.module';
 import { SupabaseModule } from './supabase/supabase.module';
 import { TestController } from './test.controller';
 
@@ -27,6 +28,7 @@ import { TestController } from './test.controller';
     FilesModule,
     ReturnsModule,
     BusinessHoursModule,
+    BudgetsModule,
   ],
   controllers: [AppController, TestController],
   providers: [AppService],

@@ -1,0 +1,156 @@
+-- Script limpo para criar tabelas de orçamentos
+-- Execute este script se o anterior deu erro de triggers/políticas já existentes
+
+-- Criar tabela de orçamentos
+CREATE TABLE IF NOT EXISTS orcamentos (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    empresa_id UUID NOT NULL DEFAULT '00000000-0000-0000-0000-000000000001',
+    cliente_id UUID NOT NULL,
+    dentista_id UUID,
+    descricao TEXT,
+    valor_total DECIMAL(10,2) NOT NULL DEFAULT 0,
+    desconto DECIMAL(10,2) DEFAULT 0,
+    valor_final DECIMAL(10,2) NOT NULL DEFAULT 0,
+    status VARCHAR(20) DEFAULT 'rascunho' CHECK (status IN ('rascunho', 'enviado', 'aprovado', 'recusado', 'cancelado')),
+    data_validade DATE NOT NULL,
+    observacoes TEXT,
+    forma_pagamento VARCHAR(50),
+    parcelas INTEGER DEFAULT 1 CHECK (parcelas >= 1 AND parcelas <= 60),
+    
+    -- Foreign keys
+    CONSTRAINT fk_orcamentos_cliente FOREIGN KEY (cliente_id) REFERENCES "clientelA"(id) ON DELETE CASCADE,
+    CONSTRAINT fk_orcamentos_dentista FOREIGN KEY (dentista_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+    CONSTRAINT fk_orcamentos_empresa FOREIGN KEY (empresa_id) REFERENCES empresa(id) ON DELETE CASCADE
+);
+
+-- Criar tabela de itens do orçamento
+CREATE TABLE IF NOT EXISTS itens_orcamento (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    orcamento_id UUID NOT NULL,
+    descricao TEXT NOT NULL,
+    quantidade INTEGER NOT NULL DEFAULT 1 CHECK (quantidade > 0),
+    valor_unitario DECIMAL(10,2) NOT NULL DEFAULT 0 CHECK (valor_unitario >= 0),
+    valor_total DECIMAL(10,2) NOT NULL DEFAULT 0 CHECK (valor_total >= 0),
+    observacoes TEXT,
+    
+    -- Foreign key
+    CONSTRAINT fk_itens_orcamento_orcamento FOREIGN KEY (orcamento_id) REFERENCES orcamentos(id) ON DELETE CASCADE
+);
+
+-- Criar índices para melhor performance
+CREATE INDEX IF NOT EXISTS idx_orcamentos_cliente_id ON orcamentos(cliente_id);
+CREATE INDEX IF NOT EXISTS idx_orcamentos_status ON orcamentos(status);
+CREATE INDEX IF NOT EXISTS idx_orcamentos_data_validade ON orcamentos(data_validade);
+CREATE INDEX IF NOT EXISTS idx_orcamentos_created_at ON orcamentos(created_at);
+CREATE INDEX IF NOT EXISTS idx_itens_orcamento_orcamento_id ON itens_orcamento(orcamento_id);
+
+-- Habilitar RLS (Row Level Security)
+ALTER TABLE orcamentos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE itens_orcamento ENABLE ROW LEVEL SECURITY;
+
+-- Criar políticas RLS para orçamentos
+DROP POLICY IF EXISTS "orcamentos_policy" ON orcamentos;
+CREATE POLICY "orcamentos_policy" ON orcamentos
+    FOR ALL USING (true);
+
+-- Criar políticas RLS para itens do orçamento
+DROP POLICY IF EXISTS "itens_orcamento_policy" ON itens_orcamento;
+CREATE POLICY "itens_orcamento_policy" ON itens_orcamento
+    FOR ALL USING (true);
+
+-- Criar função para atualizar updated_at
+CREATE OR REPLACE FUNCTION update_orcamentos_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE OR REPLACE FUNCTION update_itens_orcamento_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Criar triggers para updated_at (DROP IF EXISTS para evitar conflitos)
+DROP TRIGGER IF EXISTS update_orcamentos_updated_at ON orcamentos;
+CREATE TRIGGER update_orcamentos_updated_at
+    BEFORE UPDATE ON orcamentos
+    FOR EACH ROW
+    EXECUTE FUNCTION update_orcamentos_updated_at();
+
+DROP TRIGGER IF EXISTS update_itens_orcamento_updated_at ON itens_orcamento;
+CREATE TRIGGER update_itens_orcamento_updated_at
+    BEFORE UPDATE ON itens_orcamento
+    FOR EACH ROW
+    EXECUTE FUNCTION update_itens_orcamento_updated_at();
+
+-- Inserir dados de exemplo (opcional)
+INSERT INTO orcamentos (empresa_id, cliente_id, descricao, valor_total, desconto, valor_final, status, data_validade, observacoes, forma_pagamento, parcelas)
+VALUES 
+    ('00000000-0000-0000-0000-000000000001', '1', 'Tratamento de canal', 800.00, 50.00, 750.00, 'aprovado', '2024-02-15', 'Tratamento de canal no dente 16', 'cartao', 3),
+    ('00000000-0000-0000-0000-000000000001', '2', 'Limpeza e profilaxia', 150.00, 0.00, 150.00, 'enviado', '2024-02-20', 'Limpeza completa', 'dinheiro', 1),
+    ('00000000-0000-0000-0000-000000000001', '3', 'Ortodontia', 3000.00, 300.00, 2700.00, 'rascunho', '2024-03-01', 'Aparelho ortodôntico', 'cartao', 12)
+ON CONFLICT (id) DO NOTHING;
+
+-- Inserir itens de exemplo para o primeiro orçamento
+INSERT INTO itens_orcamento (orcamento_id, descricao, quantidade, valor_unitario, valor_total, observacoes)
+SELECT 
+    o.id,
+    'Tratamento de canal - dente 16',
+    1,
+    800.00,
+    800.00,
+    'Inclui anestesia e material'
+FROM orcamentos o 
+WHERE o.descricao = 'Tratamento de canal'
+LIMIT 1
+ON CONFLICT (id) DO NOTHING;
+
+-- Inserir itens de exemplo para o segundo orçamento
+INSERT INTO itens_orcamento (orcamento_id, descricao, quantidade, valor_unitario, valor_total, observacoes)
+SELECT 
+    o.id,
+    'Limpeza e profilaxia',
+    1,
+    150.00,
+    150.00,
+    'Inclui aplicação de flúor'
+FROM orcamentos o 
+WHERE o.descricao = 'Limpeza e profilaxia'
+LIMIT 1
+ON CONFLICT (id) DO NOTHING;
+
+-- Inserir itens de exemplo para o terceiro orçamento
+INSERT INTO itens_orcamento (orcamento_id, descricao, quantidade, valor_unitario, valor_total, observacoes)
+SELECT 
+    o.id,
+    'Aparelho ortodôntico superior',
+    1,
+    1500.00,
+    1500.00,
+    'Inclui instalação e primeiros ajustes'
+FROM orcamentos o 
+WHERE o.descricao = 'Ortodontia'
+LIMIT 1
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO itens_orcamento (orcamento_id, descricao, quantidade, valor_unitario, valor_total, observacoes)
+SELECT 
+    o.id,
+    'Aparelho ortodôntico inferior',
+    1,
+    1500.00,
+    1500.00,
+    'Inclui instalação e primeiros ajustes'
+FROM orcamentos o 
+WHERE o.descricao = 'Ortodontia'
+LIMIT 1
+ON CONFLICT (id) DO NOTHING;

@@ -46,3 +46,4 @@ INSERT INTO retornos (
 -- 5. Verificar se a inserção funcionou
 SELECT * FROM retornos WHERE motivo = 'Teste de estrutura';
 
+

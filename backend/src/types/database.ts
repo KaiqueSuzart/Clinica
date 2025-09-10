@@ -174,6 +174,7 @@ export interface Database {
           descricao: string | null;
           valor_total: number | null;
           desconto: number | null;
+          tipo_desconto: string | null;
           valor_final: number | null;
           status: string | null;
           data_validade: string | null;

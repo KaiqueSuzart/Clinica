@@ -1,0 +1,120 @@
+### Exemplos de API para Orçamentos
+
+### 1. Listar todos os orçamentos
+GET http://localhost:3001/budgets
+Content-Type: application/json
+
+### 2. Buscar orçamento por ID
+GET http://localhost:3001/budgets/123e4567-e89b-12d3-a456-426614174000
+Content-Type: application/json
+
+### 3. Buscar orçamentos por paciente
+GET http://localhost:3001/budgets/patient/1
+Content-Type: application/json
+
+### 4. Criar novo orçamento
+POST http://localhost:3001/budgets
+Content-Type: application/json
+
+{
+  "cliente_id": "1",
+  "dentista_id": "123e4567-e89b-12d3-a456-426614174000",
+  "descricao": "Tratamento de canal",
+  "valor_total": 800.00,
+  "desconto": 50.00,
+  "valor_final": 750.00,
+  "status": "rascunho",
+  "data_validade": "2024-02-15",
+  "observacoes": "Tratamento de canal no dente 16",
+  "forma_pagamento": "cartao",
+  "parcelas": 3,
+  "itens": [
+    {
+      "descricao": "Tratamento de canal - dente 16",
+      "quantidade": 1,
+      "valor_unitario": 800.00,
+      "valor_total": 800.00,
+      "observacoes": "Inclui anestesia e material"
+    }
+  ]
+}
+
+### 5. Atualizar orçamento
+PUT http://localhost:3001/budgets/123e4567-e89b-12d3-a456-426614174000
+Content-Type: application/json
+
+{
+  "descricao": "Tratamento de canal - Atualizado",
+  "valor_total": 900.00,
+  "desconto": 100.00,
+  "valor_final": 800.00,
+  "status": "aprovado",
+  "observacoes": "Orçamento aprovado pelo paciente"
+}
+
+### 6. Atualizar status do orçamento
+PUT http://localhost:3001/budgets/123e4567-e89b-12d3-a456-426614174000/status?status=enviado
+Content-Type: application/json
+
+### 7. Deletar orçamento
+DELETE http://localhost:3001/budgets/123e4567-e89b-12d3-a456-426614174000
+Content-Type: application/json
+
+### 8. Criar orçamento com múltiplos itens
+POST http://localhost:3001/budgets
+Content-Type: application/json
+
+{
+  "cliente_id": "2",
+  "descricao": "Limpeza e profilaxia",
+  "valor_total": 150.00,
+  "desconto": 0.00,
+  "valor_final": 150.00,
+  "status": "enviado",
+  "data_validade": "2024-02-20",
+  "observacoes": "Limpeza completa",
+  "forma_pagamento": "dinheiro",
+  "parcelas": 1,
+  "itens": [
+    {
+      "descricao": "Limpeza e profilaxia",
+      "quantidade": 1,
+      "valor_unitario": 150.00,
+      "valor_total": 150.00,
+      "observacoes": "Inclui aplicação de flúor"
+    }
+  ]
+}
+
+### 9. Criar orçamento de ortodontia
+POST http://localhost:3001/budgets
+Content-Type: application/json
+
+{
+  "cliente_id": "3",
+  "descricao": "Ortodontia",
+  "valor_total": 3000.00,
+  "desconto": 300.00,
+  "valor_final": 2700.00,
+  "status": "rascunho",
+  "data_validade": "2024-03-01",
+  "observacoes": "Aparelho ortodôntico",
+  "forma_pagamento": "cartao",
+  "parcelas": 12,
+  "itens": [
+    {
+      "descricao": "Aparelho ortodôntico superior",
+      "quantidade": 1,
+      "valor_unitario": 1500.00,
+      "valor_total": 1500.00,
+      "observacoes": "Inclui instalação e primeiros ajustes"
+    },
+    {
+      "descricao": "Aparelho ortodôntico inferior",
+      "quantidade": 1,
+      "valor_unitario": 1500.00,
+      "valor_total": 1500.00,
+      "observacoes": "Inclui instalação e primeiros ajustes"
+    }
+  ]
+}
