@@ -38,3 +38,4 @@ SELECT COUNT(*) as total_retornos FROM retornos;
 SELECT * FROM retornos ORDER BY created_at DESC LIMIT 5;
 
 
+

@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS annotations (
   patient_id INTEGER NOT NULL,
   content TEXT NOT NULL,
   category VARCHAR(100) NOT NULL DEFAULT 'Geral',
+  is_private BOOLEAN DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -26,6 +27,7 @@ ALTER TABLE annotations DISABLE ROW LEVEL SECURITY;
 
 -- Verificar se a tabela foi criada
 SELECT * FROM information_schema.tables WHERE table_name = 'annotations';
+
 
 
 

@@ -22,6 +22,9 @@ export interface Patient {
   observations?: string;
   created_at?: string;
   updated_at?: string;
+  anamnese?: AnamneseData;
+  timeline?: any[];
+  notes?: any[];
 }
 
 export interface CreatePatientData {
@@ -121,9 +124,10 @@ export interface Annotation {
   patient_id: number;
   content: string;
   category: string;
+  is_private?: boolean;
   created_at?: string;
   updated_at?: string;
-  }
+}
 
 export interface Appointment {
   id: string;

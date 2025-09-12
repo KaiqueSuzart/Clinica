@@ -1,7 +1,18 @@
+import { IsString, IsNumber, IsOptional, IsBoolean } from 'class-validator';
+
 export class CreateAnnotationDto {
-  patient_id: any; // Temporariamente permitir qualquer tipo
+  @IsNumber()
+  patient_id: number;
+
+  @IsString()
   content: string;
+
+  @IsString()
   category: string;
+
+  @IsOptional()
+  @IsBoolean()
+  is_private?: boolean;
 }
 
 

@@ -3,6 +3,9 @@ import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 
+// Desabilitar alertas do navegador globalmente
+window.alert = () => {};
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
