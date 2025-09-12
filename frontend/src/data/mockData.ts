@@ -51,7 +51,7 @@ export const userPermissions: UserPermissions = {
     canDelete: ['arquivos']
   },
   recepcionista: {
-    canView: ['dashboard', 'agenda', 'pacientes', 'mensagens', 'retornos'],
+    canView: ['dashboard', 'agenda', 'pacientes', 'mensagens', 'retornos', 'configuracoes'],
     canEdit: ['agenda', 'pacientes', 'mensagens'],
     canDelete: []
   },
@@ -167,13 +167,26 @@ export const patients: Patient[] = [
   }
 ];
 
+// Função para obter data de hoje
+const getToday = () => {
+  const today = new Date();
+  return today.toISOString().split('T')[0];
+};
+
+// Função para obter data de amanhã
+const getTomorrow = () => {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return tomorrow.toISOString().split('T')[0];
+};
+
 export const appointments: Appointment[] = [
   {
     id: '1',
     patientId: '1',
     patientName: 'João Santos',
     patientPhone: '(11) 99999-9999',
-    date: '2024-01-25',
+    date: getToday(),
     time: '14:00',
     duration: 60,
     procedure: 'Consulta',
@@ -185,7 +198,7 @@ export const appointments: Appointment[] = [
     patientId: '2',
     patientName: 'Maria Oliveira',
     patientPhone: '(11) 88888-8888',
-    date: '2024-01-25',
+    date: getToday(),
     time: '15:30',
     duration: 90,
     procedure: 'Limpeza',
@@ -197,12 +210,36 @@ export const appointments: Appointment[] = [
     patientId: '3',
     patientName: 'Carlos Pereira',
     patientPhone: '(11) 77777-7777',
-    date: '2024-01-26',
+    date: getTomorrow(),
     time: '09:00',
     duration: 120,
     procedure: 'Tratamento de Canal',
     professional: 'Dr. Pedro Costa',
     status: 'confirmado'
+  },
+  {
+    id: '4',
+    patientId: '4',
+    patientName: 'Ana Costa',
+    patientPhone: '(11) 66666-6666',
+    date: getToday(),
+    time: '10:00',
+    duration: 30,
+    procedure: 'Consulta de Rotina',
+    professional: 'Dr. Ana Silva',
+    status: 'realizado'
+  },
+  {
+    id: '5',
+    patientId: '5',
+    patientName: 'Pedro Silva',
+    patientPhone: '(11) 55555-5555',
+    date: getToday(),
+    time: '11:30',
+    duration: 45,
+    procedure: 'Avaliação',
+    professional: 'Dr. Pedro Costa',
+    status: 'pendente'
   }
 ];
 
@@ -233,7 +270,7 @@ export const returnVisits: ReturnVisit[] = [
     patientId: '1',
     patientName: 'João Santos',
     procedure: 'Avaliação pós-limpeza',
-    returnDate: '2024-02-15',
+    returnDate: getTomorrow(),
     status: 'pendente',
     originalDate: '2024-01-15'
   },
@@ -242,7 +279,7 @@ export const returnVisits: ReturnVisit[] = [
     patientId: '3',
     patientName: 'Carlos Pereira',
     procedure: 'Controle do canal',
-    returnDate: '2024-02-10',
+    returnDate: getTomorrow(),
     status: 'confirmado',
     originalDate: '2024-01-10'
   }

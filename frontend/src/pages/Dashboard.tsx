@@ -1,23 +1,57 @@
 import React from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Calendar, Users, MessageSquare, TrendingUp, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import Card from '../components/UI/Card';
 import StatusBadge from '../components/UI/StatusBadge';
 import EvaluationModal from '../components/Evaluations/EvaluationModal';
-import { appointments, patients, messages, returnVisits } from '../data/mockData';
+import { apiService, Appointment, DashboardStats, ReturnVisit } from '../services/api';
 
 export default function Dashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'week' | 'month' | 'custom'>('month');
   const [showEvaluation, setShowEvaluation] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
-  
-  const todayAppointments = appointments.filter(apt => 
-    new Date(apt.date).toDateString() === new Date().toDateString()
-  );
-  
-  const pendingConfirmations = appointments.filter(apt => apt.status === 'pendente').length;
-  const totalPatients = patients.length;
-  const pendingMessages = messages.filter(msg => msg.status === 'enviada').length;
+  const [todayAppointments, setTodayAppointments] = useState<Appointment[]>([]);
+  const [confirmedReturns, setConfirmedReturns] = useState<ReturnVisit[]>([]);
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats>({
+    todayAppointments: 0,
+    totalPatients: 0,
+    pendingConfirmations: 0,
+    unreadMessages: 0
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Filtrar retornos de hoje
+  const todayReturns = confirmedReturns.filter(returnVisit => {
+    const today = new Date().toISOString().split('T')[0];
+    return returnVisit.data_retorno === today;
+  });
+
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const [appointmentsData, returnsData, statsData] = await Promise.all([
+        apiService.getTodayAppointments(),
+        apiService.getConfirmedReturns(),
+        apiService.getDashboardStats()
+      ]);
+      
+      setTodayAppointments(appointmentsData);
+      setConfirmedReturns(returnsData);
+      setDashboardStats(statsData);
+    } catch (err) {
+      console.error('Erro ao carregar dados do dashboard:', err);
+      setError('Erro ao carregar dados do dashboard');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getPeriodLabel = () => {
     switch (selectedPeriod) {
@@ -32,33 +66,61 @@ export default function Dashboard() {
   const stats = [
     {
       title: 'Atendimentos Hoje',
-      value: todayAppointments.length,
+      value: dashboardStats.todayAppointments,
       icon: Calendar,
       color: 'text-blue-600',
       bg: 'bg-blue-100'
     },
     {
       title: 'Total de Pacientes',
-      value: totalPatients,
+      value: dashboardStats.totalPatients,
       icon: Users,
       color: 'text-green-600',
       bg: 'bg-green-100'
     },
     {
       title: 'Confirmações Pendentes',
-      value: pendingConfirmations,
+      value: dashboardStats.pendingConfirmations,
       icon: AlertCircle,
       color: 'text-yellow-600',
       bg: 'bg-yellow-100'
     },
     {
       title: 'Mensagens Não Lidas',
-      value: pendingMessages,
+      value: dashboardStats.unreadMessages,
       icon: MessageSquare,
       color: 'text-purple-600',
       bg: 'bg-purple-100'
     }
   ];
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-8">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Erro ao carregar dados</h3>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={loadDashboardData}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -142,22 +204,36 @@ export default function Dashboard() {
         </Card>
 
         {/* Retornos Agendados */}
-        <Card title="Próximos Retornos" subtitle={`${returnVisits.length} retornos agendados`}>
+        <Card title="Próximos Retornos" subtitle={`${todayReturns.length} retornos de hoje`}>
           <div className="space-y-4">
-            {returnVisits.map((returnVisit) => (
-              <div key={returnVisit.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <CheckCircle className="w-5 h-5 text-gray-400" />
-                  <div>
-                    <p className="font-semibold text-gray-900">{returnVisit.patientName}</p>
-                    <p className="text-sm text-gray-600">
-                      {new Date(returnVisit.returnDate).toLocaleDateString('pt-BR')} - {returnVisit.procedure}
-                    </p>
-                  </div>
-                </div>
-                <StatusBadge status={returnVisit.status} type="return" />
+            {todayReturns.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <CheckCircle className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <p>Nenhum retorno agendado para hoje</p>
               </div>
-            ))}
+            ) : (
+              todayReturns.slice(0, 5).map((returnVisit) => (
+                <div key={returnVisit.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <CheckCircle className="w-5 h-5 text-gray-400" />
+                    <div>
+                      <p className="font-semibold text-gray-900 dark:text-gray-100">{returnVisit.paciente_nome}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {returnVisit.hora_retorno || '09:00'} - {returnVisit.procedimento}
+                      </p>
+                    </div>
+                  </div>
+                  <StatusBadge status={returnVisit.status} type="return" />
+                </div>
+              ))
+            )}
+            {todayReturns.length > 5 && (
+              <div className="text-center pt-2">
+                <p className="text-sm text-gray-500">
+                  +{todayReturns.length - 5} retornos adicionais
+                </p>
+              </div>
+            )}
           </div>
         </Card>
       </div>

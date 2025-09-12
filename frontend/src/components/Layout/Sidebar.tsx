@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { currentUser, userPermissions } from '../../data/mockData';
+import { useUser } from '../../contexts/UserContext';
 import {
   LayoutDashboard,
   Calendar,
@@ -28,12 +28,11 @@ const menuItems = [
 ];
 
 export default function Sidebar() {
-  const userRole = currentUser.role;
-  const permissions = userPermissions[userRole];
+  const { user, canView } = useUser();
   
   const filteredMenuItems = menuItems.filter(item => {
     const routeName = item.path.replace('/', '');
-    return permissions.canView.includes(routeName);
+    return canView(routeName);
   });
 
   return (

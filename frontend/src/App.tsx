@@ -13,11 +13,14 @@ import Arquivos from './pages/Arquivos';
 import Relatorios from './pages/Relatorios';
 import Configuracoes from './pages/Configuracoes';
 import AgendaOnline from './pages/AgendaOnline';
+import TestNotifications from './pages/TestNotifications';
 import { BusinessHoursProvider } from './contexts/BusinessHoursContext';
+import { UserProvider } from './contexts/UserContext';
 
 function App() {
   return (
-    <BusinessHoursProvider>
+    <UserProvider>
+      <BusinessHoursProvider>
       <Router>
         <Routes>
         <Route path="/login" element={<Login />} />
@@ -34,10 +37,12 @@ function App() {
           <Route path="arquivos" element={<Arquivos />} />
           <Route path="relatorios" element={<Relatorios />} />
           <Route path="configuracoes" element={<Configuracoes />} />
+          <Route path="test-notifications" element={<TestNotifications />} />
         </Route>
       </Routes>
     </Router>
     </BusinessHoursProvider>
+    </UserProvider>
   );
 }
 

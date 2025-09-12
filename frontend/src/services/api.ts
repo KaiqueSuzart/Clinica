@@ -48,6 +48,53 @@ export interface CreatePatientData {
   observations?: string;
 }
 
+export interface Appointment {
+  id: string;
+  patientId: string;
+  patientName: string;
+  patientPhone: string;
+  date: string;
+  time: string;
+  duration: number;
+  procedure: string;
+  professional: string;
+  status: string;
+  notes?: string;
+  isReturn?: boolean; // Flag para identificar se é um retorno
+}
+
+export interface DashboardStats {
+  todayAppointments: number;
+  totalPatients: number;
+  pendingConfirmations: number;
+  unreadMessages: number;
+}
+
+export interface Notification {
+  id: string;
+  empresa_id: string;
+  user_id?: string;
+  type: 'appointment' | 'return' | 'message' | 'confirmation' | 'system';
+  title: string;
+  message: string;
+  data?: any;
+  is_read: boolean;
+  priority: 'low' | 'normal' | 'high' | 'urgent';
+  created_at: string;
+  read_at?: string;
+  expires_at?: string;
+}
+
+export interface NotificationStats {
+  total_unread: number;
+  by_type: {
+    [key: string]: {
+      count: number;
+      unread: number;
+    };
+  };
+}
+
 export interface UpdatePatientData extends Partial<CreatePatientData> {}
 
 export interface TreatmentSession {
@@ -774,6 +821,97 @@ class ApiService {
 
   async deleteBudget(id: string): Promise<{ message: string }> {
     return this.request<{ message: string }>(`/budgets/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Dashboard methods
+  async getTodayAppointments(): Promise<Appointment[]> {
+    return this.request<Appointment[]>('/appointments/today');
+  }
+
+  async getAllAppointments(): Promise<Appointment[]> {
+    return this.request<Appointment[]>('/appointments');
+  }
+
+  async getDashboardStats(): Promise<DashboardStats> {
+    try {
+      const [todayAppointments, allPatients, allAppointments] = await Promise.all([
+        this.getTodayAppointments(),
+        this.getPatients(),
+        this.getAllAppointments()
+      ]);
+
+      const pendingConfirmations = allAppointments.filter(apt => apt.status === 'pendente').length;
+      const unreadMessages = 0; // TODO: Implementar quando tiver API de mensagens
+
+      return {
+        todayAppointments: todayAppointments.length,
+        totalPatients: allPatients.length,
+        pendingConfirmations,
+        unreadMessages
+      };
+    } catch (error) {
+      console.error('Erro ao buscar estatísticas do dashboard:', error);
+      return {
+        todayAppointments: 0,
+        totalPatients: 0,
+        pendingConfirmations: 0,
+        unreadMessages: 0
+      };
+    }
+  }
+
+  // Métodos de Notificações
+  async getNotifications(userId?: string, limit = 50, offset = 0): Promise<Notification[]> {
+    const params = new URLSearchParams();
+    if (userId) params.append('userId', userId);
+    params.append('limit', limit.toString());
+    params.append('offset', offset.toString());
+    
+    return this.request<Notification[]>(`/notifications?${params.toString()}`);
+  }
+
+  async getUnreadNotifications(userId?: string): Promise<Notification[]> {
+    const params = userId ? `?userId=${userId}` : '';
+    return this.request<Notification[]>(`/notifications/unread${params}`);
+  }
+
+  async getNotificationStats(userId?: string): Promise<NotificationStats> {
+    const params = userId ? `?userId=${userId}` : '';
+    return this.request<NotificationStats>(`/notifications/stats${params}`);
+  }
+
+  async markNotificationAsRead(id: string): Promise<void> {
+    return this.request<void>(`/notifications/${id}/read`, {
+      method: 'PATCH',
+    });
+  }
+
+  async markAllNotificationsAsRead(userId?: string): Promise<number> {
+    const params = userId ? `?userId=${userId}` : '';
+    return this.request<number>(`/notifications/mark-all-read${params}`, {
+      method: 'PATCH',
+    });
+  }
+
+  async createNotification(notification: {
+    user_id?: string;
+    type: 'appointment' | 'return' | 'message' | 'confirmation' | 'system';
+    title: string;
+    message: string;
+    data?: any;
+    priority?: 'low' | 'normal' | 'high' | 'urgent';
+    expires_at?: string;
+  }): Promise<Notification> {
+    return this.request<Notification>('/notifications', {
+      method: 'POST',
+      body: JSON.stringify(notification),
+    });
+  }
+
+  async deleteNotification(id: string): Promise<void> {
+    return this.request<void>(`/notifications/${id}`, {
       method: 'DELETE',
     });
   }

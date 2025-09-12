@@ -12,6 +12,7 @@ import { FilesModule } from './files/files.module';
 import { ReturnsModule } from './returns/returns.module';
 import { BusinessHoursModule } from './business-hours/business-hours.module';
 import { BudgetsModule } from './budgets/budgets.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { SupabaseModule } from './supabase/supabase.module';
 import { TestController } from './test.controller';
 
@@ -29,6 +30,7 @@ import { TestController } from './test.controller';
     ReturnsModule,
     BusinessHoursModule,
     BudgetsModule,
+    NotificationsModule,
   ],
   controllers: [AppController, TestController],
   providers: [AppService],

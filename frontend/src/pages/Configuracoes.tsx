@@ -1,22 +1,46 @@
-import React, { useState } from 'react';
-import { Settings, Save, User, MessageSquare, Bell, Shield, Clock, Calendar } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Settings, Save, User, MessageSquare, Bell, Shield, Clock, Calendar, Users } from 'lucide-react';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
 import { clinicSettings } from '../data/mockData';
 import { useBusinessHours } from '../contexts/BusinessHoursContext';
+import { useUser, availableUsers } from '../contexts/UserContext';
 
 export default function Configuracoes() {
-  const [activeTab, setActiveTab] = useState('clinic');
   const [settings, setSettings] = useState(clinicSettings);
   const { businessHours, setBusinessHours } = useBusinessHours();
+  const { user, canView, canEdit, switchUser } = useUser();
 
-  const tabs = [
-    { id: 'clinic', label: 'Dados da Clínica', icon: Settings },
-    { id: 'schedule', label: 'Horário de Funcionamento', icon: Clock },
-    { id: 'messages', label: 'Templates de Mensagens', icon: MessageSquare },
-    { id: 'users', label: 'Usuários', icon: User },
-    { id: 'notifications', label: 'Notificações', icon: Bell }
+  // Filtrar abas baseado nas permissões do usuário
+  const allTabs = [
+    { id: 'clinic', label: 'Dados da Clínica', icon: Settings, permission: 'configuracoes', requiresAdmin: true },
+    { id: 'schedule', label: 'Horário de Funcionamento', icon: Clock, permission: 'configuracoes', requiresAdmin: true },
+    { id: 'messages', label: 'Templates de Mensagens', icon: MessageSquare, permission: 'mensagens' },
+    { id: 'users', label: 'Usuários', icon: User, permission: 'configuracoes', requiresAdmin: true },
+    { id: 'switch-user', label: 'Trocar Usuário', icon: Users, permission: 'configuracoes', requiresAdmin: false },
+    { id: 'notifications', label: 'Notificações', icon: Bell, permission: 'configuracoes', requiresAdmin: true }
   ];
+
+  const tabs = allTabs.filter(tab => {
+    if (!canView(tab.permission)) return false;
+    // Se a aba requer admin, verificar se o usuário é admin
+    if (tab.requiresAdmin && user?.role !== 'admin') return false;
+    return true;
+  });
+
+  // Definir aba ativa baseada no usuário
+  const getDefaultActiveTab = () => {
+    if (user?.role === 'admin') return 'clinic';
+    if (user?.role === 'recepcionista') return 'switch-user';
+    return tabs[0]?.id || 'clinic';
+  };
+
+  const [activeTab, setActiveTab] = useState(getDefaultActiveTab());
+
+  // Atualizar aba ativa quando o usuário mudar
+  useEffect(() => {
+    setActiveTab(getDefaultActiveTab());
+  }, [user]);
 
   return (
     <div className="space-y-6">
@@ -61,71 +85,102 @@ export default function Configuracoes() {
         <div className="lg:col-span-3">
           {activeTab === 'clinic' && (
             <Card title="Dados da Clínica" subtitle="Informações básicas da clínica">
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {!canView('configuracoes') ? (
+                <div className="text-center py-8">
+                  <Shield className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Acesso Restrito</h3>
+                  <p className="text-gray-600">Você não tem permissão para visualizar as configurações da clínica.</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Nome da Clínica
+                      </label>
+                      <input
+                        type="text"
+                        value={settings.name}
+                        onChange={(e) => setSettings({...settings, name: e.target.value})}
+                        disabled={!canEdit('configuracoes')}
+                        className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                          !canEdit('configuracoes') ? 'bg-gray-100 cursor-not-allowed' : ''
+                        }`}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Telefone
+                      </label>
+                      <input
+                        type="text"
+                        value={settings.phone}
+                        onChange={(e) => setSettings({...settings, phone: e.target.value})}
+                        disabled={!canEdit('configuracoes')}
+                        className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                          !canEdit('configuracoes') ? 'bg-gray-100 cursor-not-allowed' : ''
+                        }`}
+                      />
+                    </div>
+                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Nome da Clínica
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      value={settings.email}
+                      onChange={(e) => setSettings({...settings, email: e.target.value})}
+                      disabled={!canEdit('configuracoes')}
+                      className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        !canEdit('configuracoes') ? 'bg-gray-100 cursor-not-allowed' : ''
+                      }`}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Endereço
                     </label>
                     <input
                       type="text"
-                      value={settings.name}
-                      onChange={(e) => setSettings({...settings, name: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      value={settings.address}
+                      onChange={(e) => setSettings({...settings, address: e.target.value})}
+                      disabled={!canEdit('configuracoes')}
+                      className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        !canEdit('configuracoes') ? 'bg-gray-100 cursor-not-allowed' : ''
+                      }`}
                     />
                   </div>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Telefone
+                      Logo da Clínica
                     </label>
-                    <input
-                      type="text"
-                      value={settings.phone}
-                      onChange={(e) => setSettings({...settings, phone: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
+                    <div className={`border-2 border-dashed border-gray-300 rounded-lg p-6 text-center ${
+                      !canEdit('configuracoes') ? 'bg-gray-100 cursor-not-allowed' : ''
+                    }`}>
+                      <p className="text-sm text-gray-600">
+                        {canEdit('configuracoes') ? 'Clique para fazer upload da logo' : 'Acesso restrito'}
+                      </p>
+                    </div>
                   </div>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    value={settings.email}
-                    onChange={(e) => setSettings({...settings, email: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Endereço
-                  </label>
-                  <input
-                    type="text"
-                    value={settings.address}
-                    onChange={(e) => setSettings({...settings, address: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Logo da Clínica
-                  </label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                    <p className="text-sm text-gray-600">Clique para fazer upload da logo</p>
-                  </div>
-                </div>
-              </div>
+              )}
             </Card>
           )}
 
           {activeTab === 'schedule' && (
             <Card title="Horário de Funcionamento" subtitle="Configure os horários individuais para cada dia da semana">
-              <div className="space-y-6">
+              {!canView('configuracoes') ? (
+                <div className="text-center py-8">
+                  <Shield className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Acesso Restrito</h3>
+                  <p className="text-gray-600">Você não tem permissão para visualizar as configurações de horário.</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
                 {/* Configurações por Dia */}
                 <div>
                   <h4 className="font-semibold text-gray-900 mb-4 flex items-center">
@@ -324,13 +379,21 @@ export default function Configuracoes() {
                     })}
                   </div>
                 </div>
-              </div>
+                </div>
+              )}
             </Card>
           )}
 
           {activeTab === 'messages' && (
             <Card title="Templates de Mensagens" subtitle="Configure as mensagens automáticas">
-              <div className="space-y-6">
+              {!canView('mensagens') ? (
+                <div className="text-center py-8">
+                  <Shield className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Acesso Restrito</h3>
+                  <p className="text-gray-600">Você não tem permissão para visualizar os templates de mensagens.</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Mensagem de Boas-vindas
@@ -341,8 +404,11 @@ export default function Configuracoes() {
                       ...settings,
                       messageTemplates: {...settings.messageTemplates, welcome: e.target.value}
                     })}
+                    disabled={!canEdit('mensagens')}
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      !canEdit('mensagens') ? 'bg-gray-100 cursor-not-allowed' : ''
+                    }`}
                     placeholder="Use {nome} para incluir o nome do paciente"
                   />
                 </div>
@@ -357,8 +423,11 @@ export default function Configuracoes() {
                       ...settings,
                       messageTemplates: {...settings.messageTemplates, confirmation: e.target.value}
                     })}
+                    disabled={!canEdit('mensagens')}
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      !canEdit('mensagens') ? 'bg-gray-100 cursor-not-allowed' : ''
+                    }`}
                     placeholder="Use {nome}, {data}, {horario} para personalizar"
                   />
                 </div>
@@ -373,8 +442,11 @@ export default function Configuracoes() {
                       ...settings,
                       messageTemplates: {...settings.messageTemplates, return: e.target.value}
                     })}
+                    disabled={!canEdit('mensagens')}
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      !canEdit('mensagens') ? 'bg-gray-100 cursor-not-allowed' : ''
+                    }`}
                   />
                 </div>
 
@@ -388,8 +460,11 @@ export default function Configuracoes() {
                       ...settings,
                       messageTemplates: {...settings.messageTemplates, budget: e.target.value}
                     })}
+                    disabled={!canEdit('mensagens')}
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      !canEdit('mensagens') ? 'bg-gray-100 cursor-not-allowed' : ''
+                    }`}
                     placeholder="Use {nome}, {link} para personalizar"
                   />
                 </div>
@@ -403,17 +478,27 @@ export default function Configuracoes() {
                     <p><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{'{link}'}</code> - Link do orçamento</p>
                   </div>
                 </div>
-              </div>
+                </div>
+              )}
             </Card>
           )}
 
           {activeTab === 'users' && (
             <Card title="Controle de Usuários" subtitle="Gerencie os usuários do sistema">
-              <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h4 className="font-semibold text-gray-900">Usuários Cadastrados</h4>
-                  <Button size="sm" icon={User}>Novo Usuário</Button>
+              {!canView('configuracoes') ? (
+                <div className="text-center py-8">
+                  <Shield className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Acesso Restrito</h3>
+                  <p className="text-gray-600">Você não tem permissão para visualizar o controle de usuários.</p>
                 </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="flex justify-between items-center">
+                    <h4 className="font-semibold text-gray-900">Usuários Cadastrados</h4>
+                    {canEdit('configuracoes') && (
+                      <Button size="sm" icon={User}>Novo Usuário</Button>
+                    )}
+                  </div>
 
                 <div className="space-y-3">
                   <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
@@ -432,7 +517,9 @@ export default function Configuracoes() {
                       <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">
                         Admin
                       </span>
-                      <Button variant="outline" size="sm">Editar</Button>
+                      {canEdit('configuracoes') && (
+                        <Button variant="outline" size="sm">Editar</Button>
+                      )}
                     </div>
                   </div>
 
@@ -450,7 +537,9 @@ export default function Configuracoes() {
                       <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full font-medium">
                         Dentista
                       </span>
-                      <Button variant="outline" size="sm">Editar</Button>
+                      {canEdit('configuracoes') && (
+                        <Button variant="outline" size="sm">Editar</Button>
+                      )}
                     </div>
                   </div>
 
@@ -468,7 +557,9 @@ export default function Configuracoes() {
                       <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full font-medium">
                         Recepcionista
                       </span>
-                      <Button variant="outline" size="sm">Editar</Button>
+                      {canEdit('configuracoes') && (
+                        <Button variant="outline" size="sm">Editar</Button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -481,13 +572,105 @@ export default function Configuracoes() {
                     <p><strong>Recepcionista:</strong> Pode gerenciar agenda e mensagens</p>
                   </div>
                 </div>
-              </div>
+                </div>
+              )}
+            </Card>
+          )}
+
+          {activeTab === 'switch-user' && (
+            <Card title="Trocar Usuário" subtitle="Altere a visão do sistema para outro usuário">
+              {!canView('configuracoes') ? (
+                <div className="text-center py-8">
+                  <Shield className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Acesso Restrito</h3>
+                  <p className="text-gray-600">Você não tem permissão para trocar de usuário.</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <h4 className="font-semibold text-blue-900 mb-2">Usuário Atual</h4>
+                    <div className="flex items-center space-x-3">
+                      <img
+                        src={user?.avatar || 'https://images.pexels.com/photos/5215024/pexels-photo-5215024.jpeg?auto=compress&cs=tinysrgb&w=50&h=50&fit=crop'}
+                        alt={user?.name || 'Usuário'}
+                        className="w-12 h-12 rounded-full object-cover"
+                      />
+                      <div>
+                        <h5 className="font-semibold text-gray-900">{user?.name || 'Usuário'}</h5>
+                        <p className="text-sm text-gray-600">{user?.email || 'email@exemplo.com'}</p>
+                        <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium mt-1">
+                          {user?.role || 'Usuário'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-4">Selecionar Novo Usuário</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {availableUsers.map((availableUser) => (
+                        <div
+                          key={availableUser.id}
+                          className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                            user?.id === availableUser.id
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                          }`}
+                          onClick={() => switchUser(availableUser.id)}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <img
+                              src={availableUser.avatar}
+                              alt={availableUser.name}
+                              className="w-10 h-10 rounded-full object-cover"
+                            />
+                            <div className="flex-1">
+                              <h5 className="font-semibold text-gray-900">{availableUser.name}</h5>
+                              <p className="text-sm text-gray-600">{availableUser.email}</p>
+                              <span className={`inline-block px-2 py-1 text-xs rounded-full font-medium mt-1 ${
+                                availableUser.role === 'admin' ? 'bg-blue-100 text-blue-800' :
+                                availableUser.role === 'dentista' ? 'bg-green-100 text-green-800' :
+                                availableUser.role === 'recepcionista' ? 'bg-purple-100 text-purple-800' :
+                                'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {availableUser.role}
+                              </span>
+                            </div>
+                            {user?.id === availableUser.id && (
+                              <div className="text-blue-600">
+                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                </svg>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="bg-yellow-50 p-4 rounded-lg">
+                    <h4 className="font-semibold text-yellow-900 mb-2">ℹ️ Informação</h4>
+                    <p className="text-sm text-yellow-800">
+                      Ao trocar de usuário, você verá o sistema com as permissões e visão daquele usuário. 
+                      Esta funcionalidade é útil para testar diferentes níveis de acesso.
+                    </p>
+                  </div>
+                </div>
+              )}
             </Card>
           )}
 
           {activeTab === 'notifications' && (
             <Card title="Configurações de Notificações" subtitle="Configure as notificações do sistema">
-              <div className="space-y-6">
+              {!canView('configuracoes') ? (
+                <div className="text-center py-8">
+                  <Shield className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Acesso Restrito</h3>
+                  <p className="text-gray-600">Você não tem permissão para visualizar as configurações de notificações.</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
@@ -559,7 +742,8 @@ export default function Configuracoes() {
                     </div>
                   </div>
                 </div>
-              </div>
+                </div>
+              )}
             </Card>
           )}
         </div>

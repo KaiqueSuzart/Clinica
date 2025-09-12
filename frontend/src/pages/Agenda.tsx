@@ -91,7 +91,7 @@ export default function Agenda() {
   };
 
   // Filtrar e ordenar consultas
-  const getFilteredAppointments = (appointments: Appointment[]) => {
+  const getFilteredAppointments = (appointments: Appointment[], filterByToday = false) => {
     return appointments
       .filter(apt => {
         const professionalMatch = selectedProfessional === 'all' || apt.professional === selectedProfessional;
@@ -103,7 +103,14 @@ export default function Agenda() {
         // Filtrar consultas realizadas da agenda do dia
         const notCompleted = apt.status !== 'realizado';
         
-        return professionalMatch && statusMatch && searchMatch && notCompleted;
+        // Filtrar por data se necessário (para agenda do dia)
+        let dateMatch = true;
+        if (filterByToday) {
+          const today = new Date().toISOString().split('T')[0];
+          dateMatch = apt.date === today;
+        }
+        
+        return professionalMatch && statusMatch && searchMatch && notCompleted && dateMatch;
       })
       .sort((a, b) => {
         // Ordenar por data e horário
@@ -168,7 +175,7 @@ export default function Agenda() {
     return merged;
   };
 
-  const filteredTodayAppointments = getFilteredAppointments(todayAppointments);
+  const filteredTodayAppointments = getFilteredAppointments(todayAppointments, true); // Filtrar por hoje
   const filteredWeekAppointments = getFilteredAppointments(weekAppointments);
   const filteredMonthAppointments = getFilteredAppointments(monthAppointments);
   const filteredHistoryReturns = getFilteredReturns(historyAppointments);
@@ -204,6 +211,8 @@ export default function Agenda() {
 
   const handleNewAppointment = async (newAppointment: any) => {
     try {
+      console.log('Criando nova consulta:', newAppointment);
+      
       const created = await apiService.createAppointment({
         patientId: newAppointment.patientId,
         date: newAppointment.date,
@@ -215,49 +224,15 @@ export default function Agenda() {
         notes: newAppointment.notes
       });
       
-      // Adicionar à lista apropriada baseado na data
-      const today = new Date().toISOString().split('T')[0];
-      const appointmentDate = new Date(created.date);
-      const todayDate = new Date(today);
+      console.log('Consulta criada com sucesso:', created);
       
-      // Calcular início da semana (segunda-feira)
-      const startOfWeek = new Date(todayDate);
-      const day = todayDate.getDay();
-      const diff = todayDate.getDate() - day + (day === 0 ? -6 : 1); // Ajustar para segunda-feira
-      startOfWeek.setDate(diff);
-      startOfWeek.setHours(0, 0, 0, 0);
+      // Recarregar todos os dados da agenda para garantir consistência
+      await loadAppointments();
       
-      // Calcular fim da semana (domingo)
-      const endOfWeek = new Date(startOfWeek);
-      endOfWeek.setDate(startOfWeek.getDate() + 6);
-      endOfWeek.setHours(23, 59, 59, 999);
-      
-      // Calcular início do mês
-      const startOfMonth = new Date(todayDate.getFullYear(), todayDate.getMonth(), 1);
-      
-      // Calcular fim do mês
-      const endOfMonth = new Date(todayDate.getFullYear(), todayDate.getMonth() + 1, 0);
-      endOfMonth.setHours(23, 59, 59, 999);
-      
-      // Adicionar à lista de hoje se for hoje
-      if (created.date === today) {
-        setTodayAppointments(prev => [...prev, created]);
-      }
-      
-      // Adicionar à lista da semana se estiver na semana atual
-      if (appointmentDate >= startOfWeek && appointmentDate <= endOfWeek) {
-        setWeekAppointments(prev => [...prev, created]);
-      }
-      
-      // Adicionar à lista do mês se estiver no mês atual
-      if (appointmentDate >= startOfMonth && appointmentDate <= endOfMonth) {
-        setMonthAppointments(prev => [...prev, created]);
-      }
-      
-      console.log('Consulta criada e adicionada às listas apropriadas:', created);
+      console.log('Dados da agenda recarregados');
     } catch (err) {
-      setError('Erro ao criar agendamento');
       console.error('Erro ao criar agendamento:', err);
+      setError('Erro ao criar agendamento. Verifique se o backend está rodando.');
     }
   };
 
@@ -522,7 +497,7 @@ export default function Agenda() {
           <div className="space-y-4">
             {appointmentsToShow.map((item) => {
               // Verificar se é um retorno ou consulta
-              const isReturn = 'isReturn' in item || 'paciente_nome' in item;
+              const isReturn = 'isReturn' in item && item.isReturn === true;
               const isPast = isReturn ? false : isPastAppointment(item as Appointment);
               
               
@@ -629,7 +604,7 @@ export default function Agenda() {
                         size="sm"
                         className="bg-blue-600 hover:bg-blue-700 text-white"
                       >
-                        Realizar Retorno
+                        Realizar Consulta
                       </Button>
                     )}
                   </div>
