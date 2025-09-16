@@ -1,0 +1,145 @@
+### =====================================================
+### EXEMPLOS DE USO DA API DE AUTENTICAÇÃO MULTI-TENANT
+### =====================================================
+
+### 1. REGISTRAR NOVA EMPRESA E USUÁRIO ADMINISTRADOR
+POST http://localhost:3000/auth/register-empresa
+Content-Type: application/json
+
+{
+  "email": "admin@clinicaexemplo.com",
+  "password": "senha123",
+  "nome": "Dr. João Silva",
+  "cargo": "admin",
+  "role": "admin",
+  "nome_empresa": "Clínica Odontológica Exemplo",
+  "email_empresa": "contato@clinicaexemplo.com",
+  "cnpj": "12.345.678/0001-90",
+  "telefone_empresa": "(11) 99999-9999",
+  "endereco": "Rua das Flores, 123 - Centro - São Paulo/SP"
+}
+
+### 2. REGISTRAR USUÁRIO EM EMPRESA EXISTENTE
+POST http://localhost:3000/auth/register
+Content-Type: application/json
+
+{
+  "email": "dentista@clinicaexemplo.com",
+  "password": "senha123",
+  "nome": "Dr. Maria Santos",
+  "empresa_id": 1,
+  "cargo": "dentista",
+  "role": "dentista"
+}
+
+### 3. FAZER LOGIN
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@clinicaexemplo.com",
+  "password": "senha123"
+}
+
+### 4. OBTER DADOS DO USUÁRIO ATUAL
+GET http://localhost:3000/auth/me
+Authorization: Bearer SEU_TOKEN_AQUI
+Content-Type: application/json
+
+### 5. ALTERAR EMPRESA DO USUÁRIO
+POST http://localhost:3000/auth/switch-empresa
+Authorization: Bearer SEU_TOKEN_AQUI
+Content-Type: application/json
+
+{
+  "empresa_id": 1
+}
+
+### 6. FAZER LOGOUT
+POST http://localhost:3000/auth/logout
+Authorization: Bearer SEU_TOKEN_AQUI
+Content-Type: application/json
+
+### =====================================================
+### EXEMPLOS DE USO DA API DE EMPRESAS
+### =====================================================
+
+### 7. LISTAR TODAS AS EMPRESAS
+GET http://localhost:3000/empresas
+Authorization: Bearer SEU_TOKEN_AQUI
+
+### 8. BUSCAR EMPRESA POR ID
+GET http://localhost:3000/empresas/1
+Authorization: Bearer SEU_TOKEN_AQUI
+
+### 9. CRIAR NOVA EMPRESA
+POST http://localhost:3000/empresas
+Authorization: Bearer SEU_TOKEN_AQUI
+Content-Type: application/json
+
+{
+  "nome": "Nova Clínica Odontológica",
+  "email_empresa": "contato@novaclinica.com",
+  "cnpj": "98.765.432/0001-10",
+  "telefone_empresa": "(11) 88888-8888",
+  "endereco": "Av. Principal, 456 - Centro - Rio de Janeiro/RJ",
+  "plano": "premium"
+}
+
+### 10. ATUALIZAR EMPRESA
+PATCH http://localhost:3000/empresas/1
+Authorization: Bearer SEU_TOKEN_AQUI
+Content-Type: application/json
+
+{
+  "nome": "Clínica Odontológica Exemplo - Atualizada",
+  "telefone_empresa": "(11) 99999-8888"
+}
+
+### 11. LISTAR USUÁRIOS DA EMPRESA
+GET http://localhost:3000/empresas/1/usuarios
+Authorization: Bearer SEU_TOKEN_AQUI
+
+### 12. ADICIONAR USUÁRIO À EMPRESA
+POST http://localhost:3000/empresas/1/usuarios
+Authorization: Bearer SEU_TOKEN_AQUI
+Content-Type: application/json
+
+{
+  "nome": "Recepcionista Ana",
+  "email": "ana@clinicaexemplo.com",
+  "cargo": "recepcionista",
+  "role": "recepcionista",
+  "telefone": "(11) 77777-7777"
+}
+
+### 13. OBTER ESTATÍSTICAS DA EMPRESA
+GET http://localhost:3000/empresas/1/estatisticas
+Authorization: Bearer SEU_TOKEN_AQUI
+
+### =====================================================
+### EXEMPLOS DE TESTE DE ISOLAMENTO MULTI-TENANT
+### =====================================================
+
+### 14. TESTE: Buscar pacientes (deve retornar apenas da empresa do usuário)
+GET http://localhost:3000/patients
+Authorization: Bearer SEU_TOKEN_AQUI
+
+### 15. TESTE: Buscar consultas (deve retornar apenas da empresa do usuário)
+GET http://localhost:3000/appointments
+Authorization: Bearer SEU_TOKEN_AQUI
+
+### 16. TESTE: Buscar orçamentos (deve retornar apenas da empresa do usuário)
+GET http://localhost:3000/budgets
+Authorization: Bearer SEU_TOKEN_AQUI
+
+### =====================================================
+### NOTAS IMPORTANTES
+### =====================================================
+
+# 1. TODOS os endpoints (exceto auth) requerem autenticação via Bearer Token
+# 2. O token deve ser obtido através do endpoint de login
+# 3. O sistema automaticamente isola dados por empresa usando RLS
+# 4. Usuários só podem acessar dados da sua empresa
+# 5. Administradores podem gerenciar múltiplas empresas
+# 6. O middleware TenantMiddleware configura automaticamente o contexto da empresa

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PatientsModule } from './patients/patients.module';
@@ -13,8 +13,12 @@ import { ReturnsModule } from './returns/returns.module';
 import { BusinessHoursModule } from './business-hours/business-hours.module';
 import { BudgetsModule } from './budgets/budgets.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { EmpresasModule } from './empresas/empresas.module';
+import { UsuariosModule } from './usuarios/usuarios.module';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { SupabaseModule } from './supabase/supabase.module';
 import { TestController } from './test.controller';
+import { TenantMiddleware } from './auth/tenant.middleware';
 
 @Module({
   imports: [
@@ -31,8 +35,28 @@ import { TestController } from './test.controller';
     BusinessHoursModule,
     BudgetsModule,
     NotificationsModule,
+    EmpresasModule,
+    UsuariosModule,
+    SubscriptionsModule,
   ],
   controllers: [AppController, TestController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    // Aplicar middleware de tenant em todas as rotas exceto auth
+    consumer
+      .apply(TenantMiddleware)
+      .exclude(
+        'auth/login',
+        'auth/register',
+        'auth/register-empresa',
+        'auth/logout',
+        'test/(.*)',
+        'health',
+        'docs',
+        'api-docs'
+      )
+      .forRoutes('*');
+  }
+}

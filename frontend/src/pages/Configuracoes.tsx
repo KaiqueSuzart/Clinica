@@ -1,15 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Save, User, MessageSquare, Bell, Shield, Clock, Calendar, Users } from 'lucide-react';
+import { Settings, Save, User, MessageSquare, Bell, Shield, Clock, Calendar, Users, Upload } from 'lucide-react';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
 import { clinicSettings } from '../data/mockData';
 import { useBusinessHours } from '../contexts/BusinessHoursContext';
 import { useUser, availableUsers } from '../contexts/UserContext';
+import { useAuth } from '../components/Auth/AuthProvider';
+import { apiService } from '../services/api';
 
 export default function Configuracoes() {
   const [settings, setSettings] = useState(clinicSettings);
+  const [empresaData, setEmpresaData] = useState({
+    nome: '',
+    email_empresa: '',
+    telefone: '',
+    endereco: '',
+    cnpj: ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const { businessHours, setBusinessHours } = useBusinessHours();
   const { user, canView, canEdit, switchUser } = useUser();
+  const { empresa, updateEmpresaData } = useAuth();
 
   // Filtrar abas baseado nas permissões do usuário
   const allTabs = [
@@ -37,10 +49,117 @@ export default function Configuracoes() {
 
   const [activeTab, setActiveTab] = useState(getDefaultActiveTab());
 
+  // Carregar dados da empresa
+  useEffect(() => {
+    loadEmpresaData();
+  }, []);
+
   // Atualizar aba ativa quando o usuário mudar
   useEffect(() => {
     setActiveTab(getDefaultActiveTab());
   }, [user]);
+
+  const loadEmpresaData = async () => {
+    try {
+      setLoading(true);
+      const data = await apiService.get('/empresas/dados');
+      console.log('Dados carregados do backend:', data);
+      
+      // Garantir que todos os campos tenham valores string vazios se forem null/undefined
+      const empresaDataFormatted = {
+        nome: data.nome || '',
+        email_empresa: data.email_empresa || '',
+        telefone: data.telefone || '',
+        endereco: data.endereco || '',
+        cnpj: data.cnpj || ''
+      };
+      
+      console.log('Dados formatados:', empresaDataFormatted);
+      setEmpresaData(empresaDataFormatted);
+      
+      // Atualizar o contexto de autenticação com todos os dados (incluindo logo_url)
+      const empresaDataCompleto = {
+        ...empresaDataFormatted,
+        logo_url: data.logo_url || ''
+      };
+      console.log('Atualizando contexto com:', empresaDataCompleto);
+      updateEmpresaData(empresaDataCompleto);
+    } catch (error) {
+      console.error('Erro ao carregar dados da empresa:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveEmpresaData = async () => {
+    try {
+      setSaving(true);
+      
+      // Separar logo_url dos dados para evitar payload muito grande
+      const { logo_url, ...dadosParaSalvar } = empresaData;
+      
+      const response = await apiService.put('/empresas/dados', dadosParaSalvar);
+      alert('Dados da clínica salvos com sucesso!');
+      
+      // Recarregar dados do backend para garantir sincronização
+      await loadEmpresaData();
+      
+      // Atualizar o contexto de autenticação com os dados atualizados
+      updateEmpresaData(empresaData);
+    } catch (error) {
+      console.error('Erro ao salvar dados da empresa:', error);
+      alert('Erro ao salvar dados da clínica');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      try {
+        setSaving(true);
+        
+        // Validar tipo de arquivo
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+          alert('Tipo de arquivo não permitido. Use JPEG, PNG, GIF ou WebP');
+          return;
+        }
+
+        // Validar tamanho (máximo 5MB)
+        const maxSize = 5 * 1024 * 1024; // 5MB
+        if (file.size > maxSize) {
+          alert('Arquivo muito grande. Tamanho máximo: 5MB');
+          return;
+        }
+
+        // Criar FormData para upload
+        const formData = new FormData();
+        formData.append('file', file);
+
+        // Fazer upload para o backend
+        const response = await apiService.post('/empresas/upload-logo', formData);
+        
+        if (response.success) {
+          // Atualizar apenas o contexto de autenticação com a nova logo
+          updateEmpresaData({ logo_url: response.logo_url });
+          
+          // Recarregar dados para sincronizar
+          await loadEmpresaData();
+          
+          alert('Logo enviada com sucesso!');
+        } else {
+          alert('Erro ao enviar logo');
+        }
+      } catch (error) {
+        console.error('Erro ao fazer upload da logo:', error);
+        alert('Erro ao enviar logo');
+      } finally {
+        setSaving(false);
+      }
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -49,10 +168,13 @@ export default function Configuracoes() {
           <h1 className="text-2xl font-bold text-gray-900">Configurações</h1>
           <p className="text-gray-600">Gerencie as configurações do sistema</p>
         </div>
-        <Button icon={Save} onClick={() => {
-          // Forçar re-renderização
-          setBusinessHours({...businessHours});
-        }}>Salvar Alterações</Button>
+        <Button 
+          icon={Save} 
+          onClick={saveEmpresaData}
+          disabled={saving}
+        >
+          {saving ? 'Salvando...' : 'Salvar Alterações'}
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -93,79 +215,147 @@ export default function Configuracoes() {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Nome da Clínica
-                      </label>
-                      <input
-                        type="text"
-                        value={settings.name}
-                        onChange={(e) => setSettings({...settings, name: e.target.value})}
-                        disabled={!canEdit('configuracoes')}
-                        className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                          !canEdit('configuracoes') ? 'bg-gray-100 cursor-not-allowed' : ''
-                        }`}
-                      />
+                  {loading ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                      <p className="mt-2 text-gray-600">Carregando dados da clínica...</p>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Telefone
-                      </label>
-                      <input
-                        type="text"
-                        value={settings.phone}
-                        onChange={(e) => setSettings({...settings, phone: e.target.value})}
-                        disabled={!canEdit('configuracoes')}
-                        className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                          !canEdit('configuracoes') ? 'bg-gray-100 cursor-not-allowed' : ''
-                        }`}
-                      />
-                    </div>
-                  </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Nome da Clínica
+                          </label>
+                          <input
+                            type="text"
+                            value={empresaData.nome}
+                            onChange={(e) => setEmpresaData({...empresaData, nome: e.target.value})}
+                            disabled={!canEdit('configuracoes')}
+                            className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white ${
+                              !canEdit('configuracoes') ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed' : ''
+                            }`}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Telefone
+                          </label>
+                          <input
+                            type="text"
+                            value={empresaData.telefone}
+                            onChange={(e) => setEmpresaData({...empresaData, telefone: e.target.value})}
+                            disabled={!canEdit('configuracoes')}
+                            className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white ${
+                              !canEdit('configuracoes') ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed' : ''
+                            }`}
+                          />
+                        </div>
+                      </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      value={settings.email}
-                      onChange={(e) => setSettings({...settings, email: e.target.value})}
-                      disabled={!canEdit('configuracoes')}
-                      className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                        !canEdit('configuracoes') ? 'bg-gray-100 cursor-not-allowed' : ''
-                      }`}
-                    />
-                  </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Email
+                        </label>
+                        <input
+                          type="email"
+                          value={empresaData.email_empresa}
+                          onChange={(e) => setEmpresaData({...empresaData, email_empresa: e.target.value})}
+                          disabled={!canEdit('configuracoes')}
+                          className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white ${
+                            !canEdit('configuracoes') ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed' : ''
+                          }`}
+                        />
+                      </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Endereço
-                    </label>
-                    <input
-                      type="text"
-                      value={settings.address}
-                      onChange={(e) => setSettings({...settings, address: e.target.value})}
-                      disabled={!canEdit('configuracoes')}
-                      className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                        !canEdit('configuracoes') ? 'bg-gray-100 cursor-not-allowed' : ''
-                      }`}
-                    />
-                  </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Endereço
+                        </label>
+                        <input
+                          type="text"
+                          value={empresaData.endereco}
+                          onChange={(e) => setEmpresaData({...empresaData, endereco: e.target.value})}
+                          disabled={!canEdit('configuracoes')}
+                          className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white ${
+                            !canEdit('configuracoes') ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed' : ''
+                          }`}
+                        />
+                      </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Logo da Clínica
-                    </label>
-                    <div className={`border-2 border-dashed border-gray-300 rounded-lg p-6 text-center ${
-                      !canEdit('configuracoes') ? 'bg-gray-100 cursor-not-allowed' : ''
-                    }`}>
-                      <p className="text-sm text-gray-600">
-                        {canEdit('configuracoes') ? 'Clique para fazer upload da logo' : 'Acesso restrito'}
-                      </p>
-                    </div>
-                  </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          CNPJ
+                        </label>
+                        <input
+                          type="text"
+                          value={empresaData.cnpj}
+                          onChange={(e) => setEmpresaData({...empresaData, cnpj: e.target.value})}
+                          disabled={!canEdit('configuracoes')}
+                          placeholder="00.000.000/0000-00"
+                          className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white ${
+                            !canEdit('configuracoes') ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed' : ''
+                          }`}
+                        />
+                      </div>
+
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Logo da Clínica
+                        </label>
+                        <div className={`border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center ${
+                          !canEdit('configuracoes') ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed' : 'cursor-pointer hover:border-blue-400'
+                        }`}>
+                          {empresa?.logo_url ? (
+                            <div className="space-y-4">
+                              <img 
+                                src={empresa.logo_url} 
+                                alt="Logo da clínica" 
+                                className="h-20 w-20 mx-auto object-contain"
+                              />
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                Logo atual
+                              </p>
+                              {canEdit('configuracoes') && (
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={handleFileUpload}
+                                  className="hidden"
+                                  id="logo-upload"
+                                />
+                              )}
+                            </div>
+                          ) : (
+                            <div>
+                              <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                {canEdit('configuracoes') ? 'Clique para fazer upload da logo' : 'Acesso restrito'}
+                              </p>
+                              {canEdit('configuracoes') && (
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={handleFileUpload}
+                                  className="hidden"
+                                  id="logo-upload"
+                                />
+                              )}
+                            </div>
+                          )}
+                          {canEdit('configuracoes') && (
+                            <label 
+                              htmlFor="logo-upload" 
+                              className="block mt-2 text-blue-600 hover:text-blue-700 cursor-pointer"
+                            >
+                              {empresa?.logo_url ? 'Alterar logo' : 'Selecionar arquivo'}
+                            </label>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </Card>

@@ -303,11 +303,22 @@ class ApiService {
   ): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
     
+    // Obter token do localStorage
+    const token = localStorage.getItem('auth_token');
+    
+    // Preparar headers
+    const headers: Record<string, string> = {
+      ...(token && { 'Authorization': `Bearer ${token}` }),
+      ...options.headers,
+    };
+
+    // Só adicionar Content-Type se não for FormData
+    if (!(options.body instanceof FormData)) {
+      headers['Content-Type'] = 'application/json';
+    }
+    
     const response = await fetch(url, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+      headers,
       ...options,
     });
 
@@ -912,6 +923,147 @@ class ApiService {
 
   async deleteNotification(id: string): Promise<void> {
     return this.request<void>(`/notifications/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // ===== PERFIL DE USUÁRIO =====
+  
+  async getPerfilUsuario(): Promise<any> {
+    return this.request<any>('/usuarios/perfil');
+  }
+
+  async updatePerfilUsuario(data: {
+    nome?: string;
+    telefone?: string;
+    cargo?: string;
+    bio?: string;
+    avatar_url?: string;
+  }): Promise<any> {
+    return this.request<any>('/usuarios/perfil', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // ===== ASSINATURAS E PAGAMENTOS =====
+  
+  async getSubscriptionPlans(): Promise<any[]> {
+    return this.request<any[]>('/subscriptions/plans');
+  }
+
+  async getEmpresaSubscription(): Promise<any> {
+    return this.request<any>('/subscriptions/empresa');
+  }
+
+  async createEmpresaSubscription(data: {
+    plan_id: number;
+    valor_mensal: number;
+  }): Promise<any> {
+    return this.request<any>('/subscriptions/empresa', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateEmpresaSubscription(data: {
+    status?: string;
+    data_fim?: string;
+    proxima_cobranca?: string;
+  }): Promise<any> {
+    return this.request<any>('/subscriptions/empresa', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getChatbotBilling(startDate?: string, endDate?: string): Promise<any[]> {
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    
+    return this.request<any[]>(`/subscriptions/chatbot-billing?${params.toString()}`);
+  }
+
+  async createChatbotBilling(data: {
+    data_cobranca: string;
+    tokens_utilizados: number;
+    custo_tokens: number;
+    custo_railway: number;
+    custo_total: number;
+  }): Promise<any> {
+    return this.request<any>('/subscriptions/chatbot-billing', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getPaymentHistory(startDate?: string, endDate?: string): Promise<any[]> {
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    
+    return this.request<any[]>(`/subscriptions/payment-history?${params.toString()}`);
+  }
+
+  async createPaymentRecord(data: {
+    tipo: string;
+    valor: number;
+    descricao: string;
+    metodo_pagamento?: string;
+    referencia_externa?: string;
+  }): Promise<any> {
+    return this.request<any>('/subscriptions/payment-history', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getFinancialSummary(): Promise<any> {
+    return this.request<any>('/subscriptions/financial-summary');
+  }
+
+  // ===== MÉTODOS GENÉRICOS =====
+  
+  async get<T>(endpoint: string): Promise<T> {
+    return this.request<T>(endpoint);
+  }
+
+  async post<T>(endpoint: string, data?: any): Promise<T> {
+    const options: RequestInit = {
+      method: 'POST',
+    };
+
+    // Se for FormData, não stringify
+    if (data instanceof FormData) {
+      options.body = data;
+      // Remover Content-Type para FormData (será definido automaticamente)
+    } else if (data) {
+      options.body = JSON.stringify(data);
+      options.headers = {
+        'Content-Type': 'application/json',
+      };
+    }
+
+    return this.request<T>(endpoint, options);
+  }
+
+  async put<T>(endpoint: string, data?: any): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: 'PUT',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
+  async patch<T>(endpoint: string, data?: any): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: 'PATCH',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
+  async delete<T>(endpoint: string): Promise<T> {
+    return this.request<T>(endpoint, {
       method: 'DELETE',
     });
   }
