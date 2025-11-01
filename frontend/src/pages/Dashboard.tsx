@@ -18,6 +18,11 @@ export default function Dashboard() {
     pendingConfirmations: 0,
     unreadMessages: 0
   });
+  const [monthlyStats, setMonthlyStats] = useState({
+    atendimentosRealizados: 0,
+    taxaComparecimento: 0,
+    faturamento: 0
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,15 +41,17 @@ export default function Dashboard() {
       setLoading(true);
       setError(null);
       
-      const [appointmentsData, returnsData, statsData] = await Promise.all([
+      const [appointmentsData, returnsData, statsData, monthlyData] = await Promise.all([
         apiService.getTodayAppointments(),
         apiService.getConfirmedReturns(),
-        apiService.getDashboardStats()
+        apiService.getDashboardStats(),
+        apiService.getMonthlyStats()
       ]);
       
       setTodayAppointments(appointmentsData);
       setConfirmedReturns(returnsData);
       setDashboardStats(statsData);
+      setMonthlyStats(monthlyData);
     } catch (err) {
       console.error('Erro ao carregar dados do dashboard:', err);
       setError('Erro ao carregar dados do dashboard');
@@ -239,19 +246,21 @@ export default function Dashboard() {
       </div>
 
       {/* Indicadores do Mês */}
-      <Card title="Indicadores do Mês" subtitle="Performance da clínica em Janeiro 2024">
+      <Card title="Indicadores do Mês" subtitle={`Performance da clínica em ${new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="text-center">
-            <div className="text-3xl font-bold text-blue-600 mb-2">45</div>
-            <p className="text-sm text-gray-600">Atendimentos Realizados</p>
+            <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-2">{monthlyStats.atendimentosRealizados}</div>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Atendimentos Realizados</p>
           </div>
           <div className="text-center">
-            <div className="text-3xl font-bold text-green-600 mb-2">92%</div>
-            <p className="text-sm text-gray-600">Taxa de Comparecimento</p>
+            <div className="text-3xl font-bold text-green-600 dark:text-green-400 mb-2">{monthlyStats.taxaComparecimento}%</div>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Taxa de Comparecimento</p>
           </div>
           <div className="text-center">
-            <div className="text-3xl font-bold text-purple-600 mb-2">R$ 12.450</div>
-            <p className="text-sm text-gray-600">Faturamento</p>
+            <div className="text-3xl font-bold text-purple-600 dark:text-purple-400 mb-2">
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(monthlyStats.faturamento)}
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Faturamento</p>
           </div>
         </div>
       </Card>

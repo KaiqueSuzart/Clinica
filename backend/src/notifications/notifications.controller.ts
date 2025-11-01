@@ -12,13 +12,17 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { NotificationsService } from './notifications.service';
+import { AutoNotificationsService } from './auto-notifications.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { UpdateNotificationDto } from './dto/update-notification.dto';
 
 @ApiTags('notifications')
 @Controller('notifications')
 export class NotificationsController {
-  constructor(private readonly notificationsService: NotificationsService) {}
+  constructor(
+    private readonly notificationsService: NotificationsService,
+    private readonly autoNotificationsService: AutoNotificationsService
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Criar nova notificação' })
@@ -99,5 +103,29 @@ export class NotificationsController {
   @ApiResponse({ status: 204, description: 'Notificação deletada com sucesso' })
   remove(@Param('id') id: string) {
     return this.notificationsService.delete(id);
+  }
+
+  @Post('auto-check')
+  @ApiOperation({ summary: 'Executar verificação automática de notificações' })
+  @ApiResponse({ status: 200, description: 'Verificação executada com sucesso' })
+  @ApiQuery({ name: 'empresaId', required: false, description: 'ID da empresa' })
+  runAutoCheck(@Query('empresaId') empresaId?: string) {
+    return this.autoNotificationsService.runAutoChecks(empresaId);
+  }
+
+  @Get('check/upcoming-appointments')
+  @ApiOperation({ summary: 'Verificar consultas próximas (1 hora)' })
+  @ApiResponse({ status: 200, description: 'Consultas próximas verificadas' })
+  @ApiQuery({ name: 'empresaId', required: false, description: 'ID da empresa' })
+  checkUpcomingAppointments(@Query('empresaId') empresaId?: string) {
+    return this.autoNotificationsService.checkUpcomingAppointments(empresaId);
+  }
+
+  @Get('check/upcoming-returns')
+  @ApiOperation({ summary: 'Verificar retornos próximos (1 dia)' })
+  @ApiResponse({ status: 200, description: 'Retornos próximos verificados' })
+  @ApiQuery({ name: 'empresaId', required: false, description: 'ID da empresa' })
+  checkUpcomingReturns(@Query('empresaId') empresaId?: string) {
+    return this.autoNotificationsService.checkUpcomingReturns(empresaId);
   }
 }

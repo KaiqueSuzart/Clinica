@@ -683,9 +683,42 @@ export default function Pacientes() {
   const [showProgressModal, setShowProgressModal] = useState(false);
   const [selectedPlanForProgress, setSelectedPlanForProgress] = useState<any>(null);
 
+  // Função para formatar telefone para exibição
+  const formatPhoneDisplay = (phone: string | undefined) => {
+    if (!phone) return '';
+    
+    // Remover formato WhatsApp (55{numero}@s.whatsapp.net)
+    let cleaned = phone.replace('@s.whatsapp.net', '').replace(/^55/, '');
+    
+    // Remover tudo que não é número
+    cleaned = cleaned.replace(/\D/g, '');
+    
+    // Formatar como (11) 99999-9999
+    if (cleaned.length === 11) {
+      return cleaned.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+    }
+    
+    return cleaned;
+  };
+
+  // Função para formatar CPF para exibição
+  const formatCPFDisplay = (cpf: number | string | undefined) => {
+    if (!cpf) return 'Não informado';
+    
+    // Converter para string e remover tudo que não é número
+    const cleaned = cpf.toString().replace(/\D/g, '');
+    
+    // Formatar como 000.000.000-00
+    if (cleaned.length === 11) {
+      return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+    }
+    
+    return cleaned;
+  };
+
   const filteredPatients = patientsList.filter(patient =>
     patient.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (patient.telefone && patient.telefone.includes(searchTerm)) ||
+    (patient.telefone && formatPhoneDisplay(patient.telefone).includes(searchTerm)) ||
     (patient.Email && patient.Email.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
@@ -1586,8 +1619,8 @@ export default function Pacientes() {
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="font-semibold text-gray-900">{patient.nome}</h3>
-                        <p className="text-sm text-gray-600">{patient.telefone}</p>
+                        <h3 className="font-semibold text-gray-900 dark:text-gray-100">{patient.nome}</h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{formatPhoneDisplay(patient.telefone)}</p>
                       </div>
                       <StatusBadge status={patient.status || 'ativo'} />
                     </div>
@@ -1869,16 +1902,16 @@ export default function Pacientes() {
                       <p className="text-gray-900">{selectedPatientData.nome}</p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
-                      <p className="text-gray-900">{selectedPatientData.telefone || 'Não informado'}</p>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Telefone</label>
+                      <p className="text-gray-900 dark:text-gray-100">{formatPhoneDisplay(selectedPatientData.telefone) || 'Não informado'}</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                       <p className="text-gray-900">{selectedPatientData.Email || 'Não informado'}</p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">CPF</label>
-                      <p className="text-gray-900">{selectedPatientData.Cpf || 'Não informado'}</p>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CPF</label>
+                      <p className="text-gray-900 dark:text-gray-100">{formatCPFDisplay(selectedPatientData.Cpf)}</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Data de Nascimento</label>

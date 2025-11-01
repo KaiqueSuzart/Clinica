@@ -296,11 +296,35 @@ export interface UpdateBudgetData extends Partial<CreateBudgetData> {
   }[];
 }
 
+// Interfaces de Procedimentos
+export interface Procedure {
+  id: string;
+  nome: string;
+  descricao?: string;
+  categoria?: string;
+  preco_estimado?: number;
+  tempo_estimado_min?: number; // em minutos
+  ativo?: boolean;
+  observacoes?: string;
+  empresa_id?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface CreateProcedureData {
+  nome: string;
+  descricao?: string;
+  categoria?: string;
+  preco_estimado?: number;
+  tempo_estimado_min?: number;
+  ativo?: boolean;
+  observacoes?: string;
+}
+
+export interface UpdateProcedureData extends Partial<CreateProcedureData> {}
+
 class ApiService {
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
+  async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
     
     // Obter token do localStorage
@@ -836,6 +860,49 @@ class ApiService {
     });
   }
 
+  // Procedures methods
+  async getProcedures(categoria?: string, ativo?: boolean): Promise<{ success: boolean; data: Procedure[]; total: number }> {
+    let url = '/procedures';
+    const params = new URLSearchParams();
+    
+    if (categoria) params.append('categoria', categoria);
+    if (ativo !== undefined) params.append('ativo', ativo.toString());
+    
+    if (params.toString()) {
+      url += `?${params.toString()}`;
+    }
+    
+    return this.request<{ success: boolean; data: Procedure[]; total: number }>(url);
+  }
+
+  async getProcedureById(id: string): Promise<{ success: boolean; data: Procedure }> {
+    return this.request<{ success: boolean; data: Procedure }>(`/procedures/${id}`);
+  }
+
+  async getCategorias(): Promise<{ success: boolean; data: string[]; total: number }> {
+    return this.request<{ success: boolean; data: string[]; total: number }>('/procedures/categorias');
+  }
+
+  async createProcedure(data: CreateProcedureData): Promise<{ success: boolean; data: Procedure; message: string }> {
+    return this.request<{ success: boolean; data: Procedure; message: string }>('/procedures', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateProcedure(id: string, data: UpdateProcedureData): Promise<{ success: boolean; data: Procedure; message: string }> {
+    return this.request<{ success: boolean; data: Procedure; message: string }>(`/procedures/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteProcedure(id: string): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>(`/procedures/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
   // Dashboard methods
   async getTodayAppointments(): Promise<Appointment[]> {
     return this.request<Appointment[]>('/appointments/today');
@@ -847,21 +914,8 @@ class ApiService {
 
   async getDashboardStats(): Promise<DashboardStats> {
     try {
-      const [todayAppointments, allPatients, allAppointments] = await Promise.all([
-        this.getTodayAppointments(),
-        this.getPatients(),
-        this.getAllAppointments()
-      ]);
-
-      const pendingConfirmations = allAppointments.filter(apt => apt.status === 'pendente').length;
-      const unreadMessages = 0; // TODO: Implementar quando tiver API de mensagens
-
-      return {
-        todayAppointments: todayAppointments.length,
-        totalPatients: allPatients.length,
-        pendingConfirmations,
-        unreadMessages
-      };
+      const response = await this.request<{ success: boolean; data: DashboardStats }>('/dashboard/today-stats');
+      return response.data;
     } catch (error) {
       console.error('Erro ao buscar estatísticas do dashboard:', error);
       return {
@@ -869,6 +923,20 @@ class ApiService {
         totalPatients: 0,
         pendingConfirmations: 0,
         unreadMessages: 0
+      };
+    }
+  }
+
+  async getMonthlyStats(): Promise<{ atendimentosRealizados: number; taxaComparecimento: number; faturamento: number }> {
+    try {
+      const response = await this.request<{ success: boolean; data: any }>('/dashboard/monthly-stats');
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao buscar estatísticas mensais:', error);
+      return {
+        atendimentosRealizados: 0,
+        taxaComparecimento: 0,
+        faturamento: 0
       };
     }
   }
@@ -903,6 +971,13 @@ class ApiService {
     const params = userId ? `?userId=${userId}` : '';
     return this.request<number>(`/notifications/mark-all-read${params}`, {
       method: 'PATCH',
+    });
+  }
+
+  async runAutoNotificationCheck(empresaId?: string): Promise<{ success: boolean; created: number }> {
+    const params = empresaId ? `?empresaId=${empresaId}` : '';
+    return this.request<{ success: boolean; created: number }>(`/notifications/auto-check${params}`, {
+      method: 'POST',
     });
   }
 

@@ -1,13 +1,12 @@
-import { Controller, Get, Put, Request, Body, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Get, Post, Put, Delete, Param, Request, Body, UseGuards, Query } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { UsuariosService } from './usuarios.service';
 import { UpdateUsuarioDto } from './dto/update-usuario.dto';
+import { CreateUsuarioDto } from './dto/create-usuario.dto';
 import { TenantGuard } from '../auth/tenant.guard';
 
 @ApiTags('usuarios')
 @Controller('usuarios')
-@UseGuards(TenantGuard)
-@ApiBearerAuth()
 export class UsuariosController {
   constructor(private readonly usuariosService: UsuariosService) {}
 
@@ -35,5 +34,34 @@ export class UsuariosController {
     }
 
     return this.usuariosService.updatePerfilUsuario(authUserId, updateUsuarioDto);
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'Listar todos os usuários' })
+  @ApiResponse({ status: 200, description: 'Lista de usuários retornada' })
+  @ApiQuery({ name: 'empresaId', required: false })
+  findAll(@Query('empresaId') empresaId?: string) {
+    return this.usuariosService.findAll(empresaId);
+  }
+
+  @Post()
+  @ApiOperation({ summary: 'Criar novo usuário (apenas admin)' })
+  @ApiResponse({ status: 201, description: 'Usuário criado com sucesso' })
+  create(@Body() createUsuarioDto: CreateUsuarioDto) {
+    return this.usuariosService.create(createUsuarioDto);
+  }
+
+  @Put(':id')
+  @ApiOperation({ summary: 'Atualizar usuário (apenas admin)' })
+  @ApiResponse({ status: 200, description: 'Usuário atualizado' })
+  update(@Param('id') id: string, @Body() updateUsuarioDto: UpdateUsuarioDto) {
+    return this.usuariosService.update(id, updateUsuarioDto);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Desativar usuário (apenas admin)' })
+  @ApiResponse({ status: 200, description: 'Usuário desativado' }}  )
+  deactivate(@Param('id') id: string) {
+    return this.usuariosService.deactivate(id);
   }
 }

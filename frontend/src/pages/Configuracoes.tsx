@@ -27,10 +27,8 @@ export default function Configuracoes() {
   const allTabs = [
     { id: 'clinic', label: 'Dados da Clínica', icon: Settings, permission: 'configuracoes', requiresAdmin: true },
     { id: 'schedule', label: 'Horário de Funcionamento', icon: Clock, permission: 'configuracoes', requiresAdmin: true },
-    { id: 'messages', label: 'Templates de Mensagens', icon: MessageSquare, permission: 'mensagens' },
     { id: 'users', label: 'Usuários', icon: User, permission: 'configuracoes', requiresAdmin: true },
-    { id: 'switch-user', label: 'Trocar Usuário', icon: Users, permission: 'configuracoes', requiresAdmin: false },
-    { id: 'notifications', label: 'Notificações', icon: Bell, permission: 'configuracoes', requiresAdmin: true }
+    { id: 'switch-user', label: 'Trocar Usuário', icon: Users, permission: 'configuracoes', requiresAdmin: false }
   ];
 
   const tabs = allTabs.filter(tab => {

@@ -141,7 +141,7 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['retornos']['Row']>;
       };
 
-      // Procedimentos (histórico/procedimentos realizados)
+      // Procedimentos (catálogo de procedimentos da clínica)
       procedimentos: {
         Row: {
           id: string;
@@ -157,6 +157,10 @@ export interface Database {
           custo: number | null;
           status: string | null;
           observacoes: string | null;
+          categoria: string | null;
+          ativo: boolean | null;
+          preco_estimado: number | null; // valor em reais
+          tempo_estimado_min: number | null; // tempo em minutos
         };
         Insert: Partial<Database['public']['Tables']['procedimentos']['Row']> & { id?: string };
         Update: Partial<Database['public']['Tables']['procedimentos']['Row']>;

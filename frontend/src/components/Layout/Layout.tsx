@@ -4,16 +4,21 @@ import { useAuth } from '../Auth/AuthProvider';
 import { BusinessHoursProvider } from '../../contexts/BusinessHoursContext';
 import { UserProvider } from '../../contexts/UserContext';
 import { ThemeProvider } from '../../contexts/ThemeContext';
+import { PermissionsProvider } from '../../contexts/PermissionsContext';
 import LoginPage from '../../pages/LoginPage';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import Dashboard from '../../pages/Dashboard';
 import Agenda from '../../pages/Agenda';
 import Pacientes from '../../pages/Pacientes';
+import Procedimentos from '../../pages/Procedimentos';
 import Orcamentos from '../../pages/Orcamentos';
 import Retornos from '../../pages/Retornos';
 import Configuracoes from '../../pages/Configuracoes';
 import Perfil from '../../pages/Perfil';
+import Anamnese from '../../pages/Anamnese';
+import Arquivos from '../../pages/Arquivos';
+import Relatorios from '../../pages/Relatorios';
 
 export default function Layout() {
   const { user, loading } = useAuth();
@@ -39,8 +44,9 @@ export default function Layout() {
   return (
     <ThemeProvider>
       <UserProvider>
-        <BusinessHoursProvider>
-          <Router>
+        <PermissionsProvider>
+          <BusinessHoursProvider>
+            <Router>
             <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
               <Header />
               <Sidebar />
@@ -50,16 +56,22 @@ export default function Layout() {
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/agenda" element={<Agenda />} />
                   <Route path="/pacientes" element={<Pacientes />} />
+                  <Route path="/procedimentos" element={<Procedimentos />} />
                   <Route path="/orcamentos" element={<Orcamentos />} />
                   <Route path="/retornos" element={<Retornos />} />
                   <Route path="/configuracoes" element={<Configuracoes />} />
                   <Route path="/perfil" element={<Perfil />} />
+                  {/* Páginas específicas */}
+                  <Route path="/anamnese" element={<Anamnese />} />
+                  <Route path="/arquivos" element={<Arquivos />} />
+                  <Route path="/relatorios" element={<Relatorios />} />
                   <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Routes>
               </main>
             </div>
-          </Router>
-        </BusinessHoursProvider>
+            </Router>
+          </BusinessHoursProvider>
+        </PermissionsProvider>
       </UserProvider>
     </ThemeProvider>
   );

@@ -1,25 +1,65 @@
+# Dependencies
+node_modules/
+*/node_modules/
+**/node_modules/
+
+# Build outputs
+dist/
+build/
+*/dist/
+*/build/
+.next/
+out/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+*.env
+
 # Logs
 logs
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+# OS
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-.env
+*.swp
+*.swo
+*~
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.sublime-*
+*.iml
+
+# Testing
+coverage/
+.nyc_output/
+*.lcov
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Build info
+.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# Documentação temporária (não versionar)
+SOLUCAO-*.md
+LEIA-ME-*.md
+INICIAR-*.ps1
+iniciar-*.sh
+*-COMPLETA.md
+IMPLEMENTACAO-*.md
+
+# Manter apenas documentação essencial:
+# README.md
+# MAPEAMENTO-BANCO-DE-DADOS.md

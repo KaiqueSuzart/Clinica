@@ -1,4 +1,4 @@
-import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
+import { Module, MiddlewareConsumer, NestModule, RequestMethod } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PatientsModule } from './patients/patients.module';
@@ -16,8 +16,13 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { EmpresasModule } from './empresas/empresas.module';
 import { UsuariosModule } from './usuarios/usuarios.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
+import { ChatbotModule } from './chatbot/chatbot.module';
 import { SupabaseModule } from './supabase/supabase.module';
+import { ProceduresModule } from './procedures/procedures.module';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { ReportsModule } from './reports/reports.module';
 import { TestController } from './test.controller';
+import { TestDbController } from './test-db.controller';
 import { TenantMiddleware } from './auth/tenant.middleware';
 
 @Module({
@@ -38,8 +43,12 @@ import { TenantMiddleware } from './auth/tenant.middleware';
     EmpresasModule,
     UsuariosModule,
     SubscriptionsModule,
+    ChatbotModule,
+    ProceduresModule,
+    DashboardModule,
+    ReportsModule,
   ],
-  controllers: [AppController, TestController],
+  controllers: [AppController, TestController, TestDbController],
   providers: [AppService],
 })
 export class AppModule implements NestModule {
@@ -48,14 +57,25 @@ export class AppModule implements NestModule {
     consumer
       .apply(TenantMiddleware)
       .exclude(
-        'auth/login',
-        'auth/register',
-        'auth/register-empresa',
-        'auth/logout',
-        'test/(.*)',
-        'health',
-        'docs',
-        'api-docs'
+        { path: 'auth/login', method: RequestMethod.ALL },
+        { path: 'auth/register', method: RequestMethod.ALL },
+        { path: 'auth/register-empresa', method: RequestMethod.ALL },
+        { path: 'auth/logout', method: RequestMethod.ALL },
+        { path: 'test/(.*)', method: RequestMethod.ALL },
+        { path: 'test-db/(.*)', method: RequestMethod.ALL },
+        { path: 'procedures/(.*)', method: RequestMethod.ALL },
+        { path: 'procedures', method: RequestMethod.ALL },
+        { path: 'dashboard/(.*)', method: RequestMethod.ALL },
+        { path: 'dashboard', method: RequestMethod.ALL },
+        { path: 'notifications/(.*)', method: RequestMethod.ALL },
+        { path: 'notifications', method: RequestMethod.ALL },
+        { path: 'reports/(.*)', method: RequestMethod.ALL },
+        { path: 'reports', method: RequestMethod.ALL },
+        { path: 'usuarios/(.*)', method: RequestMethod.ALL },
+        { path: 'usuarios', method: RequestMethod.ALL },
+        { path: 'health', method: RequestMethod.ALL },
+        { path: 'docs', method: RequestMethod.ALL },
+        { path: 'api-docs', method: RequestMethod.ALL }
       )
       .forRoutes('*');
   }

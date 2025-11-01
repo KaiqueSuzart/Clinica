@@ -13,6 +13,7 @@ export default function EditPatientModal({ isOpen, onClose, patient, onSave }: E
   const [formData, setFormData] = useState({
     nome: '',
     telefone: '',
+    Cpf: '',
     Email: '',
     data_nascimento: '',
     address: '',
@@ -26,14 +27,38 @@ export default function EditPatientModal({ isOpen, onClose, patient, onSave }: E
   useEffect(() => {
     console.log('🔍 EditPatientModal - Dados recebidos:', patient);
     if (patient) {
+      // Extrair número do telefone (remover 55 e @s.whatsapp.net)
+      let phoneDisplay = patient.telefone || '';
+      if (phoneDisplay.includes('@s.whatsapp.net')) {
+        phoneDisplay = phoneDisplay.replace('@s.whatsapp.net', '').replace(/^55/, '');
+      }
+      
+      // Fazer o mesmo para telefone de emergência
+      let emergencyPhoneDisplay = patient.responsavel_telefone || '';
+      if (emergencyPhoneDisplay.includes('@s.whatsapp.net')) {
+        emergencyPhoneDisplay = emergencyPhoneDisplay.replace('@s.whatsapp.net', '').replace(/^55/, '');
+      }
+
+      // Formatar CPF para exibição (se vier apenas números, formatar com pontos e traços)
+      let cpfDisplay = '';
+      if (patient.Cpf) {
+        const cpfNumbers = patient.Cpf.toString().replace(/\D/g, '');
+        if (cpfNumbers.length === 11) {
+          cpfDisplay = cpfNumbers.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+        } else {
+          cpfDisplay = patient.Cpf.toString();
+        }
+      }
+
       const formattedData = {
         nome: patient.nome || '',
-        telefone: patient.telefone || '',
+        telefone: phoneDisplay,
+        Cpf: cpfDisplay,
         Email: patient.Email || '',
         data_nascimento: patient.data_nascimento ? patient.data_nascimento.split('T')[0] : '',
         address: patient.address || '',
         responsavel_nome: patient.responsavel_nome || '',
-        responsavel_telefone: patient.responsavel_telefone || '',
+        responsavel_telefone: emergencyPhoneDisplay,
         observacoes: patient.observacoes || ''
       };
       console.log('📝 EditPatientModal - Dados formatados:', formattedData);
@@ -59,13 +84,29 @@ export default function EditPatientModal({ isOpen, onClose, patient, onSave }: E
     return value;
   };
 
+  const formatCPF = (value: string) => {
+    // Remove tudo que não é número
+    const numbers = value.replace(/\D/g, '');
+    
+    // Aplica a máscara 999.999.999-99
+    if (numbers.length <= 11) {
+      return numbers.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+    }
+    return value;
+  };
+
   const handlePhoneChange = (field: string, value: string) => {
     const formatted = formatPhone(value);
     handleInputChange(field, formatted);
   };
 
+  const handleCPFChange = (value: string) => {
+    const formatted = formatCPF(value);
+    handleInputChange('Cpf', formatted);
+  };
+
   const validateForm = () => {
-    return formData.nome.trim() && formData.telefone.trim() && formData.data_nascimento;
+    return formData.nome.trim() && formData.telefone.trim() && formData.Cpf.trim() && formData.data_nascimento;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -77,15 +118,25 @@ export default function EditPatientModal({ isOpen, onClose, patient, onSave }: E
     // Simular salvamento
     await new Promise(resolve => setTimeout(resolve, 2000));
 
+    // Formatar telefone para WhatsApp: 55{numero}@s.whatsapp.net
+    const phoneNumbers = formData.telefone.replace(/\D/g, '');
+    const whatsappNumber = `55${phoneNumbers}@s.whatsapp.net`;
+    
+    // Formatar telefone de emergência
+    const emergencyWhatsapp = formData.responsavel_telefone 
+      ? `55${formData.responsavel_telefone.replace(/\D/g, '')}@s.whatsapp.net`
+      : '';
+
     const updatedPatient = {
       ...patient,
       nome: formData.nome,
-      telefone: formData.telefone,
+      telefone: whatsappNumber,
+      Cpf: formData.Cpf ? parseInt(formData.Cpf.replace(/\D/g, '')) : null,
       Email: formData.Email,
       data_nascimento: formData.data_nascimento,
       address: formData.address,
       responsavel_nome: formData.responsavel_nome,
-      responsavel_telefone: formData.responsavel_telefone,
+      responsavel_telefone: emergencyWhatsapp,
       observacoes: formData.observacoes
     };
 
@@ -154,16 +205,18 @@ export default function EditPatientModal({ isOpen, onClose, patient, onSave }: E
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Email
+                    CPF *
                   </label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <input
-                      type="email"
-                      value={formData.Email}
-                      onChange={(e) => handleInputChange('Email', e.target.value)}
+                      type="text"
+                      value={formData.Cpf}
+                      onChange={(e) => handleCPFChange(e.target.value)}
                       className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
-                      placeholder="email@exemplo.com"
+                      placeholder="000.000.000-00"
+                      maxLength={14}
+                      required
                     />
                   </div>
                 </div>
@@ -180,6 +233,22 @@ export default function EditPatientModal({ isOpen, onClose, patient, onSave }: E
                       onChange={(e) => handleInputChange('data_nascimento', e.target.value)}
                       className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                       required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Email
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <input
+                      type="email"
+                      value={formData.Email}
+                      onChange={(e) => handleInputChange('Email', e.target.value)}
+                      className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+                      placeholder="email@exemplo.com"
                     />
                   </div>
                 </div>

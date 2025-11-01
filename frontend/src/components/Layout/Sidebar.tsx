@@ -1,24 +1,25 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../Auth/AuthProvider';
+import { usePermissions } from '../../contexts/PermissionsContext';
 import {
   LayoutDashboard,
   Calendar,
   Users,
-  MessageSquare,
   RotateCcw,
   FileText,
   BarChart3,
   Settings,
   ClipboardList,
-  Upload
+  Upload,
+  Briefcase
 } from 'lucide-react';
 
 const menuItems = [
   { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/agenda', icon: Calendar, label: 'Agenda' },
   { path: '/pacientes', icon: Users, label: 'Pacientes' },
-  { path: '/mensagens', icon: MessageSquare, label: 'Mensagens' },
+  { path: '/procedimentos', icon: Briefcase, label: 'Procedimentos' },
   { path: '/retornos', icon: RotateCcw, label: 'Retornos' },
   { path: '/orcamentos', icon: FileText, label: 'Orçamentos' },
   { path: '/anamnese', icon: ClipboardList, label: 'Anamnese' },
@@ -29,18 +30,21 @@ const menuItems = [
 
 export default function Sidebar() {
   const { user, empresa } = useAuth();
+  const permissions = usePermissions();
   
-  // Função simples para verificar permissões (você pode expandir depois)
-  const canView = (routeName: string) => {
-    if (!user) return false;
-    // Por enquanto, todos os usuários podem ver tudo
-    // Você pode implementar lógica de permissões baseada no role do usuário
-    return true;
-  };
-  
+  // Filtrar itens do menu baseado em permissões
   const filteredMenuItems = menuItems.filter(item => {
-    const routeName = item.path.replace('/', '');
-    return canView(routeName);
+    // Relat dados financeiros - só Dentista/Admin
+    if (item.path === '/relatorios' && !permissions.canViewReports) {
+      return false;
+    }
+    
+    // Configurações - só Dentista/Admin
+    if (item.path === '/configuracoes' && !permissions.canEditSettings) {
+      return false;
+    }
+    
+    return true;
   });
 
   return (

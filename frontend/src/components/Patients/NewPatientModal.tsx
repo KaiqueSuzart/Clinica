@@ -13,6 +13,7 @@ export default function NewPatientModal({ isOpen, onClose, onSave }: NewPatientM
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
+    cpf: '',
     email: '',
     birthDate: '',
     address: '',
@@ -41,13 +42,29 @@ export default function NewPatientModal({ isOpen, onClose, onSave }: NewPatientM
     return value;
   };
 
+  const formatCPF = (value: string) => {
+    // Remove tudo que não é número
+    const numbers = value.replace(/\D/g, '');
+    
+    // Aplica a máscara 999.999.999-99
+    if (numbers.length <= 11) {
+      return numbers.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+    }
+    return value;
+  };
+
+  const handleCPFChange = (value: string) => {
+    const formatted = formatCPF(value);
+    handleInputChange('cpf', formatted);
+  };
+
   const handlePhoneChange = (field: string, value: string) => {
     const formatted = formatPhone(value);
     handleInputChange(field, formatted);
   };
 
   const validateForm = () => {
-    return formData.name.trim() && formData.phone.trim() && formData.birthDate;
+    return formData.name.trim() && formData.phone.trim() && formData.cpf.trim() && formData.birthDate;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -58,16 +75,26 @@ export default function NewPatientModal({ isOpen, onClose, onSave }: NewPatientM
     setError(null);
 
     try {
+      // Formatar telefone para WhatsApp: 55{numero}@s.whatsapp.net
+      const phoneNumbers = formData.phone.replace(/\D/g, ''); // Remove formatação
+      const whatsappNumber = `55${phoneNumbers}@s.whatsapp.net`;
+      
+      // Formatar telefone de emergência
+      const emergencyWhatsapp = formData.emergencyPhone 
+        ? `55${formData.emergencyPhone.replace(/\D/g, '')}@s.whatsapp.net`
+        : undefined;
+
       // Preparar dados para a API
       const patientData: CreatePatientData = {
         nome: formData.name,
-        telefone: formData.phone.replace(/\D/g, ''), // Remove formatação do telefone
+        telefone: whatsappNumber, // Formato WhatsApp
+        Cpf: formData.cpf ? parseInt(formData.cpf.replace(/\D/g, '')) : undefined,
         Email: formData.email || undefined,
         data_nascimento: formData.birthDate || undefined,
         address: formData.address || undefined,
         observacoes: formData.observations || undefined,
         responsavel_nome: formData.emergencyContact || undefined,
-        responsavel_telefone: formData.emergencyPhone ? formData.emergencyPhone.replace(/\D/g, '') : undefined,
+        responsavel_telefone: emergencyWhatsapp,
         status: 'ativo',
         iaativa: true
       };
@@ -86,6 +113,7 @@ export default function NewPatientModal({ isOpen, onClose, onSave }: NewPatientM
       setFormData({
         name: '',
         phone: '',
+        cpf: '',
         email: '',
         birthDate: '',
         address: '',
@@ -160,16 +188,18 @@ export default function NewPatientModal({ isOpen, onClose, onSave }: NewPatientM
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Email
+                  CPF *
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    type="text"
+                    value={formData.cpf}
+                    onChange={(e) => handleCPFChange(e.target.value)}
                     className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
-                    placeholder="email@exemplo.com"
+                    placeholder="000.000.000-00"
+                    maxLength={14}
+                    required
                   />
                 </div>
               </div>
@@ -186,6 +216,22 @@ export default function NewPatientModal({ isOpen, onClose, onSave }: NewPatientM
                     onChange={(e) => handleInputChange('birthDate', e.target.value)}
                     className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Email
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+                    placeholder="email@exemplo.com"
                   />
                 </div>
               </div>
@@ -274,14 +320,16 @@ export default function NewPatientModal({ isOpen, onClose, onSave }: NewPatientM
           )}
 
           {/* Resumo do Paciente */}
-          {formData.name && formData.phone && formData.birthDate && (
+          {formData.name && formData.phone && formData.cpf && formData.birthDate && (
             <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg animate-in fade-in duration-300">
               <h5 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
                 Resumo do Cadastro
               </h5>
               <div className="space-y-1 text-sm text-blue-800 dark:text-blue-200">
                 <p><strong>Nome:</strong> {formData.name}</p>
+                <p><strong>CPF:</strong> {formData.cpf}</p>
                 <p><strong>Telefone:</strong> {formData.phone}</p>
+                <p><strong>WhatsApp:</strong> 55{formData.phone.replace(/\D/g, '')}@s.whatsapp.net</p>
                 {formData.email && <p><strong>Email:</strong> {formData.email}</p>}
                 <p><strong>Data de Nascimento:</strong> {new Date(formData.birthDate).toLocaleDateString('pt-BR')}</p>
                 {formData.address && <p><strong>Endereço:</strong> {formData.address}</p>}
