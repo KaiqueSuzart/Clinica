@@ -548,3 +548,5 @@ await apiService.runAutoNotificationCheck(empresaId);
 **Status:** ✅ Totalmente Funcional
 **Testado:** ✅ Backend e Frontend
 
+
+

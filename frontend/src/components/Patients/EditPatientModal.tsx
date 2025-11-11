@@ -105,8 +105,62 @@ export default function EditPatientModal({ isOpen, onClose, patient, onSave }: E
     handleInputChange('Cpf', formatted);
   };
 
+  // Validação completa de CPF (dígitos verificadores)
+  const validateCPF = (cpf: string): boolean => {
+    const numbers = cpf.replace(/\D/g, '');
+    if (numbers.length !== 11) return false;
+    if (/^(\d)\1{10}$/.test(numbers)) return false;
+    
+    let sum = 0;
+    let remainder;
+    for (let i = 1; i <= 9; i++) {
+      sum += parseInt(numbers.substring(i - 1, i)) * (11 - i);
+    }
+    remainder = (sum * 10) % 11;
+    if (remainder === 10 || remainder === 11) remainder = 0;
+    if (remainder !== parseInt(numbers.substring(9, 10))) return false;
+    
+    sum = 0;
+    for (let i = 1; i <= 10; i++) {
+      sum += parseInt(numbers.substring(i - 1, i)) * (12 - i);
+    }
+    remainder = (sum * 10) % 11;
+    if (remainder === 10 || remainder === 11) remainder = 0;
+    if (remainder !== parseInt(numbers.substring(10, 11))) return false;
+    
+    return true;
+  };
+
+  // Validação de telefone
+  const validatePhone = (phone: string): boolean => {
+    const numbers = phone.replace(/\D/g, '');
+    return numbers.length >= 10 && numbers.length <= 11;
+  };
+
   const validateForm = () => {
-    return formData.nome.trim() && formData.telefone.trim() && formData.Cpf.trim() && formData.data_nascimento;
+    const nameValid = formData.nome.trim().length >= 2;
+    const phoneValid = validatePhone(formData.telefone);
+    const cpfValid = validateCPF(formData.Cpf);
+    const birthDateValid = !!formData.data_nascimento;
+    
+    if (!nameValid) {
+      alert('Nome deve ter pelo menos 2 caracteres');
+      return false;
+    }
+    if (!phoneValid) {
+      alert('Telefone inválido. Use DDD + número (10 ou 11 dígitos)');
+      return false;
+    }
+    if (!cpfValid) {
+      alert('CPF inválido. Verifique os dígitos');
+      return false;
+    }
+    if (!birthDateValid) {
+      alert('Data de nascimento é obrigatória');
+      return false;
+    }
+    
+    return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -1,21 +1,30 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { WebhookDto, ChatMessageDto, ChatbotConfigDto } from './dto/chatbot.dto';
 import axios from 'axios';
 
 @Injectable()
-export class ChatbotService {
+export class ChatbotService implements OnModuleInit {
   private readonly logger = new Logger(ChatbotService.name);
   private n8nWebhookUrl: string;
   private isEnabled: boolean = false;
 
-  constructor(private readonly supabaseService: SupabaseService) {
-    this.loadConfig();
+  constructor(private readonly supabaseService: SupabaseService) {}
+
+  async onModuleInit() {
+    // Aguardar a inicialização do módulo antes de carregar configurações
+    await this.loadConfig();
   }
 
   private async loadConfig() {
     try {
-      const { data, error } = await this.supabaseService.getClient()
+      const client = this.supabaseService.getClient();
+      if (!client) {
+        this.logger.warn('Cliente Supabase ainda não inicializado, tentando novamente...');
+        return;
+      }
+
+      const { data, error } = await client
         .from('chatbot_config')
         .select('*')
         .single();
@@ -23,9 +32,14 @@ export class ChatbotService {
       if (data && !error) {
         this.n8nWebhookUrl = data.n8n_webhook_url;
         this.isEnabled = data.is_enabled;
+        this.logger.log('Configurações do chatbot carregadas com sucesso');
+      } else if (error && error.code !== 'PGRST116') {
+        // PGRST116 = nenhum resultado encontrado (tabela vazia ou não existe)
+        this.logger.warn('Tabela chatbot_config não encontrada ou vazia. Isso é normal se ainda não foi configurado.');
       }
     } catch (error) {
       this.logger.error('Erro ao carregar configurações do chatbot:', error);
+      // Não lançar erro para não impedir a inicialização do serviço
     }
   }
 

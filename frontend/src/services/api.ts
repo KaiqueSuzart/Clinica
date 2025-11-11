@@ -1,4 +1,5 @@
-const API_BASE_URL = 'http://localhost:3001';
+// Importar URL da API do config (que já usa variável de ambiente)
+import { API_BASE_URL } from '../config';
 
 export interface Patient {
   id: number;

@@ -63,8 +63,82 @@ export default function NewPatientModal({ isOpen, onClose, onSave }: NewPatientM
     handleInputChange(field, formatted);
   };
 
+  // Validação completa de CPF (dígitos verificadores)
+  const validateCPF = (cpf: string): boolean => {
+    const numbers = cpf.replace(/\D/g, '');
+    
+    // Verifica se tem 11 dígitos
+    if (numbers.length !== 11) return false;
+    
+    // Verifica se todos os dígitos são iguais (CPF inválido)
+    if (/^(\d)\1{10}$/.test(numbers)) return false;
+    
+    // Validação dos dígitos verificadores
+    let sum = 0;
+    let remainder;
+    
+    // Primeiro dígito verificador
+    for (let i = 1; i <= 9; i++) {
+      sum += parseInt(numbers.substring(i - 1, i)) * (11 - i);
+    }
+    remainder = (sum * 10) % 11;
+    if (remainder === 10 || remainder === 11) remainder = 0;
+    if (remainder !== parseInt(numbers.substring(9, 10))) return false;
+    
+    // Segundo dígito verificador
+    sum = 0;
+    for (let i = 1; i <= 10; i++) {
+      sum += parseInt(numbers.substring(i - 1, i)) * (12 - i);
+    }
+    remainder = (sum * 10) % 11;
+    if (remainder === 10 || remainder === 11) remainder = 0;
+    if (remainder !== parseInt(numbers.substring(10, 11))) return false;
+    
+    return true;
+  };
+
+  // Validação de telefone (mínimo 10 dígitos)
+  const validatePhone = (phone: string): boolean => {
+    const numbers = phone.replace(/\D/g, '');
+    return numbers.length >= 10 && numbers.length <= 11;
+  };
+
+  // Validação sem atualizar estado (para uso no JSX)
+  const isFormValid = () => {
+    const nameValid = formData.name.trim().length >= 2;
+    const phoneValid = validatePhone(formData.phone);
+    const cpfValid = validateCPF(formData.cpf);
+    const birthDateValid = !!formData.birthDate;
+    
+    return nameValid && phoneValid && cpfValid && birthDateValid;
+  };
+
   const validateForm = () => {
-    return formData.name.trim() && formData.phone.trim() && formData.cpf.trim() && formData.birthDate;
+    const nameValid = formData.name.trim().length >= 2;
+    const phoneValid = validatePhone(formData.phone);
+    const cpfValid = validateCPF(formData.cpf);
+    const birthDateValid = !!formData.birthDate;
+    
+    // Mostrar erros específicos
+    if (!nameValid) {
+      setError('Nome deve ter pelo menos 2 caracteres');
+      return false;
+    }
+    if (!phoneValid) {
+      setError('Telefone inválido. Use DDD + número (10 ou 11 dígitos)');
+      return false;
+    }
+    if (!cpfValid) {
+      setError('CPF inválido. Verifique os dígitos');
+      return false;
+    }
+    if (!birthDateValid) {
+      setError('Data de nascimento é obrigatória');
+      return false;
+    }
+    
+    setError(null);
+    return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -349,7 +423,7 @@ export default function NewPatientModal({ isOpen, onClose, onSave }: NewPatientM
             <LoadingButton
               type="submit"
               isLoading={isSubmitting}
-              disabled={!validateForm()}
+              disabled={!isFormValid()}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <Save className="w-4 h-4 mr-2" />
