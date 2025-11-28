@@ -16,9 +16,9 @@ type BudgetItemUpdate = Database['public']['Tables']['itens_orcamento']['Update'
 export class BudgetsService {
   constructor(private readonly supabase: SupabaseService) {}
 
-  async findAll(): Promise<Budget[]> {
+  async findAll(empresaId: string): Promise<Budget[]> {
     try {
-      const { data, error } = await this.supabase.getClient()
+      const { data, error } = await this.supabase.getAdminClient()
         .from('orcamentos')
         .select(`
           *,
@@ -36,6 +36,7 @@ export class BudgetsService {
             observacoes
           )
         `)
+        .eq('empresa_id', empresaId)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -50,8 +51,8 @@ export class BudgetsService {
     }
   }
 
-  async findOne(id: string): Promise<Budget & { itens: BudgetItem[] }> {
-    const { data: budget, error: budgetError } = await this.supabase.getClient()
+  async findOne(id: string, empresaId: string): Promise<Budget & { itens: BudgetItem[] }> {
+    const { data: budget, error: budgetError } = await this.supabase.getAdminClient()
       .from('orcamentos')
       .select(`
         *,
@@ -70,13 +71,14 @@ export class BudgetsService {
         )
       `)
       .eq('id', id)
+      .eq('empresa_id', empresaId)
       .single();
 
     if (budgetError) {
       throw new Error(`Erro ao buscar orçamento: ${budgetError.message}`);
     }
 
-    const { data: itens, error: itensError } = await this.supabase.getClient()
+    const { data: itens, error: itensError } = await this.supabase.getAdminClient()
       .from('itens_orcamento')
       .select('*')
       .eq('orcamento_id', id)
@@ -92,8 +94,8 @@ export class BudgetsService {
     };
   }
 
-  async findByPatient(patientId: string): Promise<Budget[]> {
-    const { data, error } = await this.supabase.getClient()
+  async findByPatient(patientId: string, empresaId: string): Promise<Budget[]> {
+    const { data, error } = await this.supabase.getAdminClient()
       .from('orcamentos')
       .select(`
         *,
@@ -112,6 +114,7 @@ export class BudgetsService {
         )
       `)
       .eq('cliente_id', patientId)
+      .eq('empresa_id', empresaId)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -121,12 +124,12 @@ export class BudgetsService {
     return data || [];
   }
 
-  async create(createBudgetDto: CreateBudgetDto): Promise<Budget> {
+  async create(createBudgetDto: CreateBudgetDto, empresaId: string): Promise<Budget> {
     try {
       console.log('Iniciando criação de orçamento:', createBudgetDto);
       
       // Verificar se o Supabase está funcionando
-      const client = this.supabase.getClient();
+      const client = this.supabase.getAdminClient();
       if (!client) {
         throw new Error('Cliente Supabase não inicializado');
       }
@@ -144,7 +147,7 @@ export class BudgetsService {
                     // Inserir orçamento
                     const orcamentoData = {
                         ...budgetData,
-                        empresa_id: 1, // Usar ID numérico em vez de UUID
+                        empresa_id: empresaId,
                         status: budgetData.status || 'rascunho'
                     };
 
@@ -205,17 +208,18 @@ export class BudgetsService {
     }
   }
 
-  async update(id: string, updateBudgetDto: UpdateBudgetDto): Promise<Budget> {
+  async update(id: string, updateBudgetDto: UpdateBudgetDto, empresaId: string): Promise<Budget> {
     const { itens, ...budgetData } = updateBudgetDto;
 
     // Atualizar orçamento
-    const { data: budget, error: budgetError } = await this.supabase.getClient()
+    const { data: budget, error: budgetError } = await this.supabase.getAdminClient()
       .from('orcamentos')
       .update({
         ...budgetData,
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
+      .eq('empresa_id', empresaId)
       .select()
       .single();
 
@@ -226,7 +230,7 @@ export class BudgetsService {
     // Atualizar itens se fornecidos
     if (itens) {
       // Deletar itens existentes
-      await this.supabase.getClient()
+      await this.supabase.getAdminClient()
         .from('itens_orcamento')
         .delete()
         .eq('orcamento_id', id);
@@ -242,7 +246,7 @@ export class BudgetsService {
           observacoes: item.observacoes
         }));
 
-        const { error: itensError } = await this.supabase.getClient()
+        const { error: itensError } = await this.supabase.getAdminClient()
           .from('itens_orcamento')
           .insert(itensToInsert);
 
@@ -255,32 +259,34 @@ export class BudgetsService {
     return budget;
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(id: string, empresaId: string): Promise<void> {
     // Deletar itens primeiro (devido à foreign key)
-    await this.supabase.getClient()
+    await this.supabase.getAdminClient()
       .from('itens_orcamento')
       .delete()
       .eq('orcamento_id', id);
 
     // Deletar orçamento
-    const { error } = await this.supabase.getClient()
+    const { error } = await this.supabase.getAdminClient()
       .from('orcamentos')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('empresa_id', empresaId);
 
     if (error) {
       throw new Error(`Erro ao deletar orçamento: ${error.message}`);
     }
   }
 
-  async updateStatus(id: string, status: string): Promise<Budget> {
-    const { data, error } = await this.supabase.getClient()
+  async updateStatus(id: string, status: string, empresaId: string): Promise<Budget> {
+    const { data, error } = await this.supabase.getAdminClient()
       .from('orcamentos')
       .update({
         status,
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
+      .eq('empresa_id', empresaId)
       .select()
       .single();
 

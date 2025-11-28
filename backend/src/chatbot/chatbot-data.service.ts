@@ -7,12 +7,13 @@ export class ChatbotDataService {
 
   constructor(private readonly supabaseService: SupabaseService) {}
 
-  async getProcedimentos(categoria?: string) {
+  async getProcedimentos(empresaId: string, categoria?: string) {
     try {
       let query = this.supabaseService.getClient()
         .from('procedimentos')
         .select('*')
         .eq('ativo', true)
+        .eq('empresa_id', empresaId)
         .order('nome');
 
       if (categoria) {
@@ -36,13 +37,13 @@ export class ChatbotDataService {
     }
   }
 
-  async getHorarios() {
+  async getHorarios(empresaId: string) {
     try {
       const { data, error } = await this.supabaseService.getClient()
-        .from('horarios_funcionamento')
+        .from('business_hours_config')
         .select('*')
-        .eq('ativo', true)
-        .order('dia_semana');
+        .eq('empresa_id', empresaId)
+        .order('day_of_week');
 
       if (error) {
         throw error;
@@ -52,8 +53,8 @@ export class ChatbotDataService {
       const diasSemana = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
       const horariosFormatados = data?.map(horario => ({
         ...horario,
-        dia_nome: diasSemana[horario.dia_semana],
-        horario_formatado: `${horario.abertura} às ${horario.fechamento}`
+        dia_nome: diasSemana[horario.day_of_week] || diasSemana[0],
+        horario_formatado: `${horario.start_time} às ${horario.end_time}`
       }));
 
       return {
@@ -66,13 +67,13 @@ export class ChatbotDataService {
     }
   }
 
-  async getContato() {
+  async getContato(empresaId: string) {
     try {
       const { data, error } = await this.supabaseService.getClient()
-        .from('contato_empresa')
+        .from('empresa')
         .select('*')
-        .eq('ativo', true)
-        .order('principal', { ascending: false });
+        .eq('id', empresaId)
+        .single();
 
       if (error) {
         throw error;
@@ -88,12 +89,13 @@ export class ChatbotDataService {
     }
   }
 
-  async getFAQ(categoria?: string) {
+  async getFAQ(empresaId: string, categoria?: string) {
     try {
       let query = this.supabaseService.getClient()
         .from('faq_empresa')
         .select('*')
         .eq('ativo', true)
+        .eq('empresa_id', empresaId)
         .order('ordem');
 
       if (categoria) {
@@ -117,12 +119,13 @@ export class ChatbotDataService {
     }
   }
 
-  async getPoliticas(tipo?: string) {
+  async getPoliticas(empresaId: string, tipo?: string) {
     try {
       let query = this.supabaseService.getClient()
         .from('politicas_empresa')
         .select('*')
-        .eq('ativo', true);
+        .eq('ativo', true)
+        .eq('empresa_id', empresaId);
 
       if (tipo) {
         query = query.eq('tipo', tipo);
@@ -144,7 +147,7 @@ export class ChatbotDataService {
     }
   }
 
-  async getPromocoes() {
+  async getPromocoes(empresaId: string) {
     try {
       const { data, error } = await this.supabaseService.getClient()
         .from('promocoes')
@@ -153,6 +156,7 @@ export class ChatbotDataService {
           procedimento:procedimentos(nome, categoria)
         `)
         .eq('ativo', true)
+        .eq('empresa_id', empresaId)
         .gte('data_fim', new Date().toISOString().split('T')[0])
         .lte('data_inicio', new Date().toISOString().split('T')[0])
         .order('data_inicio', { ascending: false });
@@ -171,12 +175,13 @@ export class ChatbotDataService {
     }
   }
 
-  async getEspecialidades() {
+  async getEspecialidades(empresaId: string) {
     try {
       const { data, error } = await this.supabaseService.getClient()
         .from('especialidades')
         .select('*')
         .eq('ativo', true)
+        .eq('empresa_id', empresaId)
         .order('nome');
 
       if (error) {
@@ -193,7 +198,7 @@ export class ChatbotDataService {
     }
   }
 
-  async getProfissionais(especialidade?: string) {
+  async getProfissionais(empresaId: string, especialidade?: string) {
     try {
       let query = this.supabaseService.getClient()
         .from('profissionais')
@@ -202,6 +207,7 @@ export class ChatbotDataService {
           especialidade:especialidades(nome, descricao)
         `)
         .eq('ativo', true)
+        .eq('empresa_id', empresaId)
         .order('nome');
 
       if (especialidade) {
@@ -224,7 +230,7 @@ export class ChatbotDataService {
     }
   }
 
-  async searchInfo(query: string) {
+  async searchInfo(query: string, empresaId: string) {
     try {
       const searchTerm = `%${query.toLowerCase()}%`;
 
@@ -233,6 +239,7 @@ export class ChatbotDataService {
         .from('faq_empresa')
         .select('*')
         .eq('ativo', true)
+        .eq('empresa_id', empresaId)
         .or(`pergunta.ilike.${searchTerm},resposta.ilike.${searchTerm}`);
 
       // Buscar em procedimentos
@@ -240,6 +247,7 @@ export class ChatbotDataService {
         .from('procedimentos')
         .select('*')
         .eq('ativo', true)
+        .eq('empresa_id', empresaId)
         .or(`nome.ilike.${searchTerm},descricao.ilike.${searchTerm},categoria.ilike.${searchTerm}`);
 
       if (faqError || procedimentosError) {
@@ -260,15 +268,15 @@ export class ChatbotDataService {
     }
   }
 
-  async getEmpresaInfo() {
+  async getEmpresaInfo(empresaId: string) {
     try {
       // Buscar informações básicas da empresa
       const [procedimentos, horarios, contato, faq, promocoes] = await Promise.all([
-        this.getProcedimentos(),
-        this.getHorarios(),
-        this.getContato(),
-        this.getFAQ(),
-        this.getPromocoes()
+        this.getProcedimentos(empresaId),
+        this.getHorarios(empresaId),
+        this.getContato(empresaId),
+        this.getFAQ(empresaId),
+        this.getPromocoes(empresaId)
       ]);
 
       return {

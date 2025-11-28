@@ -18,16 +18,16 @@ export class TenantMiddleware implements NestMiddleware {
 
       // SOLUÇÃO TEMPORÁRIA: Aceitar token fake
       if (token.startsWith('fake-token-')) {
-        // Para tokens fake, buscar usuário diretamente
+        // Para tokens fake, buscar usuário diretamente usando admin client
         const { data: userData, error: userError } = await this.supabaseService
-          .getClient()
+          .getAdminClient()
           .from('usuarios')
           .select(`
             *,
             empresa:empresa_id(*)
           `)
           .eq('email', 'admin@clinica.com')
-          .single();
+          .maybeSingle();
 
         if (userError || !userData) {
           throw new UnauthorizedException('Usuário não encontrado');
@@ -42,19 +42,20 @@ export class TenantMiddleware implements NestMiddleware {
           id: userData.id,
           email: userData.email,
           ...userData,
+          empresa_id: userData.empresa_id || userData.empresa?.id, // Garantir que empresa_id está presente
         };
 
         req['empresa'] = userData.empresa;
 
-        // Configurar contexto da empresa no Supabase
-        await this.supabaseService
-          .getClient()
-          .rpc('set_config', {
-            setting_name: 'app.current_empresa_id',
-            setting_value: userData.empresa_id.toString(),
-            is_local: true
-          });
+        console.log('[TenantMiddleware] Usuário autenticado (fake token):', {
+          userId: userData.id,
+          email: userData.email,
+          empresa_id: userData.empresa_id,
+          empresa: userData.empresa,
+          cargo: userData.cargo
+        });
 
+        // Não é necessário configurar contexto via RPC - o empresa_id já está no request
         next();
         return;
       }
@@ -68,16 +69,16 @@ export class TenantMiddleware implements NestMiddleware {
         throw new UnauthorizedException('Token inválido');
       }
 
-      // Buscar dados do usuário e empresa
+      // Buscar dados do usuário e empresa usando admin client para evitar RLS
       const { data: userData, error: userError } = await this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('usuarios')
         .select(`
           *,
           empresa:empresa_id(*)
         `)
         .eq('auth_user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (userError || !userData) {
         throw new UnauthorizedException('Usuário não encontrado');
@@ -92,19 +93,20 @@ export class TenantMiddleware implements NestMiddleware {
         id: user.id,
         email: user.email,
         ...userData,
+        empresa_id: userData.empresa_id || userData.empresa?.id, // Garantir que empresa_id está presente
       };
 
       req['empresa'] = userData.empresa;
 
-      // Configurar contexto da empresa no Supabase
-      await this.supabaseService
-        .getClient()
-        .rpc('set_config', {
-          setting_name: 'app.current_empresa_id',
-          setting_value: userData.empresa_id.toString(),
-          is_local: true
-        });
+      console.log('[TenantMiddleware] Usuário autenticado:', {
+        userId: user.id,
+        email: user.email,
+        empresa_id: userData.empresa_id,
+        empresa: userData.empresa,
+        cargo: userData.cargo
+      });
 
+      // Não é necessário configurar contexto via RPC - o empresa_id já está no request
       next();
     } catch (error) {
       if (error instanceof UnauthorizedException) {

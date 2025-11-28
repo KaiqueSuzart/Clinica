@@ -5,13 +5,14 @@ import { SupabaseService } from '../supabase/supabase.service';
 export class AppointmentsService {
   constructor(private supabaseService: SupabaseService) {}
 
-  async findAll() {
+  async findAll(empresaId: string) {
     try {
       // Primeiro tentar sem JOIN para simplificar
       const { data, error } = await this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('consultas')
         .select('*')
+        .eq('empresa_id', empresaId)
         .order('data_consulta', { ascending: true })
         .order('hora_inicio', { ascending: true });
 
@@ -55,7 +56,7 @@ export class AppointmentsService {
           
           try {
             const { data: pacienteData, error: pacienteError } = await this.supabaseService
-              .getClient()
+              .getAdminClient()
               .from('clientelA')
               .select('id, nome, telefone, Email')
               .eq('id', consulta.cliente_id)
@@ -78,7 +79,9 @@ export class AppointmentsService {
               procedure: consulta.procedimento,
               professional: consulta.dentista_id || 'Dr. Ana Silva',
               status: consulta.status || 'pendente',
-              notes: consulta.observacoes
+              notes: consulta.observacoes,
+              valor: consulta.valor || null,
+              pago: consulta.pago || false
             };
           } catch (error) {
             console.error(`Erro geral ao buscar paciente ID ${consulta.cliente_id}:`, error);
@@ -93,7 +96,9 @@ export class AppointmentsService {
               procedure: consulta.procedimento,
               professional: consulta.dentista_id || 'Dr. Ana Silva',
               status: consulta.status || 'pendente',
-              notes: consulta.observacoes
+              notes: consulta.observacoes,
+              valor: consulta.valor || null,
+              pago: consulta.pago || false
             };
           }
         })
@@ -121,15 +126,16 @@ export class AppointmentsService {
     }
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, empresaId: string) {
     const { data, error } = await this.supabaseService
-      .getClient()
+      .getAdminClient()
       .from('consultas')
       .select(`
         *,
         clientelA!consultas_cliente_id_fkey(id, nome, telefone, email)
       `)
       .eq('id', id)
+      .eq('empresa_id', empresaId)
       .single();
 
     if (error || !data) {
@@ -147,18 +153,21 @@ export class AppointmentsService {
       procedure: data.procedimento,
       professional: data.dentista_id || 'Dr. Ana Silva',
       status: data.status || 'pendente',
-      notes: data.observacoes
+      notes: data.observacoes,
+      valor: data.valor || null,
+      pago: data.pago || false
     };
   }
 
-  async create(appointmentData: any) {
+  async create(appointmentData: any, empresaId: string) {
     console.log('Criando agendamento:', appointmentData);
     
     try {
       const { data, error } = await this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('consultas')
         .insert({
+          empresa_id: empresaId,
           cliente_id: appointmentData.patient_id,
           data_consulta: appointmentData.date,
           hora_inicio: appointmentData.time,
@@ -182,7 +191,7 @@ export class AppointmentsService {
       // Buscar dados do paciente separadamente
       console.log('Buscando paciente com ID:', appointmentData.patient_id);
       const { data: patientData, error: patientError } = await this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('clientelA')
         .select('id, nome, telefone, Email')
         .eq('id', appointmentData.patient_id)
@@ -213,7 +222,7 @@ export class AppointmentsService {
     }
   }
 
-  async update(id: string, appointmentData: any) {
+  async update(id: string, appointmentData: any, empresaId: string) {
     const updateData: any = {};
     
     if (appointmentData.patient_id) updateData.cliente_id = appointmentData.patient_id;
@@ -229,10 +238,11 @@ export class AppointmentsService {
     console.log('Atualizando consulta ID:', id, 'com dados:', updateData);
 
     const { data, error } = await this.supabaseService
-      .getClient()
+      .getAdminClient()
       .from('consultas')
       .update(updateData)
       .eq('id', id)
+      .eq('empresa_id', empresaId)
       .select('*')
       .single();
 
@@ -245,7 +255,7 @@ export class AppointmentsService {
     
     // Buscar dados do paciente separadamente
     const { data: patientData } = await this.supabaseService
-      .getClient()
+      .getAdminClient()
       .from('clientelA')
       .select('id, nome, telefone, Email')
       .eq('id', data.cliente_id)
@@ -266,23 +276,25 @@ export class AppointmentsService {
     };
   }
 
-  async remove(id: string) {
+  async remove(id: string, empresaId: string) {
     const { error } = await this.supabaseService
-      .getClient()
+      .getAdminClient()
       .from('consultas')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('empresa_id', empresaId);
 
     if (error) throw error;
     return { message: 'Consulta removida com sucesso' };
   }
 
-  async findByPatient(patientId: string) {
+  async findByPatient(patientId: string, empresaId: string) {
     const { data, error } = await this.supabaseService
-      .getClient()
+      .getAdminClient()
       .from('consultas')
       .select('*')
       .eq('cliente_id', patientId)
+      .eq('empresa_id', empresaId)
       .order('data_consulta', { ascending: true });
 
     if (error) throw error;
@@ -290,11 +302,12 @@ export class AppointmentsService {
   }
 
   // Método para verificar disponibilidade de horário
-  async checkAvailability(date: string, time: string, professional?: string) {
+  async checkAvailability(date: string, time: string, empresaId: string, professional?: string) {
     let query = this.supabaseService
-      .getClient()
+      .getAdminClient()
       .from('consultas')
       .select('id')
+      .eq('empresa_id', empresaId)
       .eq('data_consulta', date)
       .eq('hora_inicio', time)
       .neq('status', 'cancelado');
@@ -310,16 +323,17 @@ export class AppointmentsService {
   }
 
   // Método para buscar horários disponíveis
-  async getAvailableTimes(date: string, professional?: string) {
+  async getAvailableTimes(date: string, empresaId: string, professional?: string) {
     const allTimes = [
       '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
       '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00'
     ];
 
     let query = this.supabaseService
-      .getClient()
+      .getAdminClient()
       .from('consultas')
       .select('hora_inicio')
+      .eq('empresa_id', empresaId)
       .eq('data_consulta', date)
       .neq('status', 'cancelado');
 
@@ -336,17 +350,18 @@ export class AppointmentsService {
   }
 
   // Método para buscar consultas da próxima hora (para N8N)
-  async findNextHourAppointments() {
+  async findNextHourAppointments(empresaId: string) {
     const now = new Date();
     const nextHour = new Date(now.getTime() + 60 * 60 * 1000);
     
     const { data, error } = await this.supabaseService
-      .getClient()
+      .getAdminClient()
       .from('consultas')
       .select(`
         *,
         clientelA!consultas_cliente_id_fkey(id, nome, telefone, email)
       `)
+      .eq('empresa_id', empresaId)
       .eq('status', 'confirmado')
       .eq('data_consulta', nextHour.toISOString().split('T')[0])
       .gte('hora_inicio', now.toTimeString().split(' ')[0])
@@ -357,12 +372,13 @@ export class AppointmentsService {
   }
 
   // Método para buscar histórico de procedimentos do paciente
-  async getPatientProcedures(patientId: string) {
+  async getPatientProcedures(patientId: string, empresaId: string) {
     try {
       const { data, error } = await this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('consultas')
         .select('procedimento')
+        .eq('empresa_id', empresaId)
         .eq('cliente_id', patientId)
         .eq('status', 'realizado')
         .order('data_consulta', { ascending: false });
@@ -382,14 +398,15 @@ export class AppointmentsService {
   }
 
   // Método para buscar consultas do dia
-  async findTodayAppointments() {
+  async findTodayAppointments(empresaId: string) {
     try {
       const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
       
       const { data, error } = await this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('consultas')
         .select('*')
+        .eq('empresa_id', empresaId)
         .eq('data_consulta', today)
         .neq('status', 'realizado') // Excluir consultas realizadas
         .order('hora_inicio', { ascending: true });
@@ -404,7 +421,7 @@ export class AppointmentsService {
         data.map(async (consulta) => {
           try {
             const { data: pacienteData, error: pacienteError } = await this.supabaseService
-              .getClient()
+              .getAdminClient()
               .from('clientelA')
               .select('id, nome, telefone, Email')
               .eq('id', consulta.cliente_id)
@@ -454,12 +471,13 @@ export class AppointmentsService {
   }
 
   // Método para buscar histórico de consultas (realizadas)
-  async findCompletedAppointments() {
+  async findCompletedAppointments(empresaId: string) {
     try {
       const { data, error } = await this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('consultas')
         .select('*')
+        .eq('empresa_id', empresaId)
         .eq('status', 'realizado')
         .order('data_consulta', { ascending: false })
         .order('hora_inicio', { ascending: false });
@@ -474,7 +492,7 @@ export class AppointmentsService {
         data.map(async (consulta) => {
           try {
             const { data: pacienteData, error: pacienteError } = await this.supabaseService
-              .getClient()
+              .getAdminClient()
               .from('clientelA')
               .select('id, nome, telefone, Email')
               .eq('id', consulta.cliente_id)
@@ -524,13 +542,14 @@ export class AppointmentsService {
   }
 
   // Método para marcar consulta como realizada
-  async markAsCompleted(id: string) {
+  async markAsCompleted(id: string, empresaId: string) {
     try {
       const { data, error } = await this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('consultas')
         .update({ status: 'realizado' })
         .eq('id', id)
+        .eq('empresa_id', empresaId)
         .select('*')
         .single();
 
@@ -541,7 +560,7 @@ export class AppointmentsService {
 
       // Buscar dados do paciente
       const { data: patientData } = await this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('clientelA')
         .select('id, nome, telefone, Email')
         .eq('id', data.cliente_id)
@@ -567,12 +586,13 @@ export class AppointmentsService {
   }
 
   // Método para buscar consultas por período
-  async findAppointmentsByPeriod(startDate: string, endDate: string) {
+  async findAppointmentsByPeriod(startDate: string, endDate: string, empresaId: string) {
     try {
       const { data, error } = await this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('consultas')
         .select('*')
+        .eq('empresa_id', empresaId)
         .gte('data_consulta', startDate)
         .lte('data_consulta', endDate)
         .neq('status', 'realizado') // Excluir consultas realizadas
@@ -589,7 +609,7 @@ export class AppointmentsService {
         data.map(async (consulta) => {
           try {
             const { data: pacienteData, error: pacienteError } = await this.supabaseService
-              .getClient()
+              .getAdminClient()
               .from('clientelA')
               .select('id, nome, telefone, Email')
               .eq('id', consulta.cliente_id)
@@ -639,7 +659,7 @@ export class AppointmentsService {
   }
 
   // Método para buscar consultas da semana atual
-  async findWeekAppointments() {
+  async findWeekAppointments(empresaId: string) {
     const now = new Date();
     const startOfWeek = new Date(now);
     startOfWeek.setDate(now.getDate() - now.getDay()); // Domingo
@@ -651,19 +671,21 @@ export class AppointmentsService {
 
     return this.findAppointmentsByPeriod(
       startOfWeek.toISOString().split('T')[0],
-      endOfWeek.toISOString().split('T')[0]
+      endOfWeek.toISOString().split('T')[0],
+      empresaId
     );
   }
 
   // Método para buscar consultas do mês atual
-  async findMonthAppointments() {
+  async findMonthAppointments(empresaId: string) {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
     return this.findAppointmentsByPeriod(
       startOfMonth.toISOString().split('T')[0],
-      endOfMonth.toISOString().split('T')[0]
+      endOfMonth.toISOString().split('T')[0],
+      empresaId
     );
   }
 }

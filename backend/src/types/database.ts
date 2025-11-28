@@ -412,6 +412,39 @@ export interface Database {
         Insert: Partial<Database['public']['Tables']['annotations']['Row']> & { id?: number };
         Update: Partial<Database['public']['Tables']['annotations']['Row']>;
       };
+
+      // Pagamentos
+      pagamentos: {
+        Row: {
+          id: string;
+          created_at: string | null;
+          updated_at: string | null;
+          empresa_id: string;
+          consulta_id: string | null;
+          paciente_id: string;
+          valor: number;
+          forma_pagamento: string; // 'dinheiro' | 'cartao_credito' | 'cartao_debito' | 'pix' | 'transferencia'
+          data_pagamento: string; // date
+          observacoes: string | null;
+          descricao: string | null;
+          confirmado: boolean;
+        };
+        Insert: {
+          id?: string;
+          created_at?: string | null;
+          updated_at?: string | null;
+          empresa_id: string;
+          consulta_id?: string | null;
+          paciente_id: string;
+          valor: number;
+          forma_pagamento: string;
+          data_pagamento: string;
+          observacoes?: string | null;
+          descricao?: string | null;
+          confirmado?: boolean;
+        };
+        Update: Partial<Database['public']['Tables']['pagamentos']['Insert']>;
+      };
     };
     Views: {};
     Functions: {};

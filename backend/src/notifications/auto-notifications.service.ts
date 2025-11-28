@@ -15,7 +15,7 @@ export class AutoNotificationsService {
   /**
    * Verifica consultas que estão próximas (1 hora antes)
    */
-  async checkUpcomingAppointments(empresaId?: string) {
+  async checkUpcomingAppointments(empresaId: string) {
     try {
       const client = this.supabaseService.getClient();
       const now = new Date();
@@ -26,7 +26,7 @@ export class AutoNotificationsService {
       const targetTime = oneHourLater.toTimeString().slice(0, 5);
 
       // Buscar consultas de hoje que começam na próxima hora
-      let query = client
+      const query = client
         .from('consultas')
         .select(`
           *,
@@ -36,11 +36,8 @@ export class AutoNotificationsService {
         .eq('data_consulta', today)
         .gte('hora_inicio', currentTime)
         .lte('hora_inicio', targetTime)
-        .in('status', ['pendente', 'confirmado']);
-
-      if (empresaId) {
-        query = query.eq('empresa_id', empresaId);
-      }
+        .in('status', ['pendente', 'confirmado'])
+        .eq('empresa_id', empresaId);
 
       const { data: consultas, error } = await query;
 
@@ -61,6 +58,7 @@ export class AutoNotificationsService {
           .from('notifications')
           .select('id')
           .eq('type', 'appointment')
+          .eq('empresa_id', empresaId)
           .eq('data->>appointment_id', consulta.id)
           .single();
 
@@ -76,7 +74,7 @@ export class AutoNotificationsService {
               time: consulta.hora_inicio,
               procedure: consulta.procedimento
             }
-          });
+          }, empresaId);
           notifications.push(notification);
         }
       }
@@ -92,7 +90,7 @@ export class AutoNotificationsService {
   /**
    * Verifica retornos que estão próximos (1 dia antes)
    */
-  async checkUpcomingReturns(empresaId?: string) {
+  async checkUpcomingReturns(empresaId: string) {
     try {
       const client = this.supabaseService.getClient();
       const tomorrow = new Date();
@@ -100,18 +98,15 @@ export class AutoNotificationsService {
       const tomorrowDate = tomorrow.toISOString().split('T')[0];
 
       // Buscar retornos de amanhã
-      let query = client
+      const query = client
         .from('retornos')
         .select(`
           *,
           paciente:cliente_id(nome, telefone)
         `)
         .eq('data_retorno', tomorrowDate)
-        .in('status', ['agendado', 'confirmado']);
-
-      if (empresaId) {
-        query = query.eq('empresa_id', empresaId);
-      }
+        .in('status', ['agendado', 'confirmado'])
+        .eq('empresa_id', empresaId);
 
       const { data: retornos, error } = await query;
 
@@ -132,6 +127,7 @@ export class AutoNotificationsService {
           .from('notifications')
           .select('id')
           .eq('type', 'return')
+          .eq('empresa_id', empresaId)
           .eq('data->>return_id', retorno.id)
           .single();
 
@@ -148,7 +144,7 @@ export class AutoNotificationsService {
               time: retorno.hora_retorno,
               procedure: retorno.procedimento
             }
-          });
+          }, empresaId);
           notifications.push(notification);
         }
       }
@@ -164,7 +160,7 @@ export class AutoNotificationsService {
   /**
    * Verifica consultas que estão atrasadas (já passou da hora)
    */
-  async checkLateAppointments(empresaId?: string) {
+  async checkLateAppointments(empresaId: string) {
     try {
       const client = this.supabaseService.getClient();
       const now = new Date();
@@ -172,7 +168,7 @@ export class AutoNotificationsService {
       const currentTime = now.toTimeString().slice(0, 5);
 
       // Buscar consultas de hoje que já passaram e ainda estão pendentes
-      let query = client
+      const query = client
         .from('consultas')
         .select(`
           *,
@@ -180,11 +176,8 @@ export class AutoNotificationsService {
         `)
         .eq('data_consulta', today)
         .lt('hora_inicio', currentTime)
-        .eq('status', 'pendente');
-
-      if (empresaId) {
-        query = query.eq('empresa_id', empresaId);
-      }
+        .eq('status', 'pendente')
+        .eq('empresa_id', empresaId);
 
       const { data: consultas, error } = await query;
 
@@ -204,6 +197,7 @@ export class AutoNotificationsService {
           .from('notifications')
           .select('id')
           .eq('type', 'appointment')
+          .eq('empresa_id', empresaId)
           .eq('data->>appointment_id', consulta.id)
           .eq('title', '⚠️ Consulta Atrasada')
           .single();
@@ -220,7 +214,7 @@ export class AutoNotificationsService {
               time: consulta.hora_inicio,
               status: consulta.status
             }
-          });
+          }, empresaId);
           notifications.push(notification);
         }
       }
@@ -236,7 +230,7 @@ export class AutoNotificationsService {
   /**
    * Executa todas as verificações automáticas
    */
-  async runAutoChecks(empresaId?: string) {
+  async runAutoChecks(empresaId: string) {
     this.logger.log('🔄 Executando verificações automáticas de notificações...');
     
     const [appointments, returns, late] = await Promise.all([

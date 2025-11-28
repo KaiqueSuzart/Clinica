@@ -30,11 +30,24 @@ export class FilesService {
 
   async uploadFile(
     file: any,
-    createFileDto: any
+    createFileDto: any,
+    empresaId: string
   ): Promise<PatientFile> {
     const supabase = this.supabaseService.getClient();
 
     try {
+      // Validar que o paciente pertence à empresa
+      const { data: patient, error: patientError } = await supabase
+        .from('clientelA')
+        .select('id, empresa')
+        .eq('id', createFileDto.patient_id)
+        .eq('empresa', empresaId)
+        .single();
+
+      if (patientError || !patient) {
+        throw new NotFoundException('Paciente não encontrado ou não pertence à empresa');
+      }
+
       // Validar tipo de arquivo
       this.validateFile(file, createFileDto.category);
 
@@ -93,8 +106,20 @@ export class FilesService {
     }
   }
 
-  async findAllByPatient(patientId: string): Promise<PatientFile[]> {
+  async findAllByPatient(patientId: string, empresaId: string): Promise<PatientFile[]> {
     const supabase = this.supabaseService.getClient();
+
+    // Validar que o paciente pertence à empresa
+    const { data: patient, error: patientError } = await supabase
+      .from('clientelA')
+      .select('id, empresa')
+      .eq('id', patientId)
+      .eq('empresa', empresaId)
+      .single();
+
+    if (patientError || !patient) {
+      throw new NotFoundException('Paciente não encontrado ou não pertence à empresa');
+    }
 
     const { data, error } = await supabase
       .from('patient_files')
@@ -119,18 +144,33 @@ export class FilesService {
     });
   }
 
-  async findOne(id: string): Promise<PatientFile> {
+  async findOne(id: string, empresaId: string): Promise<PatientFile> {
     const supabase = this.supabaseService.getClient();
 
-    const { data, error } = await supabase
+    // Buscar arquivo primeiro
+    const { data: fileData, error: fileError } = await supabase
       .from('patient_files')
       .select('*')
       .eq('id', id)
       .single();
 
-    if (error || !data) {
+    if (fileError || !fileData) {
       throw new NotFoundException('Arquivo não encontrado');
     }
+
+    // Validar que o paciente pertence à empresa
+    const { data: patient, error: patientError } = await supabase
+      .from('clientelA')
+      .select('id, empresa')
+      .eq('id', fileData.patient_id)
+      .eq('empresa', empresaId)
+      .single();
+
+    if (patientError || !patient) {
+      throw new NotFoundException('Arquivo não encontrado');
+    }
+
+    const data = fileData;
 
     // Adicionar URL pública
     const { data: publicUrlData } = supabase.storage
@@ -143,8 +183,31 @@ export class FilesService {
     };
   }
 
-  async update(id: string, updateFileDto: UpdateFileDto): Promise<PatientFile> {
+  async update(id: string, updateFileDto: UpdateFileDto, empresaId: string): Promise<PatientFile> {
     const supabase = this.supabaseService.getClient();
+
+    // Primeiro buscar o arquivo
+    const { data: fileData, error: findError } = await supabase
+      .from('patient_files')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (findError || !fileData) {
+      throw new NotFoundException('Arquivo não encontrado');
+    }
+
+    // Validar que o paciente pertence à empresa
+    const { data: patient, error: patientError } = await supabase
+      .from('clientelA')
+      .select('id, empresa')
+      .eq('id', fileData.patient_id)
+      .eq('empresa', empresaId)
+      .single();
+
+    if (patientError || !patient) {
+      throw new NotFoundException('Arquivo não encontrado');
+    }
 
     const { data, error } = await supabase
       .from('patient_files')
@@ -168,17 +231,29 @@ export class FilesService {
     };
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(id: string, empresaId: string): Promise<void> {
     const supabase = this.supabaseService.getClient();
 
-    // Buscar o arquivo para obter o caminho
+    // Buscar o arquivo primeiro
     const { data: fileData, error: findError } = await supabase
       .from('patient_files')
-      .select('file_path')
+      .select('file_path, patient_id')
       .eq('id', id)
       .single();
 
     if (findError || !fileData) {
+      throw new NotFoundException('Arquivo não encontrado');
+    }
+
+    // Validar que o paciente pertence à empresa
+    const { data: patient, error: patientError } = await supabase
+      .from('clientelA')
+      .select('id, empresa')
+      .eq('id', fileData.patient_id)
+      .eq('empresa', empresaId)
+      .single();
+
+    if (patientError || !patient) {
       throw new NotFoundException('Arquivo não encontrado');
     }
 
@@ -202,8 +277,20 @@ export class FilesService {
     }
   }
 
-  async getFilesByCategory(patientId: string, category: FileCategory): Promise<PatientFile[]> {
+  async getFilesByCategory(patientId: string, category: FileCategory, empresaId: string): Promise<PatientFile[]> {
     const supabase = this.supabaseService.getClient();
+
+    // Validar que o paciente pertence à empresa
+    const { data: patient, error: patientError } = await supabase
+      .from('clientelA')
+      .select('id, empresa')
+      .eq('id', patientId)
+      .eq('empresa', empresaId)
+      .single();
+
+    if (patientError || !patient) {
+      throw new NotFoundException('Paciente não encontrado ou não pertence à empresa');
+    }
 
     const { data, error } = await supabase
       .from('patient_files')
@@ -229,8 +316,20 @@ export class FilesService {
     });
   }
 
-  async getPatientStats(patientId: string) {
+  async getPatientStats(patientId: string, empresaId: string) {
     const supabase = this.supabaseService.getClient();
+
+    // Validar que o paciente pertence à empresa
+    const { data: patient, error: patientError } = await supabase
+      .from('clientelA')
+      .select('id, empresa')
+      .eq('id', patientId)
+      .eq('empresa', empresaId)
+      .single();
+
+    if (patientError || !patient) {
+      throw new NotFoundException('Paciente não encontrado ou não pertence à empresa');
+    }
 
     const { data, error } = await supabase
       .from('patient_files')

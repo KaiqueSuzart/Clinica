@@ -26,7 +26,7 @@ export interface BusinessHours {
 export class BusinessHoursService {
   constructor(private readonly supabaseService: SupabaseService) {}
 
-  async getBusinessHours(empresaId: string = '00000000-0000-0000-0000-000000000001'): Promise<BusinessHours> {
+  async getBusinessHours(empresaId: string): Promise<BusinessHours> {
     try {
       const { data, error } = await this.supabaseService
         .getClient()
@@ -74,7 +74,7 @@ export class BusinessHoursService {
     }
   }
 
-  async updateBusinessHours(empresaId: string = '00000000-0000-0000-0000-000000000001', businessHours: BusinessHours): Promise<BusinessHours> {
+  async updateBusinessHours(empresaId: string, businessHours: BusinessHours): Promise<BusinessHours> {
     try {
       const updates = Object.entries(businessHours).map(([dayKey, schedule]) => ({
         empresa_id: empresaId,

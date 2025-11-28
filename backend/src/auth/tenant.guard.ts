@@ -18,19 +18,7 @@ export class TenantGuard implements CanActivate {
       throw new UnauthorizedException('Empresa não definida');
     }
 
-    // Configurar contexto da empresa no Supabase
-    try {
-      await this.supabaseService
-        .getClient()
-        .rpc('set_config', {
-          setting_name: 'app.current_empresa_id',
-          setting_value: request.user.empresa_id.toString(),
-          is_local: true
-        });
-    } catch (error) {
-      console.error('Erro ao configurar contexto da empresa:', error);
-    }
-
+    // Não é necessário configurar contexto via RPC - o empresa_id já está no request
     return true;
   }
 }

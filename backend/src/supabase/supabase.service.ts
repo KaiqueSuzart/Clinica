@@ -6,21 +6,32 @@ import type { Database } from '../types/database';
 @Injectable()
 export class SupabaseService implements OnModuleInit {
   private supabase: SupabaseClient<Database>;
+  private supabaseAdmin: SupabaseClient<Database>;
 
   constructor() {}
 
   onModuleInit() {
     // Usar service role no backend para evitar bloqueios de RLS
+    // A service role key já bypassa RLS, mas vamos criar um cliente específico para operações admin
     this.supabase = createClient<Database>(config.supabase.url, config.supabase.serviceRoleKey, {
       auth: {
         autoRefreshToken: true,
         persistSession: false,
       },
     });
+
+    // Cliente admin idêntico (service role já bypassa RLS)
+    // Criado separadamente para garantir que não há interferência de contexto
+    this.supabaseAdmin = createClient<Database>(config.supabase.url, config.supabase.serviceRoleKey);
   }
 
   getClient(): SupabaseClient<Database> {
     return this.supabase;
+  }
+
+  // Cliente admin que bypassa RLS completamente
+  getAdminClient(): SupabaseClient<Database> {
+    return this.supabaseAdmin;
   }
 
   async testConnection() {

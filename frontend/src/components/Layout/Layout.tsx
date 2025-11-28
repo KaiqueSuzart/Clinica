@@ -14,6 +14,7 @@ import Pacientes from '../../pages/Pacientes';
 import Procedimentos from '../../pages/Procedimentos';
 import Orcamentos from '../../pages/Orcamentos';
 import Retornos from '../../pages/Retornos';
+import Financeiro from '../../pages/Financeiro';
 import Configuracoes from '../../pages/Configuracoes';
 import Perfil from '../../pages/Perfil';
 import Anamnese from '../../pages/Anamnese';
@@ -59,6 +60,7 @@ export default function Layout() {
                   <Route path="/procedimentos" element={<Procedimentos />} />
                   <Route path="/orcamentos" element={<Orcamentos />} />
                   <Route path="/retornos" element={<Retornos />} />
+                  <Route path="/financeiro" element={<Financeiro />} />
                   <Route path="/configuracoes" element={<Configuracoes />} />
                   <Route path="/perfil" element={<Perfil />} />
                   {/* Páginas específicas */}

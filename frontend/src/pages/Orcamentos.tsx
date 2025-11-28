@@ -7,7 +7,7 @@ import SuccessModal from '../components/UI/SuccessModal';
 import ErrorModal from '../components/UI/ErrorModal';
 import SendBudgetModal from '../components/UI/SendBudgetModal';
 import ApproveRejectModal from '../components/UI/ApproveRejectModal';
-import { apiService, Budget, CreateBudgetData, Patient } from '../services/api';
+import { apiService, Budget, CreateBudgetData, Patient, Procedure } from '../services/api';
 
 export default function Orcamentos() {
   const [showNewBudget, setShowNewBudget] = useState(false);
@@ -17,6 +17,7 @@ export default function Orcamentos() {
   const [budgetsList, setBudgetsList] = useState<Budget[]>([]);
   const [filteredBudgets, setFilteredBudgets] = useState<Budget[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [procedures, setProcedures] = useState<Procedure[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -41,6 +42,8 @@ export default function Orcamentos() {
   
   // Estados para novo item
   const [newItemProcedure, setNewItemProcedure] = useState('');
+  const [newItemSelectedProcedure, setNewItemSelectedProcedure] = useState<string>(''); // ID do procedimento selecionado
+  const [newItemIsCustom, setNewItemIsCustom] = useState(false); // Se está digitando manualmente
   const [newItemDescription, setNewItemDescription] = useState('');
   const [newItemQuantity, setNewItemQuantity] = useState(1);
   const [newItemUnitPrice, setNewItemUnitPrice] = useState(0);
@@ -60,9 +63,10 @@ export default function Orcamentos() {
       setLoading(true);
       setError(null);
       
-      const [budgetsData, patientsData] = await Promise.all([
+      const [budgetsData, patientsData, proceduresData] = await Promise.all([
         apiService.getAllBudgets(),
-        apiService.getAllPatients()
+        apiService.getAllPatients(),
+        apiService.getProcedures(undefined, true) // Carregar apenas procedimentos ativos
       ]);
       
       // Garantir que budgetsData é um array
@@ -70,37 +74,79 @@ export default function Orcamentos() {
       setBudgetsList(budgetsArray);
       setFilteredBudgets(budgetsArray);
       setPatients(Array.isArray(patientsData) ? patientsData : []);
+      
+      // Processar procedimentos
+      if (proceduresData && proceduresData.data) {
+        const proceduresArray = Array.isArray(proceduresData.data) ? proceduresData.data : [];
+        setProcedures(proceduresArray);
+      } else {
+        setProcedures([]);
+      }
     } catch (err) {
       console.error('Erro ao carregar dados:', err);
       setError('Erro ao carregar dados. Tente novamente.');
       // Definir arrays vazios em caso de erro
       setBudgetsList([]);
       setPatients([]);
+      setProcedures([]);
     } finally {
       setLoading(false);
     }
   };
 
+  // Função para quando um procedimento é selecionado
+  const handleProcedureSelect = (procedureId: string) => {
+    if (procedureId === 'custom') {
+      // Modo manual
+      setNewItemIsCustom(true);
+      setNewItemSelectedProcedure('');
+      setNewItemProcedure('');
+      setNewItemDescription('');
+      setNewItemUnitPrice(0);
+    } else if (procedureId) {
+      // Procedimento cadastrado selecionado
+      const selectedProcedure = procedures.find(p => p.id === procedureId);
+      if (selectedProcedure) {
+        setNewItemIsCustom(false);
+        setNewItemSelectedProcedure(procedureId);
+        setNewItemProcedure(selectedProcedure.nome);
+        setNewItemDescription(selectedProcedure.descricao || '');
+        setNewItemUnitPrice(selectedProcedure.preco_estimado || 0);
+      }
+    } else {
+      // Limpar seleção
+      setNewItemIsCustom(false);
+      setNewItemSelectedProcedure('');
+      setNewItemProcedure('');
+      setNewItemDescription('');
+      setNewItemUnitPrice(0);
+    }
+  };
+
   const addNewItem = () => {
-    if (!newItemProcedure.trim() || !newItemDescription.trim()) {
-      showError('Preencha o procedimento e a descrição');
+    if (!newItemProcedure.trim()) {
+      showError('Preencha o procedimento');
       return;
     }
 
     const newItem = {
       id: Date.now().toString(),
       procedure: newItemProcedure,
-      description: newItemDescription,
+      description: newItemDescription || newItemProcedure, // Usar descrição ou o nome do procedimento
       quantity: newItemQuantity,
       unitPrice: newItemUnitPrice,
       total: newItemQuantity * newItemUnitPrice,
-      observacoes: newItemDescription // Usar a descrição como observações
+      valor_total: newItemQuantity * newItemUnitPrice, // Adicionar também valor_total para compatibilidade
+      observacoes: newItemDescription || newItemProcedure, // Usar a descrição como observações
+      procedureId: newItemSelectedProcedure || null // ID do procedimento se foi selecionado
     };
 
     setNewBudgetItems(prev => [...prev, newItem]);
     
     // Reset campos
     setNewItemProcedure('');
+    setNewItemSelectedProcedure('');
+    setNewItemIsCustom(false);
     setNewItemDescription('');
     setNewItemQuantity(1);
     setNewItemUnitPrice(0);
@@ -344,10 +390,27 @@ export default function Orcamentos() {
     }
 
     // Limpar campos
-    (document.getElementById('novo_procedimento_edit') as HTMLInputElement).value = '';
-    (document.getElementById('nova_descricao_edit') as HTMLInputElement).value = '';
-    (document.getElementById('nova_quantidade_edit') as HTMLInputElement).value = '1';
-    (document.getElementById('novo_valor_unitario_edit') as HTMLInputElement).value = '0';
+    const procedureSelect = document.getElementById('novo_procedimento_edit_select') as HTMLSelectElement;
+    const procedureInput = document.getElementById('novo_procedimento_edit') as HTMLInputElement;
+    const descriptionInput = document.getElementById('nova_descricao_edit') as HTMLInputElement;
+    const quantityInput = document.getElementById('nova_quantidade_edit') as HTMLInputElement;
+    const unitPriceInput = document.getElementById('novo_valor_unitario_edit') as HTMLInputElement;
+    
+    if (procedureSelect) procedureSelect.value = '';
+    if (procedureInput) {
+      procedureInput.value = '';
+      procedureInput.style.display = 'none';
+      procedureInput.disabled = false;
+    }
+    if (descriptionInput) {
+      descriptionInput.value = '';
+      descriptionInput.disabled = false;
+    }
+    if (quantityInput) quantityInput.value = '1';
+    if (unitPriceInput) {
+      unitPriceInput.value = '0';
+      unitPriceInput.disabled = false;
+    }
   };
 
   const handleSaveEditBudget = async () => {
@@ -530,10 +593,11 @@ export default function Orcamentos() {
                 </label>
                 <input
                   type="text"
-                  value={newBudgetItems.length > 0 ? 
-                    `R$ ${(newBudgetItems.reduce((sum, item) => sum + (item.valor_total || 0), 0) / newBudgetParcels).toFixed(2)}` : 
-                    'R$ 0,00'
-                  }
+                  value={(() => {
+                    const total = calculateTotal();
+                    const parcelValue = total > 0 && newBudgetParcels > 0 ? total / newBudgetParcels : 0;
+                    return `R$ ${parcelValue.toFixed(2)}`;
+                  })()}
                   disabled
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                 />
@@ -578,16 +642,48 @@ export default function Orcamentos() {
               <div className="space-y-3">
                 <div className="grid grid-cols-12 gap-3 items-end">
                   <div className="col-span-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Procedimento
                     </label>
-                    <input
-                      type="text"
-                      value={newItemProcedure}
-                      onChange={(e) => setNewItemProcedure(e.target.value)}
-                      placeholder="Nome do procedimento"
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                    />
+                    {!newItemIsCustom ? (
+                      <select
+                        value={newItemSelectedProcedure}
+                        onChange={(e) => handleProcedureSelect(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      >
+                        <option value="">Selecione um procedimento</option>
+                        {procedures.map((procedure) => (
+                          <option key={procedure.id} value={procedure.id}>
+                            {procedure.nome} {procedure.preco_estimado ? `- R$ ${procedure.preco_estimado.toFixed(2)}` : ''}
+                          </option>
+                        ))}
+                        <option value="custom">+ Digitar manualmente</option>
+                      </select>
+                    ) : (
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={newItemProcedure}
+                          onChange={(e) => setNewItemProcedure(e.target.value)}
+                          placeholder="Nome do procedimento"
+                          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNewItemIsCustom(false);
+                            setNewItemProcedure('');
+                            setNewItemSelectedProcedure('');
+                            setNewItemDescription('');
+                            setNewItemUnitPrice(0);
+                          }}
+                          className="px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+                          title="Voltar para seleção"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <div className="col-span-4">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -602,7 +698,7 @@ export default function Orcamentos() {
                     />
                   </div>
                   <div className="col-span-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Qtd
                     </label>
                     <input
@@ -614,7 +710,7 @@ export default function Orcamentos() {
                     />
                   </div>
                   <div className="col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Valor Unit.
                     </label>
                     <input
@@ -623,7 +719,8 @@ export default function Orcamentos() {
                       onChange={(e) => setNewItemUnitPrice(Number(e.target.value))}
                       step="0.01"
                       min="0"
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      disabled={!newItemIsCustom && newItemSelectedProcedure} // Desabilitar se procedimento foi selecionado
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
                     />
                   </div>
                   <div className="col-span-1">
@@ -632,7 +729,7 @@ export default function Orcamentos() {
                       variant="outline" 
                       size="sm"
                       onClick={addNewItem}
-                      disabled={!newItemProcedure.trim() || !newItemDescription.trim()}
+                      disabled={!newItemProcedure.trim()}
                     >
                       +
                     </Button>
@@ -1103,10 +1200,69 @@ export default function Orcamentos() {
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Procedimento
                       </label>
+                      <select
+                        id="novo_procedimento_edit_select"
+                        onChange={(e) => {
+                          const procedureId = e.target.value;
+                          const procedureInput = document.getElementById('novo_procedimento_edit') as HTMLInputElement;
+                          const descriptionInput = document.getElementById('nova_descricao_edit') as HTMLInputElement;
+                          const unitPriceInput = document.getElementById('novo_valor_unitario_edit') as HTMLInputElement;
+                          
+                          if (procedureId === 'custom') {
+                            if (procedureInput) {
+                              procedureInput.style.display = 'block';
+                              procedureInput.value = '';
+                              procedureInput.disabled = false;
+                            }
+                            if (descriptionInput) descriptionInput.disabled = false;
+                            if (unitPriceInput) unitPriceInput.disabled = false;
+                          } else if (procedureId) {
+                            const selectedProcedure = procedures.find(p => p.id === procedureId);
+                            if (selectedProcedure) {
+                              if (procedureInput) {
+                                procedureInput.value = selectedProcedure.nome;
+                                procedureInput.style.display = 'block';
+                                procedureInput.disabled = true;
+                              }
+                              if (descriptionInput) {
+                                descriptionInput.value = selectedProcedure.descricao || '';
+                                descriptionInput.disabled = true;
+                              }
+                              if (unitPriceInput) {
+                                unitPriceInput.value = (selectedProcedure.preco_estimado || 0).toString();
+                                unitPriceInput.disabled = true;
+                              }
+                            }
+                          } else {
+                            if (procedureInput) {
+                              procedureInput.value = '';
+                              procedureInput.style.display = 'none';
+                            }
+                            if (descriptionInput) {
+                              descriptionInput.value = '';
+                              descriptionInput.disabled = false;
+                            }
+                            if (unitPriceInput) {
+                              unitPriceInput.value = '0';
+                              unitPriceInput.disabled = false;
+                            }
+                          }
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 mb-2"
+                      >
+                        <option value="">Selecione um procedimento</option>
+                        {procedures.map((procedure) => (
+                          <option key={procedure.id} value={procedure.id}>
+                            {procedure.nome} {procedure.preco_estimado ? `- R$ ${procedure.preco_estimado.toFixed(2)}` : ''}
+                          </option>
+                        ))}
+                        <option value="custom">+ Digitar manualmente</option>
+                      </select>
                       <input
                         type="text"
                         id="novo_procedimento_edit"
                         placeholder="Nome do procedimento"
+                        style={{ display: 'none' }}
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                       />
                     </div>
@@ -1118,7 +1274,7 @@ export default function Orcamentos() {
                         type="text"
                         id="nova_descricao_edit"
                         placeholder="Descrição detalhada"
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
                       />
                     </div>
                     <div className="col-span-1">
@@ -1143,7 +1299,7 @@ export default function Orcamentos() {
                         placeholder="0,00"
                         step="0.01"
                         defaultValue="0"
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
                       />
                     </div>
                     <div className="col-span-2">

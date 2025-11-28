@@ -4,6 +4,7 @@ import LoadingButton from '../UI/LoadingButton';
 import { apiService } from '../../services/api';
 import { useToast } from '../UI/Toast';
 import { useBusinessHours } from '../../contexts/BusinessHoursContext';
+import { formatPhoneDisplay } from '../../utils/phoneFormatter';
 
 interface ScheduleReturnModalProps {
   isOpen: boolean;
@@ -137,7 +138,7 @@ export default function ScheduleReturnModal({
               </h4>
               <p className="text-blue-800 dark:text-blue-200">{patientName}</p>
               {patientPhone && (
-                <p className="text-blue-700 dark:text-blue-300 text-sm">📞 {patientPhone}</p>
+                <p className="text-blue-700 dark:text-blue-300 text-sm">📞 {formatPhoneDisplay(patientPhone)}</p>
               )}
               {patientEmail && (
                 <p className="text-blue-700 dark:text-blue-300 text-sm">✉️ {patientEmail}</p>

@@ -1,27 +1,30 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 
 @Injectable()
 export class DashboardService {
   constructor(private supabaseService: SupabaseService) {}
 
-  async getMonthlyStats(empresaId?: string) {
+  async getMonthlyStats(empresaId: string) {
+    if (!empresaId) {
+      console.error('[DashboardService.getMonthlyStats] Empresa ID não fornecido');
+      throw new BadRequestException('Empresa ID é obrigatório');
+    }
+
     try {
-      const client = this.supabaseService.getClient();
+      console.log('[DashboardService.getMonthlyStats] Buscando estatísticas para empresa:', empresaId);
+      const client = this.supabaseService.getAdminClient();
       const now = new Date();
       const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
       const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
 
       // Buscar consultas do mês
-      let consultasQuery = client
+      const consultasQuery = client
         .from('consultas')
         .select('*')
+        .eq('empresa_id', empresaId)
         .gte('data_consulta', firstDayOfMonth)
         .lte('data_consulta', lastDayOfMonth);
-
-      if (empresaId) {
-        consultasQuery = consultasQuery.eq('empresa_id', empresaId);
-      }
 
       const { data: consultas, error: consultasError } = await consultasQuery;
 
@@ -58,32 +61,32 @@ export class DashboardService {
     }
   }
 
-  async getTodayStats(empresaId?: string) {
+  async getTodayStats(empresaId: string) {
+    if (!empresaId) {
+      console.error('[DashboardService.getTodayStats] Empresa ID não fornecido');
+      throw new BadRequestException('Empresa ID é obrigatório');
+    }
+
     try {
-      const client = this.supabaseService.getClient();
+      console.log('[DashboardService.getTodayStats] Buscando estatísticas do dia para empresa:', empresaId);
+      const client = this.supabaseService.getAdminClient();
       const today = new Date().toISOString().split('T')[0];
 
       // Buscar consultas de hoje
-      let todayQuery = client
+      const todayQuery = client
         .from('consultas')
         .select('*')
+        .eq('empresa_id', empresaId)
         .eq('data_consulta', today);
-
-      if (empresaId) {
-        todayQuery = todayQuery.eq('empresa_id', empresaId);
-      }
 
       const { data: todayConsultas, error: todayError } = await todayQuery;
       if (todayError) throw todayError;
 
       // Buscar total de pacientes
-      let patientsQuery = client
+      const patientsQuery = client
         .from('clientelA')
-        .select('*', { count: 'exact', head: true });
-
-      if (empresaId) {
-        patientsQuery = patientsQuery.eq('empresa', empresaId);
-      }
+        .select('*', { count: 'exact', head: true })
+        .eq('empresa', empresaId);
 
       const { count: totalPatients, error: patientsError } = await patientsQuery;
       if (patientsError) throw patientsError;

@@ -12,40 +12,63 @@ import {
   Settings,
   ClipboardList,
   Upload,
-  Briefcase
+  Briefcase,
+  DollarSign
 } from 'lucide-react';
 
 const menuItems = [
-  { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { path: '/agenda', icon: Calendar, label: 'Agenda' },
-  { path: '/pacientes', icon: Users, label: 'Pacientes' },
-  { path: '/procedimentos', icon: Briefcase, label: 'Procedimentos' },
-  { path: '/retornos', icon: RotateCcw, label: 'Retornos' },
-  { path: '/orcamentos', icon: FileText, label: 'Orçamentos' },
-  { path: '/anamnese', icon: ClipboardList, label: 'Anamnese' },
-  { path: '/arquivos', icon: Upload, label: 'Arquivos' },
-  { path: '/relatorios', icon: BarChart3, label: 'Relatórios' },
-  { path: '/configuracoes', icon: Settings, label: 'Configurações' }
+  { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', permission: 'dashboard', requiresAdmin: false },
+  { path: '/agenda', icon: Calendar, label: 'Agenda', permission: 'agenda', requiresAdmin: false },
+  { path: '/pacientes', icon: Users, label: 'Pacientes', permission: 'pacientes', requiresAdmin: false },
+  { path: '/procedimentos', icon: Briefcase, label: 'Procedimentos', permission: 'procedimentos', requiresAdmin: false },
+  { path: '/retornos', icon: RotateCcw, label: 'Retornos', permission: 'retornos', requiresAdmin: false },
+  { path: '/orcamentos', icon: FileText, label: 'Orçamentos', permission: 'orcamentos', requiresAdmin: false },
+  { path: '/financeiro', icon: DollarSign, label: 'Financeiro', permission: 'financeiro', requiresAdmin: false },
+  { path: '/anamnese', icon: ClipboardList, label: 'Anamnese', permission: 'anamnese', requiresAdmin: false },
+  { path: '/arquivos', icon: Upload, label: 'Arquivos', permission: 'arquivos', requiresAdmin: false },
+  { path: '/relatorios', icon: BarChart3, label: 'Relatórios', permission: 'relatorios', requiresAdmin: true },
+  { path: '/configuracoes', icon: Settings, label: 'Configurações', permission: 'configuracoes', requiresAdmin: true }
 ];
 
 export default function Sidebar() {
   const { user, empresa } = useAuth();
   const permissions = usePermissions();
   
-  // Filtrar itens do menu baseado em permissões
-  const filteredMenuItems = menuItems.filter(item => {
-    // Relat dados financeiros - só Dentista/Admin
+  // Função auxiliar para verificar se o usuário pode ver um item
+  const canViewItem = (item: typeof menuItems[0]): boolean => {
+    // Se requer admin e não é admin/dentista, não mostrar
+    if (item.requiresAdmin && !permissions.isAdmin && !permissions.isDentista) {
+      return false;
+    }
+    
+    // Verificações específicas por rota
     if (item.path === '/relatorios' && !permissions.canViewReports) {
       return false;
     }
     
-    // Configurações - só Dentista/Admin
+    if (item.path === '/financeiro' && !permissions.canViewFinancial) {
+      return false;
+    }
+    
     if (item.path === '/configuracoes' && !permissions.canEditSettings) {
       return false;
     }
     
+    // Recepcionista não vê anamnese e arquivos
+    if (permissions.isRecepcionista && (item.path === '/anamnese' || item.path === '/arquivos')) {
+      return false;
+    }
+    
+    // Financeiro só vê orçamentos, relatórios, financeiro e dashboard
+    if (user?.cargo?.toLowerCase() === 'financeiro') {
+      return item.path === '/orcamentos' || item.path === '/relatorios' || item.path === '/dashboard' || item.path === '/financeiro';
+    }
+    
     return true;
-  });
+  };
+  
+  // Filtrar itens do menu baseado em permissões
+  const filteredMenuItems = menuItems.filter(canViewItem);
 
   return (
     <div className="fixed left-0 top-0 h-full w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 z-40 transition-colors">

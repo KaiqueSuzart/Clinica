@@ -21,6 +21,7 @@ import { SupabaseModule } from './supabase/supabase.module';
 import { ProceduresModule } from './procedures/procedures.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { ReportsModule } from './reports/reports.module';
+import { PaymentsModule } from './payments/payments.module';
 import { TestController } from './test.controller';
 import { TestDbController } from './test-db.controller';
 import { TenantMiddleware } from './auth/tenant.middleware';
@@ -47,13 +48,14 @@ import { TenantMiddleware } from './auth/tenant.middleware';
     ProceduresModule,
     DashboardModule,
     ReportsModule,
+    PaymentsModule,
   ],
   controllers: [AppController, TestController, TestDbController],
   providers: [AppService],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    // Aplicar middleware de tenant em todas as rotas exceto auth
+    // Aplicar middleware de tenant em todas as rotas exceto auth e rotas de teste
     consumer
       .apply(TenantMiddleware)
       .exclude(
@@ -63,16 +65,6 @@ export class AppModule implements NestModule {
         { path: 'auth/logout', method: RequestMethod.ALL },
         { path: 'test/(.*)', method: RequestMethod.ALL },
         { path: 'test-db/(.*)', method: RequestMethod.ALL },
-        { path: 'procedures/(.*)', method: RequestMethod.ALL },
-        { path: 'procedures', method: RequestMethod.ALL },
-        { path: 'dashboard/(.*)', method: RequestMethod.ALL },
-        { path: 'dashboard', method: RequestMethod.ALL },
-        { path: 'notifications/(.*)', method: RequestMethod.ALL },
-        { path: 'notifications', method: RequestMethod.ALL },
-        { path: 'reports/(.*)', method: RequestMethod.ALL },
-        { path: 'reports', method: RequestMethod.ALL },
-        { path: 'usuarios/(.*)', method: RequestMethod.ALL },
-        { path: 'usuarios', method: RequestMethod.ALL },
         { path: 'health', method: RequestMethod.ALL },
         { path: 'docs', method: RequestMethod.ALL },
         { path: 'api-docs', method: RequestMethod.ALL }

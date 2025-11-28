@@ -62,6 +62,8 @@ export interface Appointment {
   status: string;
   notes?: string;
   isReturn?: boolean; // Flag para identificar se é um retorno
+  valor?: number;
+  pago?: boolean;
 }
 
 export interface DashboardStats {
@@ -189,6 +191,9 @@ export interface Appointment {
   professional: string;
   status: 'pendente' | 'confirmado' | 'cancelado' | 'realizado';
   notes?: string;
+  valor?: number;
+  forma_pagamento?: string;
+  pago?: boolean;
 }
 
 export interface ReturnVisit {
@@ -297,6 +302,60 @@ export interface UpdateBudgetData extends Partial<CreateBudgetData> {
   }[];
 }
 
+// ===== PAGAMENTOS =====
+
+export type PaymentMethod = 'dinheiro' | 'cartao_credito' | 'cartao_debito' | 'pix' | 'transferencia';
+
+export interface Payment {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  empresa_id: string;
+  consulta_id?: string;
+  paciente_id: string;
+  valor: number;
+  forma_pagamento: PaymentMethod;
+  data_pagamento: string;
+  observacoes?: string;
+  descricao?: string;
+  confirmado: boolean;
+  paciente_nome?: string;
+  consulta_data?: string;
+  consulta_procedimento?: string;
+}
+
+export interface CreatePaymentData {
+  consulta_id?: string;
+  paciente_id: string;
+  valor: number;
+  forma_pagamento: PaymentMethod;
+  data_pagamento?: string;
+  observacoes?: string;
+  descricao?: string;
+  confirmado?: boolean;
+}
+
+export interface UpdatePaymentData extends Partial<CreatePaymentData> {}
+
+export interface PaymentFilters {
+  paciente_id?: string;
+  consulta_id?: string;
+  data_inicio?: string;
+  data_fim?: string;
+  forma_pagamento?: PaymentMethod;
+  confirmado?: boolean;
+}
+
+export interface FinancialSummary {
+  total: number;
+  quantidade: number;
+  por_forma_pagamento: Record<string, number>;
+  periodo: {
+    inicio: string | null;
+    fim: string | null;
+  };
+}
+
 // Interfaces de Procedimentos
 export interface Procedure {
   id: string;
@@ -348,9 +407,18 @@ class ApiService {
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('API: Erro na resposta:', errorText);
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      let errorData: any;
+      try {
+        const errorText = await response.text();
+        console.error('API: Erro na resposta:', errorText);
+        errorData = JSON.parse(errorText);
+      } catch {
+        errorData = { message: `Erro ${response.status}: ${response.statusText}` };
+      }
+      
+      const error = new Error(errorData.message || `API Error: ${response.status} ${response.statusText}`);
+      (error as any).response = { data: errorData, status: response.status };
+      throw error;
     }
 
     const result = await response.json();
@@ -506,22 +574,32 @@ class ApiService {
     }
     
     // Mapear dados do backend (português) para frontend (inglês)
-    const mappedPlans = result.map((plan: any) => {
+    const mappedPlans = result.map((plan: any, index: number) => {
+      // O backend retorna plan.items como array de itens_plano_tratamento
+      const planItems = plan.items || plan.itens_plano_tratamento || [];
       
       const mappedPlan = {
         id: plan.id || `plan-${index}`,
         title: plan.titulo || plan.title || `Plano ${index + 1}`,
         description: plan.descricao || plan.description || '',
+        descricao: plan.descricao || plan.description || '', // Manter ambos para compatibilidade
         totalCost: plan.custo_total || plan.totalCost || 0,
         progress: plan.progresso || plan.progress || 0,
         status: plan.status || 'ativo',
-        items: Array.isArray(plan.items) ? plan.items.map((item: any, itemIndex: number) => ({
+        paciente_id: plan.paciente_id || plan.patientId,
+        created_at: plan.created_at || plan.createdAt,
+        items: Array.isArray(planItems) ? planItems.map((item: any, itemIndex: number) => ({
           id: item.id || `item-${itemIndex}`,
           procedure: item.procedimento || item.procedure || 'Procedimento',
+          procedimento: item.procedimento || item.procedure || 'Procedimento', // Manter ambos
           description: item.descricao || item.description || '',
+          descricao: item.descricao || item.description || '', // Manter ambos
+          nome: item.nome || item.name || '',
           tooth: item.dente || item.tooth || '',
           priority: item.prioridade || item.priority || 'media',
           estimatedCost: item.custo_estimado || item.estimatedCost || 0,
+          valor_total: item.custo_estimado || item.estimatedCost || item.valor_total || 0, // Campo para valor total (usa custo_estimado)
+          custo_estimado: item.custo_estimado || item.estimatedCost || 0, // Manter ambos
           estimatedSessions: item.sessoes_estimadas || item.estimatedSessions || 1,
           status: item.status || 'planejado',
           notes: item.observacoes || item.notes || '',
@@ -601,19 +679,36 @@ class ApiService {
       formData.append('description', description);
     }
 
-        const url = `${API_BASE_URL}/files/upload`;
+    // Obter token do localStorage
+    const token = localStorage.getItem('auth_token');
+    
+    // Preparar headers (sem Content-Type para FormData - o browser define automaticamente)
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const url = `${API_BASE_URL}/files/upload`;
     
     const response = await fetch(url, {
       method: 'POST',
+      headers,
       body: formData,
     });
 
-
-
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('API: Erro no upload:', errorText);
-      throw new Error(`Erro no upload: ${response.status} ${response.statusText} - ${errorText}`);
+      let errorData: any;
+      try {
+        const errorText = await response.text();
+        console.error('API: Erro no upload:', errorText);
+        errorData = JSON.parse(errorText);
+      } catch {
+        errorData = { message: `Erro ${response.status}: ${response.statusText}` };
+      }
+      
+      const error = new Error(errorData.message || `Erro no upload: ${response.status} ${response.statusText}`);
+      (error as any).response = { data: errorData, status: response.status };
+      throw error;
     }
 
     return await response.json();
@@ -861,6 +956,53 @@ class ApiService {
     });
   }
 
+  // ===== PAGAMENTOS =====
+
+  async getAllPayments(filters?: PaymentFilters): Promise<Payment[]> {
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          params.append(key, String(value));
+        }
+      });
+    }
+    const queryString = params.toString();
+    return this.request<Payment[]>(`/payments${queryString ? `?${queryString}` : ''}`);
+  }
+
+  async getPaymentById(id: string): Promise<Payment> {
+    return this.request<Payment>(`/payments/${id}`);
+  }
+
+  async createPayment(data: CreatePaymentData): Promise<Payment> {
+    return this.request<Payment>('/payments', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updatePayment(id: string, data: UpdatePaymentData): Promise<Payment> {
+    return this.request<Payment>(`/payments/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deletePayment(id: string): Promise<void> {
+    return this.request<void>(`/payments/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getFinancialSummary(dataInicio?: string, dataFim?: string): Promise<FinancialSummary> {
+    const params = new URLSearchParams();
+    if (dataInicio) params.append('data_inicio', dataInicio);
+    if (dataFim) params.append('data_fim', dataFim);
+    const queryString = params.toString();
+    return this.request<FinancialSummary>(`/payments/summary${queryString ? `?${queryString}` : ''}`);
+  }
+
   // Procedures methods
   async getProcedures(categoria?: string, ativo?: boolean): Promise<{ success: boolean; data: Procedure[]; total: number }> {
     let url = '/procedures';
@@ -904,14 +1046,7 @@ class ApiService {
     });
   }
 
-  // Dashboard methods
-  async getTodayAppointments(): Promise<Appointment[]> {
-    return this.request<Appointment[]>('/appointments/today');
-  }
-
-  async getAllAppointments(): Promise<Appointment[]> {
-    return this.request<Appointment[]>('/appointments');
-  }
+  // Dashboard methods (já definidos acima, removendo duplicatas)
 
   async getDashboardStats(): Promise<DashboardStats> {
     try {
@@ -1022,6 +1157,46 @@ class ApiService {
     });
   }
 
+  // ===== GERENCIAMENTO DE USUÁRIOS =====
+  
+  async getAllUsuarios(): Promise<{ success: boolean; data: any[]; total: number }> {
+    return this.request<{ success: boolean; data: any[]; total: number }>('/usuarios');
+  }
+
+  async createUsuario(data: {
+    email: string;
+    nome: string;
+    cargo: string;
+    telefone?: string;
+    password?: string;
+    avatar_url?: string;
+    ativo?: boolean;
+  }): Promise<{ success: boolean; data: any; message: string; password_temporaria?: string }> {
+    return this.request<{ success: boolean; data: any; message: string; password_temporaria?: string }>('/usuarios', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateUsuario(id: string, data: {
+    nome?: string;
+    cargo?: string;
+    telefone?: string;
+    avatar_url?: string;
+    ativo?: boolean;
+  }): Promise<{ success: boolean; data: any; message: string }> {
+    return this.request<{ success: boolean; data: any; message: string }>(`/usuarios/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deactivateUsuario(id: string): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>(`/usuarios/${id}/deactivate`, {
+      method: 'PUT',
+    });
+  }
+
   // ===== ASSINATURAS E PAGAMENTOS =====
   
   async getSubscriptionPlans(): Promise<any[]> {
@@ -1093,10 +1268,6 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify(data),
     });
-  }
-
-  async getFinancialSummary(): Promise<any> {
-    return this.request<any>('/subscriptions/financial-summary');
   }
 
   // ===== MÉTODOS GENÉRICOS =====

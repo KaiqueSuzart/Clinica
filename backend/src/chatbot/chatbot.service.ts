@@ -16,7 +16,7 @@ export class ChatbotService implements OnModuleInit {
     await this.loadConfig();
   }
 
-  private async loadConfig() {
+  private async loadConfig(empresaId?: string) {
     try {
       const client = this.supabaseService.getClient();
       if (!client) {
@@ -24,10 +24,15 @@ export class ChatbotService implements OnModuleInit {
         return;
       }
 
-      const { data, error } = await client
+      let query = client
         .from('chatbot_config')
-        .select('*')
-        .single();
+        .select('*');
+      
+      if (empresaId) {
+        query = query.eq('empresa_id', empresaId);
+      }
+      
+      const { data, error } = await query.single();
 
       if (data && !error) {
         this.n8nWebhookUrl = data.n8n_webhook_url;
@@ -43,13 +48,27 @@ export class ChatbotService implements OnModuleInit {
     }
   }
 
-  async processWebhookMessage(webhookData: WebhookDto) {
+  async processWebhookMessage(webhookData: WebhookDto, empresaId: string) {
     try {
       this.logger.log('Processando mensagem do webhook:', webhookData);
+
+      // Validar que o paciente pertence à empresa
+      const { data: patient, error: patientError } = await this.supabaseService
+        .getClient()
+        .from('clientelA')
+        .select('id, empresa')
+        .eq('id', webhookData.patientId)
+        .eq('empresa', empresaId)
+        .single();
+
+      if (patientError || !patient) {
+        throw new Error('Paciente não encontrado ou não pertence à empresa');
+      }
 
       // Salvar mensagem no banco de dados
       const message = {
         patient_id: webhookData.patientId,
+        empresa_id: empresaId,
         message_type: webhookData.messageType || 'text',
         content: webhookData.content,
         sender: webhookData.sender || 'patient',
@@ -132,11 +151,12 @@ export class ChatbotService implements OnModuleInit {
     };
   }
 
-  async getConfig() {
+  async getConfig(empresaId: string) {
     try {
       const { data, error } = await this.supabaseService.getClient()
         .from('chatbot_config')
         .select('*')
+        .eq('empresa_id', empresaId)
         .single();
 
       if (error && error.code !== 'PGRST116') {
@@ -155,9 +175,10 @@ export class ChatbotService implements OnModuleInit {
     }
   }
 
-  async updateConfig(config: ChatbotConfigDto) {
+  async updateConfig(config: ChatbotConfigDto, empresaId: string) {
     try {
       const configData = {
+        empresa_id: empresaId,
         n8n_webhook_url: config.n8nWebhookUrl,
         is_enabled: config.isEnabled,
         updated_at: new Date().toISOString()
@@ -165,7 +186,7 @@ export class ChatbotService implements OnModuleInit {
 
       const { data, error } = await this.supabaseService.getClient()
         .from('chatbot_config')
-        .upsert([configData])
+        .upsert([configData], { onConflict: 'empresa_id' })
         .select()
         .single();
 
@@ -188,12 +209,26 @@ export class ChatbotService implements OnModuleInit {
     }
   }
 
-  async getConversations(patientId: string) {
+  async getConversations(patientId: string, empresaId: string) {
     try {
+      // Validar que o paciente pertence à empresa
+      const { data: patient, error: patientError } = await this.supabaseService
+        .getClient()
+        .from('clientelA')
+        .select('id, empresa')
+        .eq('id', patientId)
+        .eq('empresa', empresaId)
+        .single();
+
+      if (patientError || !patient) {
+        throw new Error('Paciente não encontrado ou não pertence à empresa');
+      }
+
       const { data, error } = await this.supabaseService.getClient()
         .from('chatbot_messages')
         .select('*')
         .eq('patient_id', patientId)
+        .eq('empresa_id', empresaId)
         .order('timestamp', { ascending: false })
         .limit(50);
 
@@ -208,15 +243,17 @@ export class ChatbotService implements OnModuleInit {
     }
   }
 
-  async getStats() {
+  async getStats(empresaId: string) {
     try {
       const { data: totalMessages, error: messagesError } = await this.supabaseService.getClient()
         .from('chatbot_messages')
-        .select('id', { count: 'exact' });
+        .select('id', { count: 'exact' })
+        .eq('empresa_id', empresaId);
 
       const { data: activePatients, error: patientsError } = await this.supabaseService.getClient()
         .from('chatbot_messages')
         .select('patient_id')
+        .eq('empresa_id', empresaId)
         .gte('timestamp', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
 
       if (messagesError || patientsError) {

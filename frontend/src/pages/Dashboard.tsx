@@ -5,8 +5,10 @@ import Card from '../components/UI/Card';
 import StatusBadge from '../components/UI/StatusBadge';
 import EvaluationModal from '../components/Evaluations/EvaluationModal';
 import { apiService, Appointment, DashboardStats, ReturnVisit } from '../services/api';
+import { usePermissions } from '../contexts/PermissionsContext';
 
 export default function Dashboard() {
+  const permissions = usePermissions();
   const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'week' | 'month' | 'custom'>('month');
   const [showEvaluation, setShowEvaluation] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
@@ -257,10 +259,21 @@ export default function Dashboard() {
             <p className="text-sm text-gray-600 dark:text-gray-400">Taxa de Comparecimento</p>
           </div>
           <div className="text-center">
-            <div className="text-3xl font-bold text-purple-600 dark:text-purple-400 mb-2">
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(monthlyStats.faturamento)}
-            </div>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Faturamento</p>
+            {permissions.canViewFinancial ? (
+              <>
+                <div className="text-3xl font-bold text-purple-600 dark:text-purple-400 mb-2">
+                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(monthlyStats.faturamento)}
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Faturamento</p>
+              </>
+            ) : (
+              <>
+                <div className="text-3xl font-bold text-gray-400 dark:text-gray-500 mb-2">
+                  ***
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Faturamento (Restrito)</p>
+              </>
+            )}
           </div>
         </div>
       </Card>

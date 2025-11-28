@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, Get, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus, Get, UseGuards, Request, UnauthorizedException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 
@@ -14,6 +14,7 @@ class RegisterDto {
   empresa_id?: number;
   cargo?: string;
   role?: string;
+  permissoes?: any; // Permissões customizadas (opcional, será gerado automaticamente se não fornecido)
 }
 
 class RegisterEmpresaDto {
@@ -60,6 +61,7 @@ export class AuthController {
       empresa_id: registerDto.empresa_id,
       cargo: registerDto.cargo || 'funcionario',
       role: registerDto.role || 'user',
+      permissoes: registerDto.permissoes, // Se fornecido, será usado; senão será gerado automaticamente
     };
     return this.authService.register(registerDto.email, registerDto.password, userData);
   }
@@ -112,30 +114,36 @@ export class AuthController {
   @ApiOperation({ summary: 'Obter dados do usuário atual' })
   @ApiResponse({ status: 200, description: 'Dados do usuário' })
   @ApiResponse({ status: 401, description: 'Usuário não autenticado' })
+  @ApiBearerAuth()
   async getCurrentUser(@Request() req): Promise<any> {
-    // Para tokens fake, retornar dados do usuário atual
-    const token = req.headers.authorization?.substring(7);
-    if (token?.startsWith('fake-token-')) {
+    try {
+      // O middleware já adiciona req.user e req.empresa
+      const user = req.user;
+      const empresa = req.empresa;
+
+      if (!user) {
+        throw new UnauthorizedException('Usuário não autenticado');
+      }
+
+      // Retornar dados do usuário com empresa
       return {
-        id: req.user?.id || 'fake-user-id',
-        email: 'admin@clinica.com',
-        nome: 'Admin',
-        cargo: 'admin',
-        role: 'admin',
-        empresa: {
-          id: 1,
-          nome: 'Clínica Exemplo'
-        }
+        id: user.id,
+        email: user.email,
+        nome: user.nome,
+        cargo: user.cargo,
+        role: user.cargo?.toLowerCase() || 'funcionario',
+        empresa_id: user.empresa_id,
+        empresa: empresa || null,
+        permissoes: user.permissoes || {},
+        ativo: user.ativo !== false
       };
+    } catch (error) {
+      console.error('[AuthController.getCurrentUser] Erro:', error);
+      if (error instanceof UnauthorizedException) {
+        throw error;
     }
-
-    const authUserId = req.user?.id || req.body.auth_user_id;
-    
-    if (!authUserId) {
-      throw new Error('Usuário não autenticado');
+      throw new UnauthorizedException('Erro ao obter dados do usuário');
     }
-
-    return this.authService.getCurrentUser(authUserId);
   }
 
   @Post('logout')

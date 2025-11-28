@@ -3,6 +3,7 @@ import { X, Calendar, Clock, User, Save, ChevronLeft, ChevronRight, AlertCircle 
 import LoadingButton from '../UI/LoadingButton';
 import { apiService } from '../../services/api';
 import { useBusinessHours } from '../../contexts/BusinessHoursContext';
+import { formatPhoneDisplay } from '../../utils/phoneFormatter';
 
 interface NewAppointmentModalProps {
   isOpen: boolean;
@@ -436,7 +437,7 @@ export default function NewAppointmentModal({ isOpen, onClose, onSave }: NewAppo
                   </option>
                   {patients.map(patient => (
                     <option key={patient.id} value={patient.id}>
-                      {patient.nome || patient.name} - {patient.telefone || patient.phone}
+                      {patient.nome || patient.name} - {formatPhoneDisplay(patient.telefone || patient.phone)}
                     </option>
                   ))}
                 </select>

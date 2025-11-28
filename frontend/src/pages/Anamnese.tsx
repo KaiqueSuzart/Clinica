@@ -7,6 +7,7 @@ import AnamneseModal from '../components/Patients/AnamneseModal';
 import LoadingSpinner from '../components/UI/LoadingSpinner';
 import { useToast } from '../components/UI/Toast';
 import { apiService, Patient, AnamneseData, Annotation } from '../services/api';
+import { formatPhoneDisplay } from '../utils/phoneFormatter';
 
 export default function Anamnese() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -65,10 +66,19 @@ export default function Anamnese() {
     try {
       setLoadingAnamneses(true);
       const anamneses = await apiService.getAnamneseByPatient(patientId);
-      setPatientAnamneses(anamneses);
+      setPatientAnamneses(anamneses || []);
       console.log('Anamneses carregadas:', anamneses);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao carregar anamneses:', err);
+      // Se o erro for "Paciente não encontrado", pode ser que o paciente não exista ou não pertença à empresa
+      // Nesse caso, apenas definir array vazio em vez de mostrar erro
+      if (err?.message?.includes('Paciente não encontrado') || err?.response?.data?.message?.includes('Paciente não encontrado')) {
+        console.warn('⚠️ Paciente não encontrado ou não pertence à empresa, definindo anamneses como array vazio');
+        setPatientAnamneses([]);
+      } else {
+        // Para outros erros, manter o array vazio mas logar o erro
+        setPatientAnamneses([]);
+      }
     } finally {
       setLoadingAnamneses(false);
     }
@@ -150,9 +160,12 @@ export default function Anamnese() {
       // Recarregar anotações e anamneses se for o paciente selecionado
       if (selectedPatient === anamneseData.cliente_id) {
         loadAnnotations(anamneseData.cliente_id);
-        loadPatientAnamneses(anamneseData.cliente_id);
+        // Aguardar um pouco antes de recarregar anamneses para garantir que foi salva
+        setTimeout(() => {
+          loadPatientAnamneses(anamneseData.cliente_id);
+        }, 500);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao recarregar anamnese:', err);
       // Fallback: usar os dados que recebemos
       setPatientsList(prev => prev.map(patient => {
@@ -164,6 +177,12 @@ export default function Anamnese() {
         }
         return patient;
       }));
+      // Tentar recarregar anamneses mesmo com erro
+      if (selectedPatient === anamneseData.cliente_id) {
+        setTimeout(() => {
+          loadPatientAnamneses(anamneseData.cliente_id);
+        }, 1000);
+      }
     }
   };
 
@@ -271,7 +290,7 @@ export default function Anamnese() {
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="font-semibold text-gray-900 dark:text-gray-100">{patient.nome}</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">{patient.telefone}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">{formatPhoneDisplay(patient.telefone)}</p>
                     </div>
                     <StatusBadge status={patient.status} />
                   </div>
@@ -393,7 +412,7 @@ export default function Anamnese() {
                     <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Informações do Paciente</h4>
                     <div className="space-y-2 text-sm">
                       <p><span className="font-medium">Nome:</span> {selectedPatientData.nome}</p>
-                      <p><span className="font-medium">Telefone:</span> {selectedPatientData.telefone}</p>
+                      <p><span className="font-medium">Telefone:</span> {formatPhoneDisplay(selectedPatientData.telefone)}</p>
                       <p><span className="font-medium">Email:</span> {selectedPatientData.email || 'Não informado'}</p>
                       <p><span className="font-medium">Status:</span> 
                         <StatusBadge status={selectedPatientData.status} className="ml-2" />

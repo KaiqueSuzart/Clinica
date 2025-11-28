@@ -31,13 +31,20 @@ export class ReturnsServiceSimple {
 
   constructor(private readonly supabaseService: SupabaseService) {}
 
-  async findAll(): Promise<ReturnWithPatient[]> {
+  async findAll(empresaId: string): Promise<ReturnWithPatient[]> {
+    if (!empresaId) {
+      throw new Error('Empresa ID é obrigatório');
+    }
+    
     try {
+      console.log('[ReturnsServiceSimple.findAll] Buscando retornos para empresa:', empresaId);
+      
       // Buscar do banco de dados
       const { data: dbData, error: dbError } = await this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('retornos')
         .select('*')
+        .eq('empresa_id', empresaId)
         .order('data_retorno', { ascending: true });
 
       if (dbError) {
@@ -53,7 +60,7 @@ export class ReturnsServiceSimple {
           try {
             console.log(`Buscando cliente ID: ${returnItem.cliente_id}`);
             const { data: clienteDataResult, error: clienteError } = await this.supabaseService
-              .getClient()
+              .getAdminClient()
               .from('clientelA')
               .select('nome, telefone, Email')
               .eq('id', returnItem.cliente_id)
@@ -104,8 +111,8 @@ export class ReturnsServiceSimple {
     }
   }
 
-  async findConfirmedReturns(): Promise<ReturnWithPatient[]> {
-    const allReturns = await this.findAll();
+  async findConfirmedReturns(empresaId: string): Promise<ReturnWithPatient[]> {
+    const allReturns = await this.findAll(empresaId);
     const now = new Date();
     
     // Retornos confirmados: status 'confirmado' OU (status 'pendente' com horário específico marcado)
@@ -140,8 +147,8 @@ export class ReturnsServiceSimple {
     return sorted;
   }
 
-  async findPossibleReturns(): Promise<ReturnWithPatient[]> {
-    const allReturns = await this.findAll();
+  async findPossibleReturns(empresaId: string): Promise<ReturnWithPatient[]> {
+    const allReturns = await this.findAll(empresaId);
     
     // Possíveis retornos: status 'pendente' SEM horário específico marcado
     const possible = allReturns.filter(r => {
@@ -160,8 +167,8 @@ export class ReturnsServiceSimple {
     });
   }
 
-  async findCompletedReturns(): Promise<ReturnWithPatient[]> {
-    const allReturns = await this.findAll();
+  async findCompletedReturns(empresaId: string): Promise<ReturnWithPatient[]> {
+    const allReturns = await this.findAll(empresaId);
     
     // Retornos realizados: status 'realizado'
     const completed = allReturns.filter(r => r.status === 'realizado');
@@ -174,8 +181,8 @@ export class ReturnsServiceSimple {
     });
   }
 
-  async findOverdueReturns(): Promise<ReturnWithPatient[]> {
-    const allReturns = await this.findAll();
+  async findOverdueReturns(empresaId: string): Promise<ReturnWithPatient[]> {
+    const allReturns = await this.findAll(empresaId);
     const now = new Date();
     
     // Retornos atrasados: status 'pendente' ou 'confirmado' com data/hora passada
@@ -221,7 +228,7 @@ export class ReturnsServiceSimple {
     let clienteData = null;
     try {
       const { data: clienteDataResult, error: clienteError } = await this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('clientelA')
         .select('nome, telefone, Email')
         .eq('id', clienteId)
@@ -240,7 +247,7 @@ export class ReturnsServiceSimple {
     // SALVAR NO BANCO DE DADOS REAL
     try {
       const { data: dbData, error: dbError } = await this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('retornos')
         .insert({
           cliente_id: clienteId,
@@ -308,7 +315,7 @@ export class ReturnsServiceSimple {
     // Atualizar no banco de dados
     try {
       const { data: dbData, error: dbError } = await this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('retornos')
         .update({
           ...updateReturnDto,
@@ -329,7 +336,7 @@ export class ReturnsServiceSimple {
 
       // Buscar dados do paciente para retornar
       const { data: clientData, error: clientError } = await this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('clientelA')
         .select('nome, telefone, Email')
         .eq('id', dbData.cliente_id)
@@ -388,7 +395,7 @@ export class ReturnsServiceSimple {
     // Primeiro, verificar se o retorno existe
     try {
       const { data: existingReturn, error: findError } = await this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('retornos')
         .select('*')
         .eq('id', id)
@@ -403,7 +410,7 @@ export class ReturnsServiceSimple {
 
       // Atualizar no banco de dados
       const { data: dbData, error: dbError } = await this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('retornos')
         .update({ status: 'confirmado', updated_at: new Date().toISOString() })
         .eq('id', id)
@@ -419,7 +426,7 @@ export class ReturnsServiceSimple {
 
       // Buscar dados do paciente para retornar
       const { data: clientData, error: clientError } = await this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('clientelA')
         .select('nome, telefone, Email')
         .eq('id', dbData.cliente_id)
@@ -452,7 +459,7 @@ export class ReturnsServiceSimple {
     // Atualizar no banco de dados
     try {
       const { data: dbData, error: dbError } = await this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('retornos')
         .update({ status: 'realizado', updated_at: new Date().toISOString() })
         .eq('id', id)
@@ -477,7 +484,7 @@ export class ReturnsServiceSimple {
     // Atualizar no banco de dados
     try {
       const { data: dbData, error: dbError } = await this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('retornos')
         .update({ status: 'cancelado', updated_at: new Date().toISOString() })
         .eq('id', id)

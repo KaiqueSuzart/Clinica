@@ -15,6 +15,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { FilesService } from './files.service';
 import { CreateFileDto, FileCategory } from './dto/create-file.dto';
 import { UpdateFileDto } from './dto/update-file.dto';
+import { EmpresaId } from '../auth/decorators/empresa.decorator';
 
 @Controller('files')
 export class FilesController {
@@ -24,7 +25,8 @@ export class FilesController {
   @UseInterceptors(FileInterceptor('file'))
   async uploadFile(
     @UploadedFile() file: any,
-    @Body() body: any
+    @Body() body: any,
+    @EmpresaId() empresaId: string
   ) {
     if (!file) {
       throw new BadRequestException('Nenhum arquivo foi enviado');
@@ -40,7 +42,8 @@ export class FilesController {
       description: body.description || '',
       original_filename: file.originalname,
       mime_type: file.mimetype,
-      file_size: file.size
+      file_size: file.size,
+      uploaded_by: body.uploaded_by
     };
 
     // Validar dados básicos
@@ -51,40 +54,41 @@ export class FilesController {
       throw new BadRequestException('category é obrigatório');
     }
 
-    return await this.filesService.uploadFile(file, fileData);
+    return await this.filesService.uploadFile(file, fileData, empresaId);
   }
 
   @Get('patient/:patientId')
-  async findAllByPatient(@Param('patientId') patientId: string) {
-    return await this.filesService.findAllByPatient(patientId);
+  async findAllByPatient(@Param('patientId') patientId: string, @EmpresaId() empresaId: string) {
+    return await this.filesService.findAllByPatient(patientId, empresaId);
   }
 
   @Get('patient/:patientId/category/:category')
   async getFilesByCategory(
     @Param('patientId') patientId: string,
-    @Param('category') category: FileCategory
+    @Param('category') category: FileCategory,
+    @EmpresaId() empresaId: string
   ) {
-    return await this.filesService.getFilesByCategory(patientId, category);
+    return await this.filesService.getFilesByCategory(patientId, category, empresaId);
   }
 
   @Get('patient/:patientId/stats')
-  async getPatientStats(@Param('patientId') patientId: string) {
-    return await this.filesService.getPatientStats(patientId);
+  async getPatientStats(@Param('patientId') patientId: string, @EmpresaId() empresaId: string) {
+    return await this.filesService.getPatientStats(patientId, empresaId);
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return await this.filesService.findOne(id);
+  async findOne(@Param('id') id: string, @EmpresaId() empresaId: string) {
+    return await this.filesService.findOne(id, empresaId);
   }
 
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() updateFileDto: UpdateFileDto) {
-    return await this.filesService.update(id, updateFileDto);
+  async update(@Param('id') id: string, @Body() updateFileDto: UpdateFileDto, @EmpresaId() empresaId: string) {
+    return await this.filesService.update(id, updateFileDto, empresaId);
   }
 
   @Delete(':id')
-  async remove(@Param('id') id: string) {
-    await this.filesService.remove(id);
+  async remove(@Param('id') id: string, @EmpresaId() empresaId: string) {
+    await this.filesService.remove(id, empresaId);
     return { message: 'Arquivo removido com sucesso' };
   }
 }

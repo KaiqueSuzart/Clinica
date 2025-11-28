@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Save, User, MessageSquare, Bell, Shield, Clock, Calendar, Users, Upload } from 'lucide-react';
+import { Settings, Save, User, MessageSquare, Bell, Shield, Clock, Calendar, Users, Upload, X } from 'lucide-react';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
 import { clinicSettings } from '../data/mockData';
 import { useBusinessHours } from '../contexts/BusinessHoursContext';
-import { useUser, availableUsers } from '../contexts/UserContext';
+import { useUser } from '../contexts/UserContext';
 import { useAuth } from '../components/Auth/AuthProvider';
 import { apiService } from '../services/api';
 
@@ -19,8 +19,18 @@ export default function Configuracoes() {
   });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [usuarios, setUsuarios] = useState<any[]>([]);
+  const [loadingUsuarios, setLoadingUsuarios] = useState(false);
+  const [showNovoUsuarioModal, setShowNovoUsuarioModal] = useState(false);
+  const [novoUsuario, setNovoUsuario] = useState({
+    nome: '',
+    email: '',
+    cargo: 'Recepcionista',
+    telefone: '',
+    password: ''
+  });
   const { businessHours, setBusinessHours } = useBusinessHours();
-  const { user, canView, canEdit, switchUser } = useUser();
+  const { user, canView, canEdit } = useUser();
   const { empresa, updateEmpresaData } = useAuth();
 
   // Filtrar abas baseado nas permissões do usuário
@@ -28,7 +38,8 @@ export default function Configuracoes() {
     { id: 'clinic', label: 'Dados da Clínica', icon: Settings, permission: 'configuracoes', requiresAdmin: true },
     { id: 'schedule', label: 'Horário de Funcionamento', icon: Clock, permission: 'configuracoes', requiresAdmin: true },
     { id: 'users', label: 'Usuários', icon: User, permission: 'configuracoes', requiresAdmin: true },
-    { id: 'switch-user', label: 'Trocar Usuário', icon: Users, permission: 'configuracoes', requiresAdmin: false }
+    { id: 'messages', label: 'Templates de Mensagens', icon: MessageSquare, permission: 'mensagens', requiresAdmin: false },
+    { id: 'notifications', label: 'Notificações', icon: Bell, permission: 'configuracoes', requiresAdmin: false }
   ];
 
   const tabs = allTabs.filter(tab => {
@@ -41,15 +52,16 @@ export default function Configuracoes() {
   // Definir aba ativa baseada no usuário
   const getDefaultActiveTab = () => {
     if (user?.role === 'admin') return 'clinic';
-    if (user?.role === 'recepcionista') return 'switch-user';
-    return tabs[0]?.id || 'clinic';
+    // Recepcionista começa na primeira aba disponível (geralmente mensagens ou notificações)
+    return tabs[0]?.id || 'messages';
   };
 
   const [activeTab, setActiveTab] = useState(getDefaultActiveTab());
 
-  // Carregar dados da empresa
+  // Carregar dados da empresa e usuários
   useEffect(() => {
     loadEmpresaData();
+    loadUsuarios();
   }, []);
 
   // Atualizar aba ativa quando o usuário mudar
@@ -110,6 +122,63 @@ export default function Configuracoes() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const loadUsuarios = async () => {
+    try {
+      setLoadingUsuarios(true);
+      const response = await apiService.getAllUsuarios();
+      setUsuarios(response.data || []);
+    } catch (error) {
+      console.error('Erro ao carregar usuários:', error);
+      alert('Erro ao carregar usuários');
+    } finally {
+      setLoadingUsuarios(false);
+    }
+  };
+
+  const handleCriarUsuario = async () => {
+    try {
+      setSaving(true);
+      const response = await apiService.createUsuario({
+        nome: novoUsuario.nome,
+        email: novoUsuario.email,
+        cargo: novoUsuario.cargo,
+        telefone: novoUsuario.telefone || undefined,
+        password: novoUsuario.password || undefined,
+        ativo: true
+      });
+
+      if (response.success) {
+        if (response.password_temporaria) {
+          alert(`Usuário criado com sucesso!\nSenha temporária: ${response.password_temporaria}\n\nIMPORTANTE: Anote esta senha e compartilhe com o usuário.`);
+        } else {
+          alert('Usuário criado com sucesso com a senha fornecida!');
+        }
+        setShowNovoUsuarioModal(false);
+        setNovoUsuario({ nome: '', email: '', cargo: 'Recepcionista', telefone: '', password: '' });
+        await loadUsuarios();
+      }
+    } catch (error: any) {
+      console.error('Erro ao criar usuário:', error);
+      alert('Erro ao criar usuário: ' + (error.message || 'Erro desconhecido'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const getRoleBadgeColor = (cargo: string) => {
+    const cargoLower = cargo?.toLowerCase() || '';
+    if (cargoLower === 'admin' || cargoLower === 'administrador') {
+      return 'bg-blue-100 text-blue-800';
+    } else if (cargoLower === 'dentista') {
+      return 'bg-green-100 text-green-800';
+    } else if (cargoLower === 'recepcionista') {
+      return 'bg-purple-100 text-purple-800';
+    } else if (cargoLower === 'financeiro') {
+      return 'bg-yellow-100 text-yellow-800';
+    }
+    return 'bg-gray-100 text-gray-800';
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -684,73 +753,67 @@ export default function Configuracoes() {
                   <div className="flex justify-between items-center">
                     <h4 className="font-semibold text-gray-900">Usuários Cadastrados</h4>
                     {canEdit('configuracoes') && (
-                      <Button size="sm" icon={User}>Novo Usuário</Button>
+                      <Button 
+                        size="sm" 
+                        icon={User}
+                        onClick={() => setShowNovoUsuarioModal(true)}
+                      >
+                        Novo Usuário
+                      </Button>
                     )}
                   </div>
 
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <img
-                        src="https://images.pexels.com/photos/5215024/pexels-photo-5215024.jpeg?auto=compress&cs=tinysrgb&w=50&h=50&fit=crop"
-                        alt="Dr. Ana Silva"
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
-                      <div>
-                        <h5 className="font-semibold text-gray-900">Dr. Ana Silva</h5>
-                        <p className="text-sm text-gray-600">ana@clinica.com</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">
-                        Admin
-                      </span>
-                      {canEdit('configuracoes') && (
-                        <Button variant="outline" size="sm">Editar</Button>
-                      )}
-                    </div>
+                {loadingUsuarios ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                    <p className="mt-2 text-gray-600">Carregando usuários...</p>
                   </div>
-
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
-                        <User className="w-5 h-5 text-gray-600" />
-                      </div>
-                      <div>
-                        <h5 className="font-semibold text-gray-900">Dr. Pedro Costa</h5>
-                        <p className="text-sm text-gray-600">pedro@clinica.com</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full font-medium">
-                        Dentista
-                      </span>
-                      {canEdit('configuracoes') && (
-                        <Button variant="outline" size="sm">Editar</Button>
-                      )}
-                    </div>
+                ) : usuarios.length === 0 ? (
+                  <div className="text-center py-8">
+                    <User className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600">Nenhum usuário cadastrado</p>
                   </div>
-
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
-                        <User className="w-5 h-5 text-gray-600" />
+                ) : (
+                  <div className="space-y-3">
+                    {usuarios.map((usuario) => (
+                      <div key={usuario.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          {usuario.avatar_url ? (
+                            <img
+                              src={usuario.avatar_url}
+                              alt={usuario.nome}
+                              className="w-10 h-10 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
+                              <User className="w-5 h-5 text-gray-600" />
+                            </div>
+                          )}
+                          <div>
+                            <h5 className="font-semibold text-gray-900">{usuario.nome}</h5>
+                            <p className="text-sm text-gray-600">{usuario.email}</p>
+                            {usuario.telefone && (
+                              <p className="text-xs text-gray-500">{usuario.telefone}</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <span className={`px-2 py-1 text-xs rounded-full font-medium ${getRoleBadgeColor(usuario.cargo)}`}>
+                            {usuario.cargo}
+                          </span>
+                          {!usuario.ativo && (
+                            <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full font-medium">
+                              Inativo
+                            </span>
+                          )}
+                          {canEdit('configuracoes') && (
+                            <Button variant="outline" size="sm">Editar</Button>
+                          )}
+                        </div>
                       </div>
-                      <div>
-                        <h5 className="font-semibold text-gray-900">Maria Fernandes</h5>
-                        <p className="text-sm text-gray-600">maria@clinica.com</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full font-medium">
-                        Recepcionista
-                      </span>
-                      {canEdit('configuracoes') && (
-                        <Button variant="outline" size="sm">Editar</Button>
-                      )}
-                    </div>
+                    ))}
                   </div>
-                </div>
+                )}
 
                 <div className="bg-yellow-50 p-4 rounded-lg">
                   <h4 className="font-semibold text-yellow-900 mb-2">Níveis de Acesso</h4>
@@ -765,89 +828,6 @@ export default function Configuracoes() {
             </Card>
           )}
 
-          {activeTab === 'switch-user' && (
-            <Card title="Trocar Usuário" subtitle="Altere a visão do sistema para outro usuário">
-              {!canView('configuracoes') ? (
-                <div className="text-center py-8">
-                  <Shield className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Acesso Restrito</h3>
-                  <p className="text-gray-600">Você não tem permissão para trocar de usuário.</p>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <h4 className="font-semibold text-blue-900 mb-2">Usuário Atual</h4>
-                    <div className="flex items-center space-x-3">
-                      <img
-                        src={user?.avatar || 'https://images.pexels.com/photos/5215024/pexels-photo-5215024.jpeg?auto=compress&cs=tinysrgb&w=50&h=50&fit=crop'}
-                        alt={user?.name || 'Usuário'}
-                        className="w-12 h-12 rounded-full object-cover"
-                      />
-                      <div>
-                        <h5 className="font-semibold text-gray-900">{user?.name || 'Usuário'}</h5>
-                        <p className="text-sm text-gray-600">{user?.email || 'email@exemplo.com'}</p>
-                        <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium mt-1">
-                          {user?.role || 'Usuário'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-4">Selecionar Novo Usuário</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {availableUsers.map((availableUser) => (
-                        <div
-                          key={availableUser.id}
-                          className={`p-4 border rounded-lg cursor-pointer transition-all ${
-                            user?.id === availableUser.id
-                              ? 'border-blue-500 bg-blue-50'
-                              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                          }`}
-                          onClick={() => switchUser(availableUser.id)}
-                        >
-                          <div className="flex items-center space-x-3">
-                            <img
-                              src={availableUser.avatar}
-                              alt={availableUser.name}
-                              className="w-10 h-10 rounded-full object-cover"
-                            />
-                            <div className="flex-1">
-                              <h5 className="font-semibold text-gray-900">{availableUser.name}</h5>
-                              <p className="text-sm text-gray-600">{availableUser.email}</p>
-                              <span className={`inline-block px-2 py-1 text-xs rounded-full font-medium mt-1 ${
-                                availableUser.role === 'admin' ? 'bg-blue-100 text-blue-800' :
-                                availableUser.role === 'dentista' ? 'bg-green-100 text-green-800' :
-                                availableUser.role === 'recepcionista' ? 'bg-purple-100 text-purple-800' :
-                                'bg-yellow-100 text-yellow-800'
-                              }`}>
-                                {availableUser.role}
-                              </span>
-                            </div>
-                            {user?.id === availableUser.id && (
-                              <div className="text-blue-600">
-                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                </svg>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="bg-yellow-50 p-4 rounded-lg">
-                    <h4 className="font-semibold text-yellow-900 mb-2">ℹ️ Informação</h4>
-                    <p className="text-sm text-yellow-800">
-                      Ao trocar de usuário, você verá o sistema com as permissões e visão daquele usuário. 
-                      Esta funcionalidade é útil para testar diferentes níveis de acesso.
-                    </p>
-                  </div>
-                </div>
-              )}
-            </Card>
-          )}
 
           {activeTab === 'notifications' && (
             <Card title="Configurações de Notificações" subtitle="Configure as notificações do sistema">
@@ -936,6 +916,116 @@ export default function Configuracoes() {
           )}
         </div>
       </div>
+
+      {/* Modal Novo Usuário */}
+      {showNovoUsuarioModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-900">Novo Usuário</h2>
+              <button
+                onClick={() => setShowNovoUsuarioModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nome Completo *
+                </label>
+                <input
+                  type="text"
+                  value={novoUsuario.nome}
+                  onChange={(e) => setNovoUsuario({...novoUsuario, nome: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Digite o nome completo"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email *
+                </label>
+                <input
+                  type="email"
+                  value={novoUsuario.email}
+                  onChange={(e) => setNovoUsuario({...novoUsuario, email: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="email@exemplo.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Cargo *
+                </label>
+                <select
+                  value={novoUsuario.cargo}
+                  onChange={(e) => setNovoUsuario({...novoUsuario, cargo: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="Admin">Admin</option>
+                  <option value="Dentista">Dentista</option>
+                  <option value="Recepcionista">Recepcionista</option>
+                  <option value="Financeiro">Financeiro</option>
+                  <option value="Auxiliar">Auxiliar</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Telefone
+                </label>
+                <input
+                  type="text"
+                  value={novoUsuario.telefone}
+                  onChange={(e) => setNovoUsuario({...novoUsuario, telefone: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="(00) 00000-0000"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Senha
+                </label>
+                <input
+                  type="password"
+                  value={novoUsuario.password}
+                  onChange={(e) => setNovoUsuario({...novoUsuario, password: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Deixe em branco para gerar senha automática"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Se deixar em branco, uma senha temporária será gerada automaticamente
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowNovoUsuarioModal(false);
+                  setNovoUsuario({ nome: '', email: '', cargo: 'Recepcionista', telefone: '', password: '' });
+                }}
+                disabled={saving}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleCriarUsuario}
+                disabled={saving || !novoUsuario.nome || !novoUsuario.email}
+              >
+                {saving ? 'Criando...' : 'Criar Usuário'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

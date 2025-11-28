@@ -14,10 +14,6 @@ export class CreateUsuarioDto {
   @IsString()
   cargo: string;
 
-  @ApiProperty({ description: 'ID da empresa' })
-  @IsString()
-  empresa_id: string;
-
   @ApiPropertyOptional({ description: 'Permissões especiais (JSON)' })
   @IsOptional()
   permissoes?: any;
@@ -36,6 +32,11 @@ export class CreateUsuarioDto {
   @IsString()
   @IsOptional()
   telefone?: string;
+
+  @ApiPropertyOptional({ description: 'Senha do usuário (se não fornecido, será gerada automaticamente)' })
+  @IsString()
+  @IsOptional()
+  password?: string;
 }
 
 

@@ -6,6 +6,7 @@ import LoadingButton from '../components/UI/LoadingButton';
 import { useToast } from '../components/UI/Toast';
 import { ZoomIn, ZoomOut, RotateCw, X } from 'lucide-react';
 import { apiService } from '../services/api';
+import { formatPhoneDisplay } from '../utils/phoneFormatter';
 
 interface PatientFile {
   id: string;
@@ -463,7 +464,7 @@ export default function Arquivos() {
                 <div className="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg animate-in fade-in duration-300">
                   <h4 className="font-semibold text-blue-900 dark:text-blue-100">Paciente Selecionado</h4>
                   <p className="text-blue-700 dark:text-blue-200">{selectedPatientData.nome}</p>
-                  <p className="text-sm text-blue-600 dark:text-blue-300">{selectedPatientData.telefone}</p>
+                  <p className="text-sm text-blue-600 dark:text-blue-300">{formatPhoneDisplay(selectedPatientData.telefone)}</p>
                   <p className="text-sm text-blue-600 dark:text-blue-300 mt-2">
                     {files.length} arquivo(s)
                   </p>

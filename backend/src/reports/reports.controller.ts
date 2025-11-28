@@ -1,6 +1,7 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { ReportsService } from './reports.service';
+import { EmpresaId } from '../auth/decorators/empresa.decorator';
 
 @ApiTags('Reports')
 @Controller('reports')
@@ -13,10 +14,11 @@ export class ReportsController {
   @ApiQuery({ name: 'startDate', required: false })
   @ApiQuery({ name: 'endDate', required: false })
   getProceduresReport(
+    @EmpresaId() empresaId: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string
   ) {
-    return this.reportsService.getProceduresReport(undefined, startDate, endDate);
+    return this.reportsService.getProceduresReport(empresaId, startDate, endDate);
   }
 
   @Get('financial')
@@ -25,10 +27,11 @@ export class ReportsController {
   @ApiQuery({ name: 'startDate', required: false })
   @ApiQuery({ name: 'endDate', required: false })
   getFinancialReport(
+    @EmpresaId() empresaId: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string
   ) {
-    return this.reportsService.getFinancialReport(undefined, startDate, endDate);
+    return this.reportsService.getFinancialReport(empresaId, startDate, endDate);
   }
 
   @Get('productivity')
@@ -37,17 +40,18 @@ export class ReportsController {
   @ApiQuery({ name: 'startDate', required: false })
   @ApiQuery({ name: 'endDate', required: false })
   getProductivityReport(
+    @EmpresaId() empresaId: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string
   ) {
-    return this.reportsService.getProductivityReport(undefined, startDate, endDate);
+    return this.reportsService.getProductivityReport(empresaId, startDate, endDate);
   }
 
   @Get('patients')
   @ApiOperation({ summary: 'Relatório de pacientes' })
   @ApiResponse({ status: 200, description: 'Relatório de pacientes retornado' })
-  getPatientsReport() {
-    return this.reportsService.getPatientsReport();
+  getPatientsReport(@EmpresaId() empresaId: string) {
+    return this.reportsService.getPatientsReport(empresaId);
   }
 }
 

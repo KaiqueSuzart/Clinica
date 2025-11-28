@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ReturnsService } from './returns.service';
 import { CreateReturnDto } from './dto/create-return.dto';
 import { UpdateReturnDto } from './dto/update-return.dto';
+import { EmpresaId } from '../auth/decorators/empresa.decorator';
 
 @ApiTags('Returns')
 @Controller('returns')
@@ -12,86 +13,86 @@ export class ReturnsController {
   @Get()
   @ApiOperation({ summary: 'Listar todos os retornos' })
   @ApiResponse({ status: 200, description: 'Lista de retornos retornada' })
-  findAll() {
-    return this.returnsService.findAll();
+  findAll(@EmpresaId() empresaId: string) {
+    return this.returnsService.findAll(empresaId);
   }
 
   @Get('confirmed')
   @ApiOperation({ summary: 'Listar retornos confirmados' })
   @ApiResponse({ status: 200, description: 'Lista de retornos confirmados' })
-  findConfirmed() {
-    return this.returnsService.findConfirmedReturns();
+  findConfirmed(@EmpresaId() empresaId: string) {
+    return this.returnsService.findConfirmedReturns(empresaId);
   }
 
   @Get('possible')
   @ApiOperation({ summary: 'Listar possíveis retornos (pendentes)' })
   @ApiResponse({ status: 200, description: 'Lista de possíveis retornos' })
-  findPossible() {
-    return this.returnsService.findPossibleReturns();
+  findPossible(@EmpresaId() empresaId: string) {
+    return this.returnsService.findPossibleReturns(empresaId);
   }
 
   @Get('completed')
   @ApiOperation({ summary: 'Listar retornos realizados (histórico)' })
   @ApiResponse({ status: 200, description: 'Lista de retornos realizados' })
-  findCompleted() {
-    return this.returnsService.findCompletedReturns();
+  findCompleted(@EmpresaId() empresaId: string) {
+    return this.returnsService.findCompletedReturns(empresaId);
   }
 
   @Get('overdue')
   @ApiOperation({ summary: 'Listar retornos atrasados' })
   @ApiResponse({ status: 200, description: 'Lista de retornos atrasados' })
-  findOverdue() {
-    return this.returnsService.findOverdueReturns();
+  findOverdue(@EmpresaId() empresaId: string) {
+    return this.returnsService.findOverdueReturns(empresaId);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Buscar retorno por ID' })
   @ApiResponse({ status: 200, description: 'Retorno encontrado' })
   @ApiResponse({ status: 404, description: 'Retorno não encontrado' })
-  findOne(@Param('id') id: string) {
-    return this.returnsService.findOne(id);
+  findOne(@Param('id') id: string, @EmpresaId() empresaId: string) {
+    return this.returnsService.findOne(id, empresaId);
   }
 
   @Post()
   @ApiOperation({ summary: 'Criar novo retorno' })
   @ApiResponse({ status: 201, description: 'Retorno criado com sucesso' })
-  create(@Body() createReturnDto: CreateReturnDto) {
-    return this.returnsService.create(createReturnDto);
+  create(@Body() createReturnDto: CreateReturnDto, @EmpresaId() empresaId: string) {
+    return this.returnsService.create(createReturnDto, empresaId);
   }
 
   @Put(':id')
   @ApiOperation({ summary: 'Atualizar retorno' })
   @ApiResponse({ status: 200, description: 'Retorno atualizado com sucesso' })
-  update(@Param('id') id: string, @Body() updateReturnDto: UpdateReturnDto) {
-    return this.returnsService.update(id, updateReturnDto);
+  update(@Param('id') id: string, @Body() updateReturnDto: UpdateReturnDto, @EmpresaId() empresaId: string) {
+    return this.returnsService.update(id, updateReturnDto, empresaId);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Remover retorno' })
   @ApiResponse({ status: 200, description: 'Retorno removido com sucesso' })
-  remove(@Param('id') id: string) {
-    return this.returnsService.remove(id);
+  remove(@Param('id') id: string, @EmpresaId() empresaId: string) {
+    return this.returnsService.remove(id, empresaId);
   }
 
   @Patch(':id/confirm')
   @ApiOperation({ summary: 'Confirmar retorno' })
   @ApiResponse({ status: 200, description: 'Retorno confirmado com sucesso' })
-  confirm(@Param('id') id: string) {
-    return this.returnsService.confirmReturn(id);
+  confirm(@Param('id') id: string, @EmpresaId() empresaId: string) {
+    return this.returnsService.confirmReturn(id, empresaId);
   }
 
   @Patch(':id/complete')
   @ApiOperation({ summary: 'Marcar retorno como realizado' })
   @ApiResponse({ status: 200, description: 'Retorno marcado como realizado' })
-  complete(@Param('id') id: string) {
-    return this.returnsService.markAsCompleted(id);
+  complete(@Param('id') id: string, @EmpresaId() empresaId: string) {
+    return this.returnsService.markAsCompleted(id, empresaId);
   }
 
   @Patch(':id/cancel')
   @ApiOperation({ summary: 'Cancelar retorno' })
   @ApiResponse({ status: 200, description: 'Retorno cancelado com sucesso' })
-  cancel(@Param('id') id: string) {
-    return this.returnsService.cancelReturn(id);
+  cancel(@Param('id') id: string, @EmpresaId() empresaId: string) {
+    return this.returnsService.cancelReturn(id, empresaId);
   }
 
   @Post('setup-table')

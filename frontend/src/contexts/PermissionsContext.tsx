@@ -19,9 +19,9 @@ export const PermissionsProvider: React.FC<{ children: ReactNode }> = ({ childre
   const { user } = useAuth();
 
   const cargo = user?.cargo?.toLowerCase() || '';
-  const isDentista = cargo === 'dentista';
+  const isDentista = cargo === 'dentista' || cargo === 'médico' || cargo === 'medico';
   const isRecepcionista = cargo === 'recepcionista';
-  const isAdmin = cargo === 'admin';
+  const isAdmin = cargo === 'admin' || cargo === 'administrador';
 
   // Dentista e Admin têm acesso total
   const hasFullAccess = isDentista || isAdmin;
@@ -29,7 +29,7 @@ export const PermissionsProvider: React.FC<{ children: ReactNode }> = ({ childre
   const permissions: PermissionsContextType = {
     // Relatórios
     canViewReports: hasFullAccess, // Recepcionista NÃO vê relatórios
-    canViewFinancial: hasFullAccess, // Recepcionista NÃO vê financeiro
+    canViewFinancial: hasFullAccess || isRecepcionista, // Recepcionista PODE ver financeiro para registrar pagamentos
     
     // Gerenciamento
     canManageUsers: hasFullAccess, // Só dentista/admin gerencia usuários

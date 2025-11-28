@@ -3,6 +3,7 @@ import { X, Calendar, Clock, User, Save, ChevronLeft, ChevronRight } from 'lucid
 import LoadingButton from '../UI/LoadingButton';
 import { apiService, Appointment } from '../../services/api';
 import { useBusinessHours } from '../../contexts/BusinessHoursContext';
+import { formatPhoneDisplay } from '../../utils/phoneFormatter';
 
 interface ScheduleAppointmentModalProps {
   isOpen: boolean;
@@ -290,7 +291,7 @@ export default function ScheduleAppointmentModal({
                     <strong>Paciente:</strong> {patientName}
                   </div>
                   <div>
-                    <strong>Telefone:</strong> {patientPhone}
+                    <strong>Telefone:</strong> {formatPhoneDisplay(patientPhone)}
                   </div>
                   <div>
                     <strong>Procedimento:</strong> {procedure}

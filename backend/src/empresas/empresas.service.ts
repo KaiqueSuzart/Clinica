@@ -6,7 +6,7 @@ import { UpdateEmpresaDto } from './dto/update-empresa.dto';
 export class EmpresasService {
   constructor(private readonly supabaseService: SupabaseService) {}
 
-  async getDadosEmpresa(empresaId: number) {
+  async getDadosEmpresa(empresaId: string) {
     try {
       const { data, error } = await this.supabaseService
         .getClient()
@@ -27,7 +27,7 @@ export class EmpresasService {
     }
   }
 
-  async updateDadosEmpresa(empresaId: number, updateData: UpdateEmpresaDto) {
+  async updateDadosEmpresa(empresaId: string, updateData: UpdateEmpresaDto) {
     try {
       // Adicionar timestamp de atualização
       const dataToUpdate = {
@@ -59,7 +59,7 @@ export class EmpresasService {
     }
   }
 
-  async uploadLogo(empresaId: number, file: Express.Multer.File) {
+  async uploadLogo(empresaId: string, file: Express.Multer.File) {
     try {
       if (!file) {
         throw new Error('Nenhum arquivo enviado');

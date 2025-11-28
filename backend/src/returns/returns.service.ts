@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 
 export interface ReturnWithPatient {
@@ -27,18 +27,23 @@ export interface ReturnWithPatient {
 export class ReturnsService {
   constructor(private readonly supabaseService: SupabaseService) {}
 
-  async findAll(): Promise<ReturnWithPatient[]> {
+  async findAll(empresaId: string): Promise<ReturnWithPatient[]> {
+    if (!empresaId) {
+      throw new BadRequestException('Empresa ID é obrigatório');
+    }
+
     const { data, error } = await this.supabaseService
-      .getClient()
+      .getAdminClient()
       .from('retornos')
       .select(`
         *,
-        clientelA!retornos_cliente_id_fkey (
+        clientelA (
           nome,
           telefone,
-          email
+          Email
         )
       `)
+      .eq('empresa_id', empresaId)
       .order('data_retorno', { ascending: true });
 
     if (error) {
@@ -61,17 +66,29 @@ export class ReturnsService {
       observacoes: returnItem.observacoes,
       paciente_nome: returnItem.clientelA?.nome || 'Nome não encontrado',
       paciente_telefone: returnItem.clientelA?.telefone || 'Telefone não encontrado',
-      paciente_email: returnItem.clientelA?.email,
+      paciente_email: returnItem.clientelA?.Email,
       consulta_original_data: null, // Temporariamente null
       consulta_original_procedimento: null, // Temporariamente null
     }));
   }
 
-  async findConfirmedReturns(): Promise<ReturnWithPatient[]> {
+  async findConfirmedReturns(empresaId: string): Promise<ReturnWithPatient[]> {
+    if (!empresaId) {
+      throw new BadRequestException('Empresa ID é obrigatório');
+    }
+
     const { data, error } = await this.supabaseService
-      .getClient()
+      .getAdminClient()
       .from('retornos')
-      .select('*')
+      .select(`
+        *,
+        clientelA (
+          nome,
+          telefone,
+          Email
+        )
+      `)
+      .eq('empresa_id', empresaId)
       .in('status', ['pendente', 'confirmado', 'realizado'])
       .order('data_retorno', { ascending: true });
 
@@ -88,32 +105,59 @@ export class ReturnsService {
       return returnDateTime >= now;
     });
 
-    return notOverdue.map(returnItem => ({
-      id: returnItem.id,
-      created_at: returnItem.created_at,
-      updated_at: returnItem.updated_at,
-      empresa_id: returnItem.empresa_id,
-      cliente_id: returnItem.cliente_id.toString(),
-      consulta_original_id: returnItem.consulta_original_id,
-      data_retorno: returnItem.data_retorno,
-      hora_retorno: returnItem.hora_retorno,
-      motivo: returnItem.motivo,
-      procedimento: returnItem.procedimento,
-      status: returnItem.status,
-      observacoes: returnItem.observacoes,
-      paciente_nome: 'Paciente ' + returnItem.cliente_id, // Temporariamente mock
-      paciente_telefone: 'Telefone não encontrado',
-      paciente_email: null,
-      consulta_original_data: null,
-      consulta_original_procedimento: null,
-    }));
+    console.log('[ReturnsService.findConfirmedReturns] Total de retornos encontrados:', notOverdue.length);
+    notOverdue.forEach((returnItem, index) => {
+      console.log(`[ReturnsService.findConfirmedReturns] Retorno ${index + 1}:`, {
+        id: returnItem.id,
+        cliente_id: returnItem.cliente_id,
+        clientelA: returnItem.clientelA,
+        paciente_nome: returnItem.clientelA?.nome || `Paciente ${returnItem.cliente_id}`
+      });
+    });
+
+    return notOverdue.map(returnItem => {
+      const pacienteNome = returnItem.clientelA?.nome || `Paciente ${returnItem.cliente_id}`;
+      console.log(`[ReturnsService.findConfirmedReturns] Mapeando retorno ${returnItem.id}: paciente_nome = ${pacienteNome}`);
+      
+      return {
+        id: returnItem.id,
+        created_at: returnItem.created_at,
+        updated_at: returnItem.updated_at,
+        empresa_id: returnItem.empresa_id,
+        cliente_id: returnItem.cliente_id.toString(),
+        consulta_original_id: returnItem.consulta_original_id,
+        data_retorno: returnItem.data_retorno,
+        hora_retorno: returnItem.hora_retorno,
+        motivo: returnItem.motivo,
+        procedimento: returnItem.procedimento,
+        status: returnItem.status,
+        observacoes: returnItem.observacoes,
+        paciente_nome: pacienteNome,
+        paciente_telefone: returnItem.clientelA?.telefone || 'Telefone não encontrado',
+        paciente_email: returnItem.clientelA?.Email || null,
+        consulta_original_data: null,
+        consulta_original_procedimento: null,
+      };
+    });
   }
 
-  async findPossibleReturns(): Promise<ReturnWithPatient[]> {
+  async findPossibleReturns(empresaId: string): Promise<ReturnWithPatient[]> {
+    if (!empresaId) {
+      throw new BadRequestException('Empresa ID é obrigatório');
+    }
+
     const { data, error } = await this.supabaseService
-      .getClient()
+      .getAdminClient()
       .from('retornos')
-      .select('*')
+      .select(`
+        *,
+        clientelA (
+          nome,
+          telefone,
+          Email
+        )
+      `)
+      .eq('empresa_id', empresaId)
       .eq('status', 'pendente')
       .order('data_retorno', { ascending: true });
 
@@ -122,32 +166,57 @@ export class ReturnsService {
       throw new Error(`Erro ao buscar possíveis retornos: ${error.message}`);
     }
 
-    return data.map(returnItem => ({
-      id: returnItem.id,
-      created_at: returnItem.created_at,
-      updated_at: returnItem.updated_at,
-      empresa_id: returnItem.empresa_id,
-      cliente_id: returnItem.cliente_id.toString(),
-      consulta_original_id: returnItem.consulta_original_id,
-      data_retorno: returnItem.data_retorno,
-      hora_retorno: returnItem.hora_retorno,
-      motivo: returnItem.motivo,
-      procedimento: returnItem.procedimento,
-      status: returnItem.status,
-      observacoes: returnItem.observacoes,
-      paciente_nome: 'Paciente ' + returnItem.cliente_id, // Temporariamente mock
-      paciente_telefone: 'Telefone não encontrado',
-      paciente_email: null,
-      consulta_original_data: null,
-      consulta_original_procedimento: null,
-    }));
+    console.log('[ReturnsService.findPossibleReturns] Total de retornos encontrados:', data.length);
+    data.forEach((returnItem, index) => {
+      console.log(`[ReturnsService.findPossibleReturns] Retorno ${index + 1}:`, {
+        id: returnItem.id,
+        cliente_id: returnItem.cliente_id,
+        clientelA: returnItem.clientelA,
+        paciente_nome: returnItem.clientelA?.nome || `Paciente ${returnItem.cliente_id}`
+      });
+    });
+
+    return data.map(returnItem => {
+      const pacienteNome = returnItem.clientelA?.nome || `Paciente ${returnItem.cliente_id}`;
+      return {
+        id: returnItem.id,
+        created_at: returnItem.created_at,
+        updated_at: returnItem.updated_at,
+        empresa_id: returnItem.empresa_id,
+        cliente_id: returnItem.cliente_id.toString(),
+        consulta_original_id: returnItem.consulta_original_id,
+        data_retorno: returnItem.data_retorno,
+        hora_retorno: returnItem.hora_retorno,
+        motivo: returnItem.motivo,
+        procedimento: returnItem.procedimento,
+        status: returnItem.status,
+        observacoes: returnItem.observacoes,
+        paciente_nome: pacienteNome,
+        paciente_telefone: returnItem.clientelA?.telefone || 'Telefone não encontrado',
+        paciente_email: returnItem.clientelA?.Email || null,
+        consulta_original_data: null,
+        consulta_original_procedimento: null,
+      };
+    });
   }
 
-  async findCompletedReturns(): Promise<ReturnWithPatient[]> {
+  async findCompletedReturns(empresaId: string): Promise<ReturnWithPatient[]> {
+    if (!empresaId) {
+      throw new BadRequestException('Empresa ID é obrigatório');
+    }
+
     const { data, error } = await this.supabaseService
-      .getClient()
+      .getAdminClient()
       .from('retornos')
-      .select('*')
+      .select(`
+        *,
+        clientelA (
+          nome,
+          telefone,
+          Email
+        )
+      `)
+      .eq('empresa_id', empresaId)
       .eq('status', 'realizado')
       .order('data_retorno', { ascending: false });
 
@@ -156,36 +225,61 @@ export class ReturnsService {
       throw new Error(`Erro ao buscar retornos realizados: ${error.message}`);
     }
 
-    return data.map(returnItem => ({
-      id: returnItem.id,
-      created_at: returnItem.created_at,
-      updated_at: returnItem.updated_at,
-      empresa_id: returnItem.empresa_id,
-      cliente_id: returnItem.cliente_id.toString(),
-      consulta_original_id: returnItem.consulta_original_id,
-      data_retorno: returnItem.data_retorno,
-      hora_retorno: returnItem.hora_retorno,
-      motivo: returnItem.motivo,
-      procedimento: returnItem.procedimento,
-      status: returnItem.status,
-      observacoes: returnItem.observacoes,
-      paciente_nome: 'Paciente ' + returnItem.cliente_id, // Temporariamente mock
-      paciente_telefone: 'Telefone não encontrado',
-      paciente_email: null,
-      consulta_original_data: null,
-      consulta_original_procedimento: null,
-    }));
+    console.log('[ReturnsService.findCompletedReturns] Total de retornos encontrados:', data.length);
+    data.forEach((returnItem, index) => {
+      console.log(`[ReturnsService.findCompletedReturns] Retorno ${index + 1}:`, {
+        id: returnItem.id,
+        cliente_id: returnItem.cliente_id,
+        clientelA: returnItem.clientelA,
+        paciente_nome: returnItem.clientelA?.nome || `Paciente ${returnItem.cliente_id}`
+      });
+    });
+
+    return data.map(returnItem => {
+      const pacienteNome = returnItem.clientelA?.nome || `Paciente ${returnItem.cliente_id}`;
+      return {
+        id: returnItem.id,
+        created_at: returnItem.created_at,
+        updated_at: returnItem.updated_at,
+        empresa_id: returnItem.empresa_id,
+        cliente_id: returnItem.cliente_id.toString(),
+        consulta_original_id: returnItem.consulta_original_id,
+        data_retorno: returnItem.data_retorno,
+        hora_retorno: returnItem.hora_retorno,
+        motivo: returnItem.motivo,
+        procedimento: returnItem.procedimento,
+        status: returnItem.status,
+        observacoes: returnItem.observacoes,
+        paciente_nome: pacienteNome,
+        paciente_telefone: returnItem.clientelA?.telefone || 'Telefone não encontrado',
+        paciente_email: returnItem.clientelA?.Email || null,
+        consulta_original_data: null,
+        consulta_original_procedimento: null,
+      };
+    });
   }
 
-  async findOverdueReturns(): Promise<ReturnWithPatient[]> {
+  async findOverdueReturns(empresaId: string): Promise<ReturnWithPatient[]> {
+    if (!empresaId) {
+      throw new BadRequestException('Empresa ID é obrigatório');
+    }
+
     try {
       const now = new Date();
       const today = now.toISOString().split('T')[0]; // YYYY-MM-DD
       
       const { data, error } = await this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('retornos')
-        .select('*')
+        .select(`
+          *,
+          clientelA (
+            nome,
+            telefone,
+            email
+          )
+        `)
+        .eq('empresa_id', empresaId)
         .in('status', ['pendente', 'confirmado'])
         .lt('data_retorno', today);
 
@@ -205,44 +299,62 @@ export class ReturnsService {
         }
       });
 
-      return overdue.map(returnItem => ({
-        id: returnItem.id,
-        created_at: returnItem.created_at,
-        updated_at: returnItem.updated_at,
-        empresa_id: returnItem.empresa_id,
-        cliente_id: returnItem.cliente_id.toString(),
-        consulta_original_id: returnItem.consulta_original_id,
-        data_retorno: returnItem.data_retorno,
-        hora_retorno: returnItem.hora_retorno,
-        motivo: returnItem.motivo,
-        procedimento: returnItem.procedimento,
-        status: returnItem.status,
-        observacoes: returnItem.observacoes,
-        paciente_nome: 'Paciente ' + returnItem.cliente_id, // Temporariamente mock
-        paciente_telefone: 'Telefone não encontrado',
-        paciente_email: null,
-        consulta_original_data: null,
-        consulta_original_procedimento: null,
-      }));
+      console.log('[ReturnsService.findOverdueReturns] Total de retornos atrasados encontrados:', overdue.length);
+      overdue.forEach((returnItem, index) => {
+        console.log(`[ReturnsService.findOverdueReturns] Retorno ${index + 1}:`, {
+          id: returnItem.id,
+          cliente_id: returnItem.cliente_id,
+          clientelA: returnItem.clientelA,
+          paciente_nome: returnItem.clientelA?.nome || `Paciente ${returnItem.cliente_id}`
+        });
+      });
+
+      return overdue.map(returnItem => {
+        const pacienteNome = returnItem.clientelA?.nome || `Paciente ${returnItem.cliente_id}`;
+        return {
+          id: returnItem.id,
+          created_at: returnItem.created_at,
+          updated_at: returnItem.updated_at,
+          empresa_id: returnItem.empresa_id,
+          cliente_id: returnItem.cliente_id.toString(),
+          consulta_original_id: returnItem.consulta_original_id,
+          data_retorno: returnItem.data_retorno,
+          hora_retorno: returnItem.hora_retorno,
+          motivo: returnItem.motivo,
+          procedimento: returnItem.procedimento,
+          status: returnItem.status,
+          observacoes: returnItem.observacoes,
+          paciente_nome: pacienteNome,
+          paciente_telefone: returnItem.clientelA?.telefone || 'Telefone não encontrado',
+          paciente_email: returnItem.clientelA?.Email || null,
+          consulta_original_data: null,
+          consulta_original_procedimento: null,
+        };
+      });
     } catch (error) {
       console.error('Erro geral em findOverdueReturns:', error);
       return []; // Retornar array vazio em caso de erro
     }
   }
 
-  async findOne(id: string): Promise<ReturnWithPatient> {
+  async findOne(id: string, empresaId: string): Promise<ReturnWithPatient> {
+    if (!empresaId) {
+      throw new BadRequestException('Empresa ID é obrigatório');
+    }
+
     const { data, error } = await this.supabaseService
-      .getClient()
+      .getAdminClient()
       .from('retornos')
       .select(`
         *,
-        clientelA!retornos_cliente_id_fkey (
+        clientelA (
           nome,
           telefone,
-          email
+          Email
         )
       `)
       .eq('id', id)
+      .eq('empresa_id', empresaId)
       .single();
 
     if (error) {
@@ -265,13 +377,17 @@ export class ReturnsService {
       observacoes: data.observacoes,
       paciente_nome: data.clientelA?.nome || 'Nome não encontrado',
       paciente_telefone: data.clientelA?.telefone || 'Telefone não encontrado',
-      paciente_email: data.clientelA?.email,
+      paciente_email: data.clientelA?.Email,
       consulta_original_data: null, // Temporariamente null
       consulta_original_procedimento: null, // Temporariamente null
     };
   }
 
-  async create(createReturnDto: any): Promise<ReturnWithPatient> {
+  async create(createReturnDto: any, empresaId: string): Promise<ReturnWithPatient> {
+    if (!empresaId) {
+      throw new BadRequestException('Empresa ID é obrigatório');
+    }
+
     try {
       console.log('Dados recebidos para criar retorno:', createReturnDto);
       
@@ -283,7 +399,7 @@ export class ReturnsService {
       console.log('cliente_id convertido:', clienteId);
       
       const { data, error } = await this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('retornos')
         .insert({
           cliente_id: clienteId,
@@ -294,7 +410,7 @@ export class ReturnsService {
           procedimento: createReturnDto.procedimento,
           status: createReturnDto.status || 'pendente',
           observacoes: createReturnDto.observacoes,
-          empresa_id: 1, // Usar int8 conforme a tabela
+          empresa_id: empresaId,
         })
       .select(`*`)
       .single();
@@ -306,7 +422,7 @@ export class ReturnsService {
 
     // Buscar dados do cliente separadamente
     const { data: clienteData, error: clienteError } = await this.supabaseService
-      .getClient()
+      .getAdminClient()
       .from('clientelA')
       .select('nome, telefone, email')
       .eq('id', data.cliente_id)
@@ -337,21 +453,26 @@ export class ReturnsService {
     }
   }
 
-  async update(id: string, updateReturnDto: any): Promise<ReturnWithPatient> {
+  async update(id: string, updateReturnDto: any, empresaId: string): Promise<ReturnWithPatient> {
+    if (!empresaId) {
+      throw new BadRequestException('Empresa ID é obrigatório');
+    }
+
     const { data, error } = await this.supabaseService
-      .getClient()
+      .getAdminClient()
       .from('retornos')
       .update({
         ...updateReturnDto,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
+      .eq('empresa_id', empresaId)
       .select(`
         *,
-        clientelA!retornos_cliente_id_fkey (
+        clientelA (
           nome,
           telefone,
-          email
+          Email
         )
       `)
       .single();
@@ -376,18 +497,23 @@ export class ReturnsService {
       observacoes: data.observacoes,
       paciente_nome: data.clientelA?.nome || 'Nome não encontrado',
       paciente_telefone: data.clientelA?.telefone || 'Telefone não encontrado',
-      paciente_email: data.clientelA?.email,
+      paciente_email: data.clientelA?.Email,
       consulta_original_data: null, // Temporariamente null
       consulta_original_procedimento: null, // Temporariamente null
     };
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(id: string, empresaId: string): Promise<void> {
+    if (!empresaId) {
+      throw new BadRequestException('Empresa ID é obrigatório');
+    }
+
     const { error } = await this.supabaseService
-      .getClient()
+      .getAdminClient()
       .from('retornos')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('empresa_id', empresaId);
 
     if (error) {
       console.error('Erro ao remover retorno:', error);
@@ -395,23 +521,23 @@ export class ReturnsService {
     }
   }
 
-  async confirmReturn(id: string): Promise<ReturnWithPatient> {
-    return this.update(id, { status: 'confirmado' });
+  async confirmReturn(id: string, empresaId: string): Promise<ReturnWithPatient> {
+    return this.update(id, { status: 'confirmado' }, empresaId);
   }
 
-  async markAsCompleted(id: string): Promise<ReturnWithPatient> {
-    return this.update(id, { status: 'realizado' });
+  async markAsCompleted(id: string, empresaId: string): Promise<ReturnWithPatient> {
+    return this.update(id, { status: 'realizado' }, empresaId);
   }
 
-  async cancelReturn(id: string): Promise<ReturnWithPatient> {
-    return this.update(id, { status: 'cancelado' });
+  async cancelReturn(id: string, empresaId: string): Promise<ReturnWithPatient> {
+    return this.update(id, { status: 'cancelado' }, empresaId);
   }
 
   async setupTable(): Promise<{ message: string }> {
     try {
       // Tentar inserir dados de teste para verificar se a tabela existe
       const { data, error } = await this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('retornos')
         .select('count')
         .limit(1);

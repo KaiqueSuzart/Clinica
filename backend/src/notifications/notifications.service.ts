@@ -34,13 +34,13 @@ export class NotificationsService {
 
   constructor(private readonly supabaseService: SupabaseService) {}
 
-  async create(createNotificationDto: CreateNotificationDto): Promise<Notification> {
+  async create(createNotificationDto: CreateNotificationDto, empresaId: string): Promise<Notification> {
     try {
       const { data, error } = await this.supabaseService
         .getClient()
         .from('notifications')
         .insert({
-          empresa_id: 'default-empresa-id', // TODO: Pegar do contexto da empresa
+          empresa_id: empresaId,
           user_id: createNotificationDto.user_id,
           type: createNotificationDto.type,
           title: createNotificationDto.title,
@@ -64,13 +64,13 @@ export class NotificationsService {
     }
   }
 
-  async findAll(userId?: string, limit = 50, offset = 0): Promise<Notification[]> {
+  async findAll(empresaId: string, userId?: string, limit = 50, offset = 0): Promise<Notification[]> {
     try {
       let query = this.supabaseService
         .getClient()
         .from('notifications')
         .select('*')
-        .eq('empresa_id', 'default-empresa-id') // TODO: Pegar do contexto da empresa
+        .eq('empresa_id', empresaId)
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1);
 
@@ -92,13 +92,13 @@ export class NotificationsService {
     }
   }
 
-  async findUnread(userId?: string): Promise<Notification[]> {
+  async findUnread(empresaId: string, userId?: string): Promise<Notification[]> {
     try {
       let query = this.supabaseService
         .getClient()
         .from('notifications')
         .select('*')
-        .eq('empresa_id', 'default-empresa-id')
+        .eq('empresa_id', empresaId)
         .eq('is_read', false)
         .order('created_at', { ascending: false });
 
@@ -120,14 +120,14 @@ export class NotificationsService {
     }
   }
 
-  async findOne(id: string): Promise<Notification> {
+  async findOne(id: string, empresaId: string): Promise<Notification> {
     try {
       const { data, error } = await this.supabaseService
         .getClient()
         .from('notifications')
         .select('*')
         .eq('id', id)
-        .eq('empresa_id', 'default-empresa-id')
+        .eq('empresa_id', empresaId)
         .single();
 
       if (error) {
@@ -142,7 +142,7 @@ export class NotificationsService {
     }
   }
 
-  async markAsRead(id: string): Promise<boolean> {
+  async markAsRead(id: string, empresaId: string): Promise<boolean> {
     try {
       const { error } = await this.supabaseService
         .getClient()
@@ -152,7 +152,7 @@ export class NotificationsService {
           read_at: new Date().toISOString(),
         })
         .eq('id', id)
-        .eq('empresa_id', 'default-empresa-id');
+        .eq('empresa_id', empresaId);
 
       if (error) {
         this.logger.error('Erro ao marcar notificação como lida:', error);
@@ -166,7 +166,7 @@ export class NotificationsService {
     }
   }
 
-  async markAllAsRead(userId?: string): Promise<number> {
+  async markAllAsRead(empresaId: string, userId?: string): Promise<number> {
     try {
       let query = this.supabaseService
         .getClient()
@@ -175,7 +175,7 @@ export class NotificationsService {
           is_read: true,
           read_at: new Date().toISOString(),
         })
-        .eq('empresa_id', 'default-empresa-id')
+        .eq('empresa_id', empresaId)
         .eq('is_read', false);
 
       if (userId) {
@@ -196,14 +196,14 @@ export class NotificationsService {
     }
   }
 
-  async getStats(userId?: string): Promise<NotificationStats> {
+  async getStats(empresaId: string, userId?: string): Promise<NotificationStats> {
     try {
       // Buscar todas as notificações para calcular estatísticas
       let query = this.supabaseService
         .getClient()
         .from('notifications')
         .select('*')
-        .eq('empresa_id', 'default-empresa-id');
+        .eq('empresa_id', empresaId);
 
       if (userId) {
         query = query.or(`user_id.eq.${userId},user_id.is.null`);
@@ -242,14 +242,14 @@ export class NotificationsService {
     }
   }
 
-  async update(id: string, updateNotificationDto: any): Promise<Notification> {
+  async update(id: string, updateNotificationDto: any, empresaId: string): Promise<Notification> {
     try {
       const { data, error } = await this.supabaseService
         .getClient()
         .from('notifications')
         .update(updateNotificationDto)
         .eq('id', id)
-        .eq('empresa_id', 'default-empresa-id')
+        .eq('empresa_id', empresaId)
         .select('*')
         .single();
 
@@ -265,14 +265,14 @@ export class NotificationsService {
     }
   }
 
-  async delete(id: string): Promise<boolean> {
+  async delete(id: string, empresaId: string): Promise<boolean> {
     try {
       const { error } = await this.supabaseService
         .getClient()
         .from('notifications')
         .delete()
         .eq('id', id)
-        .eq('empresa_id', 'default-empresa-id');
+        .eq('empresa_id', empresaId);
 
       if (error) {
         this.logger.error('Erro ao deletar notificação:', error);
@@ -287,43 +287,43 @@ export class NotificationsService {
   }
 
   // Métodos para criar notificações específicas
-  async createAppointmentNotification(appointmentData: any): Promise<Notification> {
+  async createAppointmentNotification(appointmentData: any, empresaId: string): Promise<Notification> {
     return this.create({
       type: NotificationType.APPOINTMENT,
       title: 'Nova consulta agendada',
       message: `Consulta agendada para ${appointmentData.patientName} em ${appointmentData.date}`,
       data: { appointment_id: appointmentData.id, patient_id: appointmentData.patientId },
       priority: NotificationPriority.NORMAL,
-    });
+    }, empresaId);
   }
 
-  async createReturnNotification(returnData: any): Promise<Notification> {
+  async createReturnNotification(returnData: any, empresaId: string): Promise<Notification> {
     return this.create({
       type: NotificationType.RETURN,
       title: 'Retorno agendado',
       message: `Retorno agendado para ${returnData.paciente_nome} em ${returnData.data_retorno}`,
       data: { return_id: returnData.id, patient_id: returnData.cliente_id },
       priority: NotificationPriority.NORMAL,
-    });
+    }, empresaId);
   }
 
-  async createConfirmationNotification(count: number): Promise<Notification> {
+  async createConfirmationNotification(count: number, empresaId: string): Promise<Notification> {
     return this.create({
       type: NotificationType.CONFIRMATION,
       title: `${count} confirmações pendentes`,
       message: 'Pacientes aguardando confirmação de consulta',
       data: { count },
       priority: NotificationPriority.HIGH,
-    });
+    }, empresaId);
   }
 
-  async createMessageNotification(source: string, contact: string): Promise<Notification> {
+  async createMessageNotification(source: string, contact: string, empresaId: string): Promise<Notification> {
     return this.create({
       type: NotificationType.MESSAGE,
       title: 'Nova mensagem',
       message: `Nova resposta no ${source}`,
       data: { source, contact },
       priority: NotificationPriority.NORMAL,
-    });
+    }, empresaId);
   }
 }

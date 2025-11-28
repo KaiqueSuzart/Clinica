@@ -7,12 +7,13 @@ import { UpdateProcedureDto } from './dto/update-procedure.dto';
 export class ProceduresService {
   constructor(private supabaseService: SupabaseService) {}
 
-  async findAll(categoria?: string, ativo?: boolean) {
+  async findAll(empresaId: string, categoria?: string, ativo?: boolean) {
     try {
       let query = this.supabaseService
         .getClient()
         .from('procedimentos')
         .select('*')
+        .eq('empresa_id', empresaId)
         .is('cliente_id', null) // Apenas procedimentos do catálogo, não vinculados a clientes
         .order('nome', { ascending: true });
 
@@ -41,13 +42,14 @@ export class ProceduresService {
     }
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, empresaId: string) {
     try {
       const { data, error } = await this.supabaseService
         .getClient()
         .from('procedimentos')
         .select('*')
         .eq('id', id)
+        .eq('empresa_id', empresaId)
         .single();
 
       if (error) {
@@ -100,7 +102,7 @@ export class ProceduresService {
     }
   }
 
-  async update(id: string, updateProcedureDto: UpdateProcedureDto) {
+  async update(id: string, updateProcedureDto: UpdateProcedureDto, empresaId: string) {
     try {
       const updateData = {
         ...updateProcedureDto,
@@ -112,6 +114,7 @@ export class ProceduresService {
         .from('procedimentos')
         .update(updateData)
         .eq('id', id)
+        .eq('empresa_id', empresaId)
         .select()
         .single();
 
@@ -134,7 +137,7 @@ export class ProceduresService {
     }
   }
 
-  async remove(id: string) {
+  async remove(id: string, empresaId: string) {
     try {
       // Soft delete - apenas marca como inativo
       const { data, error } = await this.supabaseService
@@ -142,6 +145,7 @@ export class ProceduresService {
         .from('procedimentos')
         .update({ ativo: false, updated_at: new Date().toISOString() })
         .eq('id', id)
+        .eq('empresa_id', empresaId)
         .select()
         .single();
 
@@ -163,12 +167,13 @@ export class ProceduresService {
     }
   }
 
-  async getCategorias() {
+  async getCategorias(empresaId: string) {
     try {
       const { data, error } = await this.supabaseService
         .getClient()
         .from('procedimentos')
         .select('categoria')
+        .eq('empresa_id', empresaId)
         .not('categoria', 'is', null)
         .is('cliente_id', null);
 
@@ -177,7 +182,7 @@ export class ProceduresService {
       }
 
       // Retornar lista única de categorias
-      const uniqueCategories = [...new Set(data?.map(item => item.categoria).filter(Boolean))] || [];
+      const uniqueCategories = data ? [...new Set(data.map(item => item.categoria).filter(Boolean))] : [];
       
       return {
         success: true,

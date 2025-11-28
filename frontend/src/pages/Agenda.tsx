@@ -5,7 +5,9 @@ import Button from '../components/UI/Button';
 import StatusBadge from '../components/UI/StatusBadge';
 import NewAppointmentModal from '../components/Appointments/NewAppointmentModal';
 import EditAppointmentModal from '../components/Appointments/EditAppointmentModal';
+import RegisterPaymentModal from '../components/Payments/RegisterPaymentModal';
 import { apiService, Appointment, ReturnVisit } from '../services/api';
+import { formatPhoneDisplay } from '../utils/phoneFormatter';
 
 export default function Agenda() {
   const [activeTab, setActiveTab] = useState<'today' | 'history'>('today');
@@ -21,6 +23,8 @@ export default function Agenda() {
   const [error, setError] = useState<string | null>(null);
   const [showEditAppointment, setShowEditAppointment] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [showRegisterPayment, setShowRegisterPayment] = useState(false);
+  const [appointmentForPayment, setAppointmentForPayment] = useState<Appointment | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [periodFilter, setPeriodFilter] = useState<'today' | 'week' | 'month'>('today');
 
@@ -547,7 +551,7 @@ export default function Agenda() {
                       <span>•</span>
                       <span>{(item as Appointment).professional}</span>
                     </div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{(item as Appointment).patientPhone}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{formatPhoneDisplay((item as Appointment).patientPhone)}</p>
                     {!isPast && !isReturn && (
                       <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
                         {(() => {
@@ -598,6 +602,19 @@ export default function Agenda() {
                         Realizar
                       </Button>
                     )}
+                    {!isReturn && (item as Appointment).status === 'realizado' && !(item as Appointment).pago && (
+                      <Button 
+                        variant="primary" 
+                        size="sm"
+                        onClick={() => {
+                          setAppointmentForPayment(item as Appointment);
+                          setShowRegisterPayment(true);
+                        }}
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                      >
+                        Registrar Pagamento
+                      </Button>
+                    )}
                     {isReturn && (
                       <Button 
                         variant="primary" 
@@ -632,6 +649,28 @@ export default function Agenda() {
           }}
           appointment={selectedAppointment}
           onSave={handleSaveEditAppointment}
+        />
+      )}
+
+      {showRegisterPayment && (
+        <RegisterPaymentModal
+          isOpen={showRegisterPayment}
+          onClose={() => {
+            setShowRegisterPayment(false);
+            setAppointmentForPayment(null);
+          }}
+          onSave={async (data) => {
+            try {
+              await apiService.createPayment(data);
+              await loadAppointments();
+              setShowRegisterPayment(false);
+              setAppointmentForPayment(null);
+            } catch (err) {
+              console.error('Erro ao registrar pagamento:', err);
+              throw err;
+            }
+          }}
+          appointment={appointmentForPayment}
         />
       )}
     </div>

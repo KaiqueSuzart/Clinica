@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { CreateTreatmentPlanDto } from './dto/create-treatment-plan.dto';
 import { UpdateTreatmentPlanDto } from './dto/update-treatment-plan.dto';
@@ -9,18 +9,95 @@ export class TreatmentPlansService {
     private readonly supabaseService: SupabaseService,
   ) {}
 
-  async create(createTreatmentPlanDto: CreateTreatmentPlanDto) {
+  async create(createTreatmentPlanDto: CreateTreatmentPlanDto, empresaId: string) {
+    if (!empresaId) {
+      throw new BadRequestException('Empresa ID é obrigatório');
+    }
+
     try {
       console.log('🔧 Criando plano de tratamento:', createTreatmentPlanDto);
 
-      // Criar o plano
+      // Verificar se o paciente pertence à empresa usando admin client
+      // Converter patientId para número se necessário
+      const patientIdNum = typeof createTreatmentPlanDto.patientId === 'string' 
+        ? parseInt(createTreatmentPlanDto.patientId, 10) 
+        : Number(createTreatmentPlanDto.patientId);
+      
+      console.log('🔍 Verificando paciente:', { 
+        patientIdOriginal: createTreatmentPlanDto.patientId,
+        patientIdNum, 
+        empresaId, 
+        tipoEmpresaId: typeof empresaId,
+        tipoPatientId: typeof createTreatmentPlanDto.patientId
+      });
+      
+      const { data: paciente, error: pacienteError } = await this.supabaseService
+        .getAdminClient()
+        .from('clientelA')
+        .select('id, empresa')
+        .eq('id', patientIdNum)
+        .maybeSingle();
+
+      if (pacienteError) {
+        console.error('❌ Erro ao buscar paciente:', pacienteError);
+        throw new NotFoundException('Erro ao buscar paciente');
+      }
+
+      if (!paciente) {
+        console.error('❌ Paciente não encontrado:', patientIdNum);
+        throw new NotFoundException('Paciente não encontrado');
+      }
+
+      // Comparar convertendo ambos para string e número para garantir compatibilidade
+      const pacienteEmpresaStr = paciente.empresa?.toString();
+      const empresaIdStr = empresaId?.toString();
+      const pacienteEmpresaNum = Number(paciente.empresa);
+      const empresaIdNum = Number(empresaId);
+      
+      console.log('🔍 Comparando empresas:', { 
+        pacienteEmpresa: paciente.empresa,
+        pacienteEmpresaStr, 
+        pacienteEmpresaNum,
+        empresaId,
+        empresaIdStr,
+        empresaIdNum,
+        pacienteEmpresaTipo: typeof paciente.empresa,
+        empresaIdTipo: typeof empresaId,
+        igualComoString: pacienteEmpresaStr === empresaIdStr,
+        igualComoNumero: pacienteEmpresaNum === empresaIdNum,
+        pacienteCompleto: paciente
+      });
+
+      // Verificar tanto como string quanto como número
+      const empresasIguais = pacienteEmpresaStr === empresaIdStr || 
+                            pacienteEmpresaNum === empresaIdNum ||
+                            paciente.empresa === empresaId;
+
+      if (!empresasIguais) {
+        console.error('❌ Paciente não pertence à empresa:', { 
+          pacienteEmpresa: paciente.empresa,
+          pacienteEmpresaStr, 
+          pacienteEmpresaNum,
+          empresaId,
+          empresaIdStr,
+          empresaIdNum,
+          patientId: patientIdNum,
+          pacienteCompleto: paciente
+        });
+        throw new BadRequestException(`Paciente não pertence à empresa. Paciente empresa: ${pacienteEmpresaStr} (${typeof paciente.empresa}), Empresa ID: ${empresaIdStr} (${typeof empresaId})`);
+      }
+      
+      console.log('✅ Validação de empresa passou!');
+
+      // Criar o plano usando admin client
+      // Nota: empresa_id não é necessário aqui pois já validamos que o paciente pertence à empresa
       const { data: plan, error: planError } = await this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('plano_tratamento')
         .insert({
           titulo: createTreatmentPlanDto.title,
           descricao: createTreatmentPlanDto.description || '',
-          paciente_id: createTreatmentPlanDto.patientId.toString(),
+          paciente_id: patientIdNum,
           progresso: 0,
           custo_total: createTreatmentPlanDto.totalCost || 0,
         })
@@ -36,7 +113,7 @@ export class TreatmentPlansService {
         const items = [];
         for (const item of createTreatmentPlanDto.items) {
           const { data: createdItem, error: itemError } = await this.supabaseService
-            .getClient()
+            .getAdminClient()
             .from('itens_plano_tratamento')
             .insert({
               plano_id: plan.id,
@@ -66,7 +143,7 @@ export class TreatmentPlansService {
               }));
 
               const { data: createdSessions, error: sessionsError } = await this.supabaseService
-                .getClient()
+                .getAdminClient()
                 .from('treatment_sessions')
                 .insert(sessions)
                 .select();
@@ -96,8 +173,27 @@ export class TreatmentPlansService {
     }
   }
 
-  async findAll() {
+  async findAll(empresaId: string) {
+    if (!empresaId) {
+      throw new BadRequestException('Empresa ID é obrigatório');
+    }
+
     try {
+      // Buscar IDs dos pacientes da empresa primeiro
+      const { data: pacientes, error: pacientesError } = await this.supabaseService
+        .getClient()
+        .from('clientelA')
+        .select('id')
+        .eq('empresa', empresaId);
+
+      if (pacientesError) throw pacientesError;
+
+      const pacienteIds = pacientes?.map(p => p.id.toString()) || [];
+      
+      if (pacienteIds.length === 0) {
+        return [];
+      }
+
       const { data: plans, error } = await this.supabaseService
         .getClient()
         .from('plano_tratamento')
@@ -106,6 +202,7 @@ export class TreatmentPlansService {
           paciente: clientelA(nome, Email, telefone),
           items: itens_plano_tratamento(*)
         `)
+        .in('paciente_id', pacienteIds)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -143,12 +240,46 @@ export class TreatmentPlansService {
     }
   }
 
-  async findByPatientId(patientId: number) {
+  async findByPatientId(patientId: number, empresaId: string) {
+    if (!empresaId) {
+      throw new BadRequestException('Empresa ID é obrigatório');
+    }
+
     try {
-      console.log('🔍 Buscando planos para paciente:', patientId);
+      console.log('🔍 Buscando planos para paciente:', patientId, 'empresa:', empresaId);
+
+      // Verificar se o paciente pertence à empresa usando admin client
+      const { data: paciente, error: pacienteError } = await this.supabaseService
+        .getAdminClient()
+        .from('clientelA')
+        .select('id, empresa')
+        .eq('id', patientId)
+        .maybeSingle();
+
+      if (pacienteError) {
+        console.error('❌ Erro ao buscar paciente:', pacienteError);
+        // Retornar array vazio em vez de lançar erro - pode ser que o paciente não exista
+        return [];
+      }
+
+      if (!paciente) {
+        console.log('⚠️ Paciente não encontrado, retornando array vazio:', patientId);
+        // Retornar array vazio em vez de lançar erro - pode ser que o paciente não exista ainda
+        return [];
+      }
+
+      if (paciente.empresa?.toString() !== empresaId?.toString()) {
+        console.log('⚠️ Paciente não pertence à empresa, retornando array vazio:', { 
+          pacienteEmpresa: paciente.empresa, 
+          empresaId,
+          patientId 
+        });
+        // Retornar array vazio em vez de lançar erro - paciente pode ser de outra empresa
+        return [];
+      }
 
       const { data: plans, error } = await this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('plano_tratamento')
         .select(`
           *,
@@ -157,7 +288,11 @@ export class TreatmentPlansService {
         .eq('paciente_id', patientId)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Erro ao buscar planos:', error);
+        // Retornar array vazio em vez de lançar erro
+        return [];
+      }
 
       // Carregar sessões para cada item
       if (plans) {
@@ -190,24 +325,34 @@ export class TreatmentPlansService {
       return plans || [];
     } catch (error) {
       console.error('❌ Erro ao buscar planos do paciente:', error);
-      throw error;
+      // Retornar array vazio em vez de lançar erro
+      return [];
     }
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, empresaId: string) {
+    if (!empresaId) {
+      throw new BadRequestException('Empresa ID é obrigatório');
+    }
+
     try {
       const { data: plan, error } = await this.supabaseService
         .getClient()
         .from('plano_tratamento')
         .select(`
           *,
-          paciente: clientelA(nome, Email, telefone),
+          paciente: clientelA(empresa, nome, Email, telefone),
           items: itens_plano_tratamento(*)
         `)
         .eq('id', id)
         .single();
 
       if (error) throw error;
+
+      // Verificar se o paciente pertence à empresa
+      if (!plan || plan.paciente?.empresa !== empresaId) {
+        throw new NotFoundException('Plano de tratamento não encontrado');
+      }
 
       // Carregar sessões para cada item
       if (plan && plan.items) {
@@ -238,10 +383,33 @@ export class TreatmentPlansService {
     }
   }
 
-  async update(id: string, updateTreatmentPlanDto: UpdateTreatmentPlanDto) {
+  async update(id: string, updateTreatmentPlanDto: UpdateTreatmentPlanDto, empresaId: string) {
+    if (!empresaId) {
+      throw new BadRequestException('Empresa ID é obrigatório');
+    }
+
     try {
       console.log('🔧 Atualizando plano:', id);
       console.log('📋 Dados recebidos:', JSON.stringify(updateTreatmentPlanDto, null, 2));
+
+      // Verificar se o plano pertence à empresa antes de atualizar
+      const { data: existingPlan, error: checkError } = await this.supabaseService
+        .getClient()
+        .from('plano_tratamento')
+        .select(`
+          *,
+          paciente: clientelA(empresa)
+        `)
+        .eq('id', id)
+        .single();
+
+      if (checkError || !existingPlan) {
+        throw new NotFoundException('Plano de tratamento não encontrado');
+      }
+
+      if (existingPlan.paciente?.empresa !== empresaId) {
+        throw new NotFoundException('Plano de tratamento não encontrado');
+      }
 
       // 1. Atualizar o plano principal
       const { data: plan, error: planError } = await this.supabaseService
@@ -510,7 +678,7 @@ export class TreatmentPlansService {
 
       // 4. Retornar o plano completo com itens atualizados
       console.log('✅ Atualizações concluídas, buscando plano completo...');
-      return await this.findOne(id);
+      return await this.findOne(id, empresaId);
     } catch (error) {
       console.error('❌ Erro ao atualizar plano:', error);
       console.error('❌ Stack trace:', error.stack);
@@ -524,8 +692,31 @@ export class TreatmentPlansService {
     }
   }
 
-  async remove(id: string) {
+  async remove(id: string, empresaId: string) {
+    if (!empresaId) {
+      throw new BadRequestException('Empresa ID é obrigatório');
+    }
+
     try {
+      // Verificar se o plano pertence à empresa antes de deletar
+      const { data: plan, error: checkError } = await this.supabaseService
+        .getClient()
+        .from('plano_tratamento')
+        .select(`
+          *,
+          paciente: clientelA(empresa)
+        `)
+        .eq('id', id)
+        .single();
+
+      if (checkError || !plan) {
+        throw new NotFoundException('Plano de tratamento não encontrado');
+      }
+
+      if (plan.paciente?.empresa !== empresaId) {
+        throw new NotFoundException('Plano de tratamento não encontrado');
+      }
+
       const { error } = await this.supabaseService
         .getClient()
         .from('plano_tratamento')
@@ -540,9 +731,19 @@ export class TreatmentPlansService {
     }
   }
 
-  async getPatientTreatmentProgress(patientId: number) {
+  async getPatientTreatmentProgress(patientId: number, empresaId: string) {
     try {
-      const plans = await this.findByPatientId(patientId);
+      const plans = await this.findByPatientId(patientId, empresaId);
+      
+      // Se não há planos, retornar progresso zerado
+      if (!plans || plans.length === 0) {
+        return {
+          totalSessions: 0,
+          completedSessions: 0,
+          progress: 0,
+        };
+      }
+      
       let totalSessions = 0;
       let completedSessions = 0;
 
@@ -572,21 +773,118 @@ export class TreatmentPlansService {
       };
     } catch (error) {
       console.error('❌ Erro ao calcular progresso:', error);
-      throw error;
+      // Retornar progresso zerado em vez de lançar erro
+      return {
+        totalSessions: 0,
+        completedSessions: 0,
+        progress: 0,
+      };
     }
   }
 
-  async updateProgress(id: string, progress: number) {
+  async updateProgress(id: string, progress: number, empresaId: string) {
+    if (!empresaId) {
+      throw new BadRequestException('Empresa ID é obrigatório');
+    }
+
     try {
+      console.log('🔍 [updateProgress] Buscando plano:', { id, progress, empresaId });
+      
+      // Buscar o plano primeiro
+      const { data: plan, error: checkError } = await this.supabaseService
+        .getAdminClient()
+        .from('plano_tratamento')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (checkError) {
+        console.error('❌ [updateProgress] Erro ao buscar plano:', checkError);
+        throw new NotFoundException('Erro ao buscar plano de tratamento');
+      }
+
+      if (!plan) {
+        console.error('❌ [updateProgress] Plano não encontrado:', id);
+        throw new NotFoundException('Plano de tratamento não encontrado');
+      }
+
+      console.log('🔍 [updateProgress] Plano encontrado:', {
+        planId: plan.id,
+        pacienteId: plan.paciente_id
+      });
+
+      // Buscar o paciente separadamente para verificar a empresa
+      const { data: paciente, error: pacienteError } = await this.supabaseService
+        .getAdminClient()
+        .from('clientelA')
+        .select('id, empresa')
+        .eq('id', plan.paciente_id)
+        .maybeSingle();
+
+      if (pacienteError) {
+        console.error('❌ [updateProgress] Erro ao buscar paciente:', pacienteError);
+        throw new NotFoundException('Erro ao buscar paciente do plano');
+      }
+
+      if (!paciente) {
+        console.error('❌ [updateProgress] Paciente não encontrado:', plan.paciente_id);
+        throw new NotFoundException('Paciente do plano não encontrado');
+      }
+
+      console.log('🔍 [updateProgress] Paciente encontrado:', {
+        pacienteId: paciente.id,
+        pacienteEmpresa: paciente.empresa,
+        empresaId,
+        tipos: {
+          pacienteEmpresa: typeof paciente.empresa,
+          empresaId: typeof empresaId
+        }
+      });
+
+      // Comparação robusta de empresa_id
+      const pacienteEmpresaStr = paciente.empresa?.toString();
+      const empresaIdStr = empresaId?.toString();
+      const pacienteEmpresaNum = Number(paciente.empresa);
+      const empresaIdNum = Number(empresaId);
+
+      let isSameEmpresa = false;
+      if (pacienteEmpresaStr === empresaIdStr) {
+        isSameEmpresa = true;
+        console.log('✅ [updateProgress] Comparação string passou');
+      } else if (pacienteEmpresaNum === empresaIdNum && !isNaN(pacienteEmpresaNum) && !isNaN(empresaIdNum)) {
+        isSameEmpresa = true;
+        console.log('✅ [updateProgress] Comparação número passou');
+      } else if (paciente.empresa === empresaId) {
+        isSameEmpresa = true;
+        console.log('✅ [updateProgress] Comparação direta passou');
+      }
+
+      if (!isSameEmpresa) {
+        console.error('❌ [updateProgress] Plano não pertence à empresa:', {
+          pacienteEmpresa: pacienteEmpresaStr,
+          empresaId: empresaIdStr,
+          pacienteEmpresaNum,
+          empresaIdNum
+        });
+        throw new NotFoundException('Plano de tratamento não encontrado');
+      }
+
+      console.log('✅ [updateProgress] Validado, atualizando progresso para:', progress);
+
       const { data, error } = await this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('plano_tratamento')
         .update({ progresso: progress })
         .eq('id', id)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ [updateProgress] Erro ao atualizar:', error);
+        throw error;
+      }
+
+      console.log('✅ [updateProgress] Progresso atualizado com sucesso:', data);
       return data;
     } catch (error) {
       console.error('❌ Erro ao atualizar progresso:', error);
@@ -594,8 +892,31 @@ export class TreatmentPlansService {
     }
   }
 
-  async updateItemStatus(planId: string, itemId: string, status: string) {
+  async updateItemStatus(planId: string, itemId: string, status: string, empresaId: string) {
+    if (!empresaId) {
+      throw new BadRequestException('Empresa ID é obrigatório');
+    }
+
     try {
+      // Verificar se o plano pertence à empresa
+      const { data: plan, error: checkError } = await this.supabaseService
+        .getClient()
+        .from('plano_tratamento')
+        .select(`
+          *,
+          paciente: clientelA(empresa)
+        `)
+        .eq('id', planId)
+        .single();
+
+      if (checkError || !plan) {
+        throw new NotFoundException('Plano de tratamento não encontrado');
+      }
+
+      if (plan.paciente?.empresa !== empresaId) {
+        throw new NotFoundException('Plano de tratamento não encontrado');
+      }
+
       const { data, error } = await this.supabaseService
         .getClient()
         .from('itens_plano_tratamento')
@@ -612,9 +933,32 @@ export class TreatmentPlansService {
     }
   }
 
-  async updateSession(planId: string, itemId: string, sessionId: string, updates: any) {
+  async updateSession(planId: string, itemId: string, sessionId: string, updates: any, empresaId: string) {
+    if (!empresaId) {
+      throw new BadRequestException('Empresa ID é obrigatório');
+    }
+
     try {
       console.log('🔧 Atualizando sessão:', { planId, itemId, sessionId, updates });
+      
+      // Verificar se o plano pertence à empresa
+      const { data: plan, error: checkError } = await this.supabaseService
+        .getClient()
+        .from('plano_tratamento')
+        .select(`
+          *,
+          paciente: clientelA(empresa)
+        `)
+        .eq('id', planId)
+        .single();
+
+      if (checkError || !plan) {
+        throw new NotFoundException('Plano de tratamento não encontrado');
+      }
+
+      if (plan.paciente?.empresa !== empresaId) {
+        throw new NotFoundException('Plano de tratamento não encontrado');
+      }
       
       // Atualizar a sessão
       const { data: updatedSession, error: sessionError } = await this.supabaseService
@@ -659,47 +1003,165 @@ export class TreatmentPlansService {
     }
   }
 
-  async updateSessionDirect(sessionId: string, updates: any) {
+  async updateSessionDirect(sessionId: string, updates: any, empresaId: string) {
+    if (!empresaId) {
+      throw new BadRequestException('Empresa ID é obrigatório');
+    }
+
     try {
-      console.log('🔧 Atualizando sessão diretamente:', { sessionId, updates });
+      console.log('🔧 [updateSessionDirect] Atualizando sessão diretamente:', { sessionId, updates, empresaId });
       
       // Primeiro, buscar a sessão para obter o treatment_item_id
       const { data: session, error: sessionError } = await this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('treatment_sessions')
         .select('treatment_item_id')
         .eq('id', sessionId)
-        .single();
+        .maybeSingle();
 
-      if (sessionError) throw sessionError;
+      if (sessionError) {
+        console.error('❌ [updateSessionDirect] Erro ao buscar sessão:', sessionError);
+        throw new NotFoundException('Erro ao buscar sessão');
+      }
+
+      if (!session) {
+        console.error('❌ [updateSessionDirect] Sessão não encontrada:', sessionId);
+        throw new NotFoundException('Sessão não encontrada');
+      }
+
+      console.log('🔍 [updateSessionDirect] Sessão encontrada:', { sessionId, treatmentItemId: session.treatment_item_id });
+
+      // Buscar o item do plano
+      const { data: item, error: itemError } = await this.supabaseService
+        .getAdminClient()
+        .from('itens_plano_tratamento')
+        .select('plano_id')
+        .eq('id', session.treatment_item_id)
+        .maybeSingle();
+
+      if (itemError) {
+        console.error('❌ [updateSessionDirect] Erro ao buscar item:', itemError);
+        throw new NotFoundException('Erro ao buscar item do plano');
+      }
+
+      if (!item) {
+        console.error('❌ [updateSessionDirect] Item não encontrado:', session.treatment_item_id);
+        throw new NotFoundException('Item do plano não encontrado');
+      }
+
+      console.log('🔍 [updateSessionDirect] Item encontrado:', { itemId: session.treatment_item_id, planId: item.plano_id });
+
+      // Buscar o plano primeiro
+      const { data: plan, error: planError } = await this.supabaseService
+        .getAdminClient()
+        .from('plano_tratamento')
+        .select('*')
+        .eq('id', item.plano_id)
+        .maybeSingle();
+
+      if (planError) {
+        console.error('❌ [updateSessionDirect] Erro ao buscar plano:', planError);
+        throw new NotFoundException('Erro ao buscar plano de tratamento');
+      }
+
+      if (!plan) {
+        console.error('❌ [updateSessionDirect] Plano não encontrado:', item.plano_id);
+        throw new NotFoundException('Plano de tratamento não encontrado');
+      }
+
+      console.log('🔍 [updateSessionDirect] Plano encontrado:', { planId: plan.id, pacienteId: plan.paciente_id });
+
+      // Buscar o paciente separadamente para verificar a empresa
+      const { data: paciente, error: pacienteError } = await this.supabaseService
+        .getAdminClient()
+        .from('clientelA')
+        .select('id, empresa')
+        .eq('id', plan.paciente_id)
+        .maybeSingle();
+
+      if (pacienteError) {
+        console.error('❌ [updateSessionDirect] Erro ao buscar paciente:', pacienteError);
+        throw new NotFoundException('Erro ao buscar paciente do plano');
+      }
+
+      if (!paciente) {
+        console.error('❌ [updateSessionDirect] Paciente não encontrado:', plan.paciente_id);
+        throw new NotFoundException('Paciente do plano não encontrado');
+      }
+
+      console.log('🔍 [updateSessionDirect] Paciente encontrado:', {
+        pacienteId: paciente.id,
+        pacienteEmpresa: paciente.empresa,
+        empresaId,
+        tipos: {
+          pacienteEmpresa: typeof paciente.empresa,
+          empresaId: typeof empresaId
+        }
+      });
+
+      // Comparação robusta de empresa_id
+      const pacienteEmpresaStr = paciente.empresa?.toString();
+      const empresaIdStr = empresaId?.toString();
+      const pacienteEmpresaNum = Number(paciente.empresa);
+      const empresaIdNum = Number(empresaId);
+
+      let isSameEmpresa = false;
+      if (pacienteEmpresaStr === empresaIdStr) {
+        isSameEmpresa = true;
+        console.log('✅ [updateSessionDirect] Comparação string passou');
+      } else if (pacienteEmpresaNum === empresaIdNum && !isNaN(pacienteEmpresaNum) && !isNaN(empresaIdNum)) {
+        isSameEmpresa = true;
+        console.log('✅ [updateSessionDirect] Comparação número passou');
+      } else if (paciente.empresa === empresaId) {
+        isSameEmpresa = true;
+        console.log('✅ [updateSessionDirect] Comparação direta passou');
+      }
+
+      if (!isSameEmpresa) {
+        console.error('❌ [updateSessionDirect] Sessão não pertence à empresa:', {
+          pacienteEmpresa: pacienteEmpresaStr,
+          empresaId: empresaIdStr
+        });
+        throw new NotFoundException('Sessão não encontrada');
+      }
 
       // Agora atualizar a sessão
+      console.log('✅ [updateSessionDirect] Validação passou, atualizando sessão');
       const { data: updatedSession, error: updateError } = await this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('treatment_sessions')
         .update(updates)
         .eq('id', sessionId)
         .select()
         .single();
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('❌ [updateSessionDirect] Erro ao atualizar sessão:', updateError);
+        throw updateError;
+      }
+
+      console.log('✅ [updateSessionDirect] Sessão atualizada com sucesso:', updatedSession);
 
       // Se a sessão foi marcada como concluída, verificar se todas estão concluídas
       if (updates.completed) {
         const { data: allSessions, error: sessionsError } = await this.supabaseService
-          .getClient()
+          .getAdminClient()
           .from('treatment_sessions')
           .select('completed')
           .eq('treatment_item_id', session.treatment_item_id);
 
-        if (sessionsError) throw sessionsError;
+        if (sessionsError) {
+          console.error('❌ [updateSessionDirect] Erro ao buscar todas as sessões:', sessionsError);
+          throw sessionsError;
+        }
 
         const allCompleted = allSessions.every(s => s.completed);
         
         if (allCompleted) {
           // Atualizar status do item para concluído
+          console.log('✅ [updateSessionDirect] Todas as sessões concluídas, atualizando status do item');
           await this.supabaseService
-            .getClient()
+            .getAdminClient()
             .from('itens_plano_tratamento')
             .update({ 
               status: 'concluido',

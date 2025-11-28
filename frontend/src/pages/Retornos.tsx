@@ -8,6 +8,7 @@ import NewReturnModal from '../components/Returns/NewReturnModal';
 import ScheduleAppointmentModal from '../components/Returns/ScheduleAppointmentModal';
 import { useToast } from '../components/UI/Toast';
 import { apiService, ReturnVisit } from '../services/api';
+import { formatPhoneDisplay } from '../utils/phoneFormatter';
 
 export default function Retornos() {
   const { showSuccess, showError } = useToast();
@@ -530,7 +531,7 @@ export default function Retornos() {
                               {possibleReturn.paciente_nome}
                             </div>
                             <div className="text-sm text-gray-500 dark:text-gray-400">
-                              {possibleReturn.paciente_telefone}
+                              {formatPhoneDisplay(possibleReturn.paciente_telefone)}
                             </div>
                           </div>
                         </div>
@@ -622,7 +623,7 @@ export default function Retornos() {
                         {returnVisit.paciente_nome}
                       </div>
                       <div className="text-sm text-gray-500">
-                        {returnVisit.paciente_telefone}
+                        {formatPhoneDisplay(returnVisit.paciente_telefone)}
                       </div>
                     </div>
                   </td>
@@ -713,7 +714,7 @@ export default function Retornos() {
                           {returnVisit.paciente_nome}
                         </div>
                         <div className="text-sm text-gray-500 dark:text-gray-400">
-                          {returnVisit.paciente_telefone}
+                          {formatPhoneDisplay(returnVisit.paciente_telefone)}
                         </div>
                       </div>
                     </td>
@@ -794,7 +795,7 @@ export default function Retornos() {
                             {returnVisit.paciente_nome}
                           </div>
                           <div className="text-sm text-gray-500 dark:text-gray-400">
-                            {returnVisit.paciente_telefone}
+                            {formatPhoneDisplay(returnVisit.paciente_telefone)}
                           </div>
                         </div>
                       </td>
@@ -881,7 +882,7 @@ export default function Retornos() {
             setSelectedPossibleReturn(null);
           }}
           patientName={selectedPossibleReturn.paciente_nome}
-          patientPhone={selectedPossibleReturn.paciente_telefone}
+          patientPhone={formatPhoneDisplay(selectedPossibleReturn.paciente_telefone)}
           procedure={selectedPossibleReturn.procedimento}
           onSave={handleSaveAppointment}
         />
@@ -895,7 +896,7 @@ export default function Retornos() {
             setSelectedReturnToReschedule(null);
           }}
           patientName={selectedReturnToReschedule.paciente_nome}
-          patientPhone={selectedReturnToReschedule.paciente_telefone}
+          patientPhone={formatPhoneDisplay(selectedReturnToReschedule.paciente_telefone)}
           procedure={selectedReturnToReschedule.procedimento}
           onSave={handleSaveReschedule}
         />

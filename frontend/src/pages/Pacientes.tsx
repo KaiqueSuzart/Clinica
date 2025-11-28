@@ -14,6 +14,8 @@ import ConfirmModal from '../components/UI/ConfirmModal';
 import LoadingButton from '../components/UI/LoadingButton';
 import { useToast } from '../components/UI/Toast';
 import { apiService, Patient, CreatePatientData, Annotation } from '../services/api';
+import { formatPhoneDisplay } from '../utils/phoneFormatter';
+import { usePermissions } from '../contexts/PermissionsContext';
 
 // Componente para gerenciar arquivos de um paciente específico
 function PatientFilesTab({ patient }: { patient: Patient }) {
@@ -654,6 +656,7 @@ function PatientFilesTab({ patient }: { patient: Patient }) {
 }
 
 export default function Pacientes() {
+  const permissions = usePermissions();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPatient, setSelectedPatient] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'info' | 'treatment' | 'timeline' | 'files' | 'notes'>('info');
@@ -683,23 +686,6 @@ export default function Pacientes() {
   const [showProgressModal, setShowProgressModal] = useState(false);
   const [selectedPlanForProgress, setSelectedPlanForProgress] = useState<any>(null);
 
-  // Função para formatar telefone para exibição
-  const formatPhoneDisplay = (phone: string | undefined) => {
-    if (!phone) return '';
-    
-    // Remover formato WhatsApp (55{numero}@s.whatsapp.net)
-    let cleaned = phone.replace('@s.whatsapp.net', '').replace(/^55/, '');
-    
-    // Remover tudo que não é número
-    cleaned = cleaned.replace(/\D/g, '');
-    
-    // Formatar como (11) 99999-9999
-    if (cleaned.length === 11) {
-      return cleaned.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
-    }
-    
-    return cleaned;
-  };
 
   // Função para formatar CPF para exibição
   const formatCPFDisplay = (cpf: number | string | undefined) => {
@@ -780,8 +766,8 @@ export default function Pacientes() {
       const normalAnnotations = allAnnotations.filter(annotation => annotation.category !== 'tratamento');
       setAnnotations(normalAnnotations);
       
-      // Carregar também as anotações de tratamento para a timeline
-      const treatmentNotes = await apiService.getAnnotationsByCategory(patientId, 'tratamento');
+      // Filtrar anotações de tratamento diretamente de allAnnotations para evitar duplicação
+      const treatmentNotes = allAnnotations.filter(annotation => annotation.category === 'tratamento');
       
       // Filtrar apenas anotações que realmente são de tratamento (com conteúdo específico)
       const realTreatmentNotes = treatmentNotes.filter(annotation => 
@@ -791,7 +777,12 @@ export default function Pacientes() {
         annotation.content.includes('tratamento')
       );
       
-      setTreatmentAnnotations(realTreatmentNotes);
+      // Remover duplicatas baseado no ID
+      const uniqueTreatmentNotes = realTreatmentNotes.filter((annotation, index, self) =>
+        index === self.findIndex(a => a.id === annotation.id)
+      );
+      
+      setTreatmentAnnotations(uniqueTreatmentNotes);
       console.log('📝 Anotações normais (sem tratamento):', normalAnnotations);
       console.log('🦷 Anotações de tratamento (filtradas):', realTreatmentNotes);
     } catch (err) {
@@ -935,28 +926,18 @@ export default function Pacientes() {
           `💰 **Valor Total:** R$ ${(selectedPlanForProgress.totalCost || 0).toFixed(2)}\n\n` +
           `📝 **Realizado na Sessão:**\n${updates.sessionDescription}`;
         
-        await apiService.createAnnotation({
+        const newAnnotation = await apiService.createAnnotation({
           patient_id: Number(selectedPatientData.id),
           content: sessionContent,
           category: 'tratamento'
         });
         
-        // Recarregar anotações para aparecer na timeline
+        console.log('📝 Anotação da sessão criada:', newAnnotation);
+        
+        // Recarregar anotações para aparecer na timeline (isso já inclui a nova anotação)
         await loadAnnotations(Number(selectedPatientData.id));
         
-        // Atualizar também o estado local das anotações de tratamento
-        setTreatmentAnnotations(prev => [{
-          id: Date.now(), // ID temporário
-          patient_id: Number(selectedPatientData.id),
-          content: sessionContent,
-          category: 'tratamento',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }, ...prev]);
-        
-        console.log('📝 Anotação da sessão criada na timeline:', sessionContent);
-        console.log('🔍 selectedPlanForProgress:', selectedPlanForProgress);
-        console.log('🔍 proceduresList:', proceduresList);
+        console.log('✅ Anotações recarregadas do backend');
       }
       
       console.log('✅ Sessão salva com sucesso!', { 
@@ -1046,7 +1027,7 @@ export default function Pacientes() {
     try {
       // Buscar anamnese existente do paciente
       const anamneses = await apiService.getAnamneseByPatient(patientId);
-      const existingAnamnese = anamneses.length > 0 ? anamneses[0] : undefined;
+      const existingAnamnese = anamneses && anamneses.length > 0 ? anamneses[0] : undefined;
       
       setSelectedAnamnesePatient(patientId);
       setShowAnamnese(true);
@@ -1060,9 +1041,9 @@ export default function Pacientes() {
             : patient
         ));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao carregar anamnese:', err);
-      // Abrir modal mesmo com erro
+      // Abrir modal mesmo com erro (pode ser que não exista anamnese ainda)
       setSelectedAnamnesePatient(patientId);
       setShowAnamnese(true);
     }
@@ -1644,12 +1625,15 @@ export default function Pacientes() {
                         id: 'info', 
                         label: 'Informações', 
                         icon: User,
-                        badge: selectedPatientData?.anamnese ? '✓' : null,
+                        badge: !permissions.isRecepcionista && selectedPatientData?.anamnese ? '✓' : null,
                         badgeColor: 'bg-blue-500'
                       },
                       { id: 'treatment', label: 'Plano de Tratamento', icon: FileText },
                       { id: 'timeline', label: 'Linha do Tempo', icon: Clock },
-                      { id: 'files', label: 'Arquivos', icon: Upload },
+                      // Arquivos - apenas dentista/admin
+                      ...(!permissions.isRecepcionista ? [
+                        { id: 'files', label: 'Arquivos', icon: Upload }
+                      ] : []),
                       { 
                         id: 'notes', 
                         label: 'Anotações', 
@@ -1925,10 +1909,13 @@ export default function Pacientes() {
                       <label className="block text-sm font-medium text-gray-700 mb-1">Endereço</label>
                       <p className="text-gray-900">{selectedPatientData.address || 'Não informado'}</p>
                     </div>
+                    {/* Observações - ocultar para recepcionista se contiver dados sigilosos */}
+                    {!permissions.isRecepcionista && (
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-1">Observações</label>
                       <p className="text-gray-900">{selectedPatientData.observacoes || 'Nenhuma observação'}</p>
                     </div>
+                    )}
                   </div>
                   <div className="mt-6 flex space-x-3">
                     <Button 
@@ -1938,6 +1925,8 @@ export default function Pacientes() {
                     >
                       Editar
                     </Button>
+                    {/* Anamnese - apenas dentista/admin podem ver/editar */}
+                    {!permissions.isRecepcionista && (
                     <Button 
                       variant="outline" 
                       size="sm" 
@@ -1946,6 +1935,7 @@ export default function Pacientes() {
                     >
                       {selectedPatientData.anamnese ? 'Editar Anamnese' : 'Anamnese'}
                     </Button>
+                    )}
                     <Button 
                       variant="outline" 
                       size="sm" 
@@ -1973,7 +1963,9 @@ export default function Pacientes() {
                     >
                       Agendar Retorno
                     </Button>
+                    {!permissions.isRecepcionista && (
                     <Button variant="outline" size="sm" icon={Upload}>Arquivos</Button>
+                    )}
                   </div>
                 </Card>
               )}
@@ -2134,7 +2126,7 @@ export default function Pacientes() {
               )}
 
               {/* Arquivos */}
-              {activeTab === 'files' && (
+              {activeTab === 'files' && !permissions.isRecepcionista && (
                 <PatientFilesTab patient={selectedPatientData} />
               )}
 

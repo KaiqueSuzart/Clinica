@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Put, Param, Delete } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { EvaluationsService } from './evaluations.service';
+import { EmpresaId } from '../auth/decorators/empresa.decorator';
 
 class CreateEvaluationDto {
   patient_id: string;
@@ -28,44 +29,44 @@ export class EvaluationsController {
   @Get()
   @ApiOperation({ summary: 'Listar todas as avaliações' })
   @ApiResponse({ status: 200, description: 'Lista de avaliações retornada' })
-  findAll() {
-    return this.evaluationsService.findAll();
+  findAll(@EmpresaId() empresaId: string) {
+    return this.evaluationsService.findAll(empresaId);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Buscar avaliação por ID' })
   @ApiResponse({ status: 200, description: 'Avaliação encontrada' })
   @ApiResponse({ status: 404, description: 'Avaliação não encontrada' })
-  findOne(@Param('id') id: string) {
-    return this.evaluationsService.findOne(id);
+  findOne(@Param('id') id: string, @EmpresaId() empresaId: string) {
+    return this.evaluationsService.findOne(id, empresaId);
   }
 
   @Get('patient/:patientId')
   @ApiOperation({ summary: 'Buscar avaliações por paciente' })
   @ApiResponse({ status: 200, description: 'Avaliações do paciente retornadas' })
-  findByPatient(@Param('patientId') patientId: string) {
-    return this.evaluationsService.findByPatient(patientId);
+  findByPatient(@Param('patientId') patientId: string, @EmpresaId() empresaId: string) {
+    return this.evaluationsService.findByPatient(patientId, empresaId);
   }
 
   @Post()
   @ApiOperation({ summary: 'Criar nova avaliação' })
   @ApiResponse({ status: 201, description: 'Avaliação criada com sucesso' })
-  create(@Body() createEvaluationDto: CreateEvaluationDto) {
-    return this.evaluationsService.create(createEvaluationDto);
+  create(@Body() createEvaluationDto: CreateEvaluationDto, @EmpresaId() empresaId: string) {
+    return this.evaluationsService.create(createEvaluationDto, empresaId);
   }
 
   @Put(':id')
   @ApiOperation({ summary: 'Atualizar avaliação' })
   @ApiResponse({ status: 200, description: 'Avaliação atualizada com sucesso' })
-  update(@Param('id') id: string, @Body() updateEvaluationDto: UpdateEvaluationDto) {
-    return this.evaluationsService.update(id, updateEvaluationDto);
+  update(@Param('id') id: string, @Body() updateEvaluationDto: UpdateEvaluationDto, @EmpresaId() empresaId: string) {
+    return this.evaluationsService.update(id, updateEvaluationDto, empresaId);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Remover avaliação' })
   @ApiResponse({ status: 200, description: 'Avaliação removida com sucesso' })
-  remove(@Param('id') id: string) {
-    return this.evaluationsService.remove(id);
+  remove(@Param('id') id: string, @EmpresaId() empresaId: string) {
+    return this.evaluationsService.remove(id, empresaId);
   }
 }
 

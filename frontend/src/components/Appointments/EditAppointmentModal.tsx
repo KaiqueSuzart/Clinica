@@ -3,6 +3,7 @@ import { X, Calendar, Clock, User, Save, ChevronLeft, ChevronRight, Lock, AlertC
 import LoadingButton from '../UI/LoadingButton';
 import { apiService } from '../../services/api';
 import { useBusinessHours } from '../../contexts/BusinessHoursContext';
+import { formatPhoneDisplay } from '../../utils/phoneFormatter';
 
 interface EditAppointmentModalProps {
   isOpen: boolean;
@@ -432,7 +433,7 @@ export default function EditAppointmentModal({ isOpen, onClose, appointment, onS
                 <div className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300 flex items-center">
                   <User className="w-4 h-4 mr-2 text-gray-500" />
                   <span className="font-medium">{appointment?.patientName}</span>
-                  <span className="ml-2 text-gray-500">({appointment?.patientPhone})</span>
+                  <span className="ml-2 text-gray-500">({formatPhoneDisplay(appointment?.patientPhone)})</span>
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   Para alterar o paciente, crie uma nova consulta

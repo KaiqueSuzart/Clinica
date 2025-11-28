@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, User, Phone, Mail, MapPin, Calendar, Save } from 'lucide-react';
-import LoadingButton from '../UI/LoadingButton';
 import { apiService, CreatePatientData } from '../../services/api';
 
 interface NewPatientModalProps {
@@ -23,12 +22,95 @@ export default function NewPatientModal({ isOpen, onClose, onSave }: NewPatientM
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
+    
+    // Validar campo em tempo real quando o usuário digita
+    if (touchedFields[field]) {
+      validateField(field, value);
+    }
+  };
+
+  const handleBlur = (field: string) => {
+    setTouchedFields(prev => ({ ...prev, [field]: true }));
+    validateField(field, formData[field as keyof typeof formData]);
+  };
+
+  const validateField = (field: string, value: string) => {
+    const errors = { ...fieldErrors };
+    
+    switch (field) {
+      case 'name':
+        if (!value.trim()) {
+          errors.name = 'Nome é obrigatório';
+        } else if (value.trim().length < 2) {
+          errors.name = 'Nome deve ter pelo menos 2 caracteres';
+        } else {
+          delete errors.name;
+        }
+        break;
+        
+      case 'phone':
+        if (!value.trim()) {
+          errors.phone = 'Telefone é obrigatório';
+        } else if (!validatePhone(value)) {
+          errors.phone = 'Telefone inválido. Use DDD + número (10 ou 11 dígitos)';
+        } else {
+          delete errors.phone;
+        }
+        break;
+        
+      case 'cpf':
+        if (!value.trim()) {
+          errors.cpf = 'CPF é obrigatório';
+        } else if (!validateCPF(value)) {
+          errors.cpf = 'CPF inválido. Verifique os dígitos';
+        } else {
+          delete errors.cpf;
+        }
+        break;
+        
+      case 'birthDate':
+        if (!value) {
+          errors.birthDate = 'Data de nascimento é obrigatória';
+        } else {
+          const date = new Date(value);
+          const today = new Date();
+          if (date > today) {
+            errors.birthDate = 'Data de nascimento não pode ser no futuro';
+          } else {
+            delete errors.birthDate;
+          }
+        }
+        break;
+        
+      case 'email':
+        if (value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
+          errors.email = 'Email inválido';
+        } else {
+          delete errors.email;
+        }
+        break;
+        
+      case 'emergencyPhone':
+        if (value.trim() && !validatePhone(value)) {
+          errors.emergencyPhone = 'Telefone inválido. Use DDD + número (10 ou 11 dígitos)';
+        } else {
+          delete errors.emergencyPhone;
+        }
+        break;
+        
+      default:
+        break;
+    }
+    
+    setFieldErrors(errors);
   };
 
   const formatPhone = (value: string) => {
@@ -110,41 +192,77 @@ export default function NewPatientModal({ isOpen, onClose, onSave }: NewPatientM
     const cpfValid = validateCPF(formData.cpf);
     const birthDateValid = !!formData.birthDate;
     
-    return nameValid && phoneValid && cpfValid && birthDateValid;
+    const isValid = nameValid && phoneValid && cpfValid && birthDateValid;
+    
+    // Log de debug para entender por que o botão está desabilitado
+    if (!isValid) {
+      console.log('🔍 Validação do formulário:', {
+        nameValid,
+        phoneValid,
+        cpfValid,
+        birthDateValid,
+        name: formData.name,
+        phone: formData.phone,
+        cpf: formData.cpf,
+        birthDate: formData.birthDate
+      });
+    }
+    
+    return isValid;
   };
 
   const validateForm = () => {
+    // Marcar todos os campos obrigatórios como tocados
+    const requiredFields = ['name', 'phone', 'cpf', 'birthDate'];
+    const newTouchedFields = { ...touchedFields };
+    requiredFields.forEach(field => {
+      newTouchedFields[field] = true;
+    });
+    setTouchedFields(newTouchedFields);
+    
+    // Validar todos os campos obrigatórios primeiro
+    validateField('name', formData.name);
+    validateField('phone', formData.phone);
+    validateField('cpf', formData.cpf);
+    validateField('birthDate', formData.birthDate);
+    
+    // Validar campos opcionais se preenchidos
+    if (formData.email && formData.email.trim()) {
+      validateField('email', formData.email);
+    }
+    if (formData.emergencyPhone && formData.emergencyPhone.trim()) {
+      validateField('emergencyPhone', formData.emergencyPhone);
+    }
+    
+    // Verificar validação básica
     const nameValid = formData.name.trim().length >= 2;
     const phoneValid = validatePhone(formData.phone);
     const cpfValid = validateCPF(formData.cpf);
     const birthDateValid = !!formData.birthDate;
     
-    // Mostrar erros específicos
-    if (!nameValid) {
-      setError('Nome deve ter pelo menos 2 caracteres');
-      return false;
-    }
-    if (!phoneValid) {
-      setError('Telefone inválido. Use DDD + número (10 ou 11 dígitos)');
-      return false;
-    }
-    if (!cpfValid) {
-      setError('CPF inválido. Verifique os dígitos');
-      return false;
-    }
-    if (!birthDateValid) {
-      setError('Data de nascimento é obrigatória');
-      return false;
+    const isValid = nameValid && phoneValid && cpfValid && birthDateValid;
+    
+    if (!isValid) {
+      setError('Por favor, corrija os erros no formulário');
+    } else {
+      setError(null);
     }
     
-    setError(null);
-    return true;
+    return isValid;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateForm()) return;
+    
+    console.log('🚀 handleSubmit chamado');
+    console.log('📋 Dados do formulário:', formData);
+    
+    if (!validateForm()) {
+      console.log('❌ Validação falhou');
+      return;
+    }
 
+    console.log('✅ Validação passou, iniciando salvamento...');
     setIsSubmitting(true);
     setError(null);
 
@@ -160,24 +278,26 @@ export default function NewPatientModal({ isOpen, onClose, onSave }: NewPatientM
 
       // Preparar dados para a API
       const patientData: CreatePatientData = {
-        nome: formData.name,
+        nome: formData.name.trim(),
         telefone: whatsappNumber, // Formato WhatsApp
         Cpf: formData.cpf ? parseInt(formData.cpf.replace(/\D/g, '')) : undefined,
-        Email: formData.email || undefined,
+        Email: formData.email?.trim() || undefined,
         data_nascimento: formData.birthDate || undefined,
-        address: formData.address || undefined,
-        observacoes: formData.observations || undefined,
-        responsavel_nome: formData.emergencyContact || undefined,
+        address: formData.address?.trim() || undefined,
+        observacoes: formData.observations?.trim() || undefined,
+        responsavel_nome: formData.emergencyContact?.trim() || undefined,
         responsavel_telefone: emergencyWhatsapp,
         status: 'ativo',
         iaativa: true
       };
 
-      console.log('Dados sendo enviados para API:', patientData);
-      console.log('Formato da data:', formData.birthDate);
+      console.log('📤 Dados sendo enviados para API:', patientData);
+      console.log('📅 Formato da data:', formData.birthDate);
 
       // Chamar a API para criar o paciente
+      console.log('🌐 Chamando apiService.createPatient...');
       const newPatient = await apiService.createPatient(patientData);
+      console.log('✅ Paciente criado com sucesso:', newPatient);
       
       // Chamar callback de sucesso
       onSave(newPatient);
@@ -195,13 +315,42 @@ export default function NewPatientModal({ isOpen, onClose, onSave }: NewPatientM
         emergencyPhone: '',
         observations: ''
       });
-    } catch (err) {
-      console.error('Erro ao criar paciente:', err);
-      setError('Erro ao criar paciente. Verifique se o backend está funcionando.');
+      setFieldErrors({});
+      setTouchedFields({});
+      setError(null);
+    } catch (err: any) {
+      console.error('❌ Erro completo ao criar paciente:', err);
+      console.error('❌ Detalhes do erro:', {
+        message: err?.message,
+        response: err?.response,
+        stack: err?.stack
+      });
+      
+      let errorMessage = 'Erro ao criar paciente. Verifique se o backend está funcionando.';
+      
+      if (err?.message) {
+        errorMessage = err.message;
+      } else if (err?.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (typeof err === 'string') {
+        errorMessage = err;
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsSubmitting(false);
+      console.log('🏁 handleSubmit finalizado');
     }
   };
+
+  // Resetar erros quando o modal fechar
+  useEffect(() => {
+    if (!isOpen) {
+      setFieldErrors({});
+      setTouchedFields({});
+      setError(null);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -237,10 +386,18 @@ export default function NewPatientModal({ isOpen, onClose, onSave }: NewPatientM
                   type="text"
                   value={formData.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+                  onBlur={() => handleBlur('name')}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 ${
+                    fieldErrors.name && touchedFields.name
+                      ? 'border-red-500 dark:border-red-500'
+                      : 'border-gray-300 dark:border-gray-600'
+                  }`}
                   placeholder="Digite o nome completo"
                   required
                 />
+                {fieldErrors.name && touchedFields.name && (
+                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{fieldErrors.name}</p>
+                )}
               </div>
 
               <div>
@@ -253,11 +410,19 @@ export default function NewPatientModal({ isOpen, onClose, onSave }: NewPatientM
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => handlePhoneChange('phone', e.target.value)}
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+                    onBlur={() => handleBlur('phone')}
+                    className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 ${
+                      fieldErrors.phone && touchedFields.phone
+                        ? 'border-red-500 dark:border-red-500'
+                        : 'border-gray-300 dark:border-gray-600'
+                    }`}
                     placeholder="(11) 99999-9999"
                     required
                   />
                 </div>
+                {fieldErrors.phone && touchedFields.phone && (
+                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{fieldErrors.phone}</p>
+                )}
               </div>
 
               <div>
@@ -270,12 +435,20 @@ export default function NewPatientModal({ isOpen, onClose, onSave }: NewPatientM
                     type="text"
                     value={formData.cpf}
                     onChange={(e) => handleCPFChange(e.target.value)}
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+                    onBlur={() => handleBlur('cpf')}
+                    className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 ${
+                      fieldErrors.cpf && touchedFields.cpf
+                        ? 'border-red-500 dark:border-red-500'
+                        : 'border-gray-300 dark:border-gray-600'
+                    }`}
                     placeholder="000.000.000-00"
                     maxLength={14}
                     required
                   />
                 </div>
+                {fieldErrors.cpf && touchedFields.cpf && (
+                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{fieldErrors.cpf}</p>
+                )}
               </div>
 
               <div>
@@ -288,10 +461,18 @@ export default function NewPatientModal({ isOpen, onClose, onSave }: NewPatientM
                     type="date"
                     value={formData.birthDate}
                     onChange={(e) => handleInputChange('birthDate', e.target.value)}
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    onBlur={() => handleBlur('birthDate')}
+                    className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 ${
+                      fieldErrors.birthDate && touchedFields.birthDate
+                        ? 'border-red-500 dark:border-red-500'
+                        : 'border-gray-300 dark:border-gray-600'
+                    }`}
                     required
                   />
                 </div>
+                {fieldErrors.birthDate && touchedFields.birthDate && (
+                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{fieldErrors.birthDate}</p>
+                )}
               </div>
 
               <div>
@@ -304,10 +485,18 @@ export default function NewPatientModal({ isOpen, onClose, onSave }: NewPatientM
                     type="email"
                     value={formData.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+                    onBlur={() => handleBlur('email')}
+                    className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 ${
+                      fieldErrors.email && touchedFields.email
+                        ? 'border-red-500 dark:border-red-500'
+                        : 'border-gray-300 dark:border-gray-600'
+                    }`}
                     placeholder="email@exemplo.com"
                   />
                 </div>
+                {fieldErrors.email && touchedFields.email && (
+                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{fieldErrors.email}</p>
+                )}
               </div>
             </div>
           </div>
@@ -356,9 +545,17 @@ export default function NewPatientModal({ isOpen, onClose, onSave }: NewPatientM
                   type="tel"
                   value={formData.emergencyPhone}
                   onChange={(e) => handlePhoneChange('emergencyPhone', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+                  onBlur={() => handleBlur('emergencyPhone')}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 ${
+                    fieldErrors.emergencyPhone && touchedFields.emergencyPhone
+                      ? 'border-red-500 dark:border-red-500'
+                      : 'border-gray-300 dark:border-gray-600'
+                  }`}
                   placeholder="(11) 99999-9999"
                 />
+                {fieldErrors.emergencyPhone && touchedFields.emergencyPhone && (
+                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{fieldErrors.emergencyPhone}</p>
+                )}
               </div>
             </div>
           </div>
@@ -403,7 +600,6 @@ export default function NewPatientModal({ isOpen, onClose, onSave }: NewPatientM
                 <p><strong>Nome:</strong> {formData.name}</p>
                 <p><strong>CPF:</strong> {formData.cpf}</p>
                 <p><strong>Telefone:</strong> {formData.phone}</p>
-                <p><strong>WhatsApp:</strong> 55{formData.phone.replace(/\D/g, '')}@s.whatsapp.net</p>
                 {formData.email && <p><strong>Email:</strong> {formData.email}</p>}
                 <p><strong>Data de Nascimento:</strong> {new Date(formData.birthDate).toLocaleDateString('pt-BR')}</p>
                 {formData.address && <p><strong>Endereço:</strong> {formData.address}</p>}
@@ -420,15 +616,36 @@ export default function NewPatientModal({ isOpen, onClose, onSave }: NewPatientM
             >
               Cancelar
             </button>
-            <LoadingButton
+            <button
               type="submit"
-              isLoading={isSubmitting}
-              disabled={!isFormValid()}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              disabled={!isFormValid() || isSubmitting}
+              onClick={(e) => {
+                console.log('🔘 Botão clicado!');
+                console.log('📋 Estado do formulário:', formData);
+                console.log('✅ Formulário válido?', isFormValid());
+                console.log('⏳ Está submetendo?', isSubmitting);
+                if (!isFormValid()) {
+                  e.preventDefault();
+                  console.log('❌ Formulário inválido, prevenindo submit');
+                  validateForm(); // Mostrar erros
+                }
+              }}
+              className={`px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center ${
+                isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
             >
-              <Save className="w-4 h-4 mr-2" />
-              Salvar Paciente
-            </LoadingButton>
+              {isSubmitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  Salvar Paciente
+                </>
+              )}
+            </button>
           </div>
         </form>
       </div>

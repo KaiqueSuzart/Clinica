@@ -31,7 +31,7 @@ export class SubscriptionsService {
 
   // ===== ASSINATURAS DA EMPRESA =====
   
-  async getEmpresaSubscription(empresaId: number) {
+  async getEmpresaSubscription(empresaId: string) {
     try {
       const { data, error } = await this.supabaseService
         .getClient()
@@ -57,7 +57,7 @@ export class SubscriptionsService {
     }
   }
 
-  async createEmpresaSubscription(empresaId: number, subscriptionData: CreateSubscriptionDto) {
+  async createEmpresaSubscription(empresaId: string, subscriptionData: CreateSubscriptionDto) {
     try {
       const { data, error } = await this.supabaseService
         .getClient()
@@ -86,7 +86,7 @@ export class SubscriptionsService {
     }
   }
 
-  async updateEmpresaSubscription(empresaId: number, updateData: UpdateSubscriptionDto) {
+  async updateEmpresaSubscription(empresaId: string, updateData: UpdateSubscriptionDto) {
     try {
       const { data, error } = await this.supabaseService
         .getClient()
@@ -116,7 +116,7 @@ export class SubscriptionsService {
 
   // ===== COBRANÇA DO CHATBOT =====
   
-  async getChatbotBilling(empresaId: number, startDate?: string, endDate?: string) {
+  async getChatbotBilling(empresaId: string, startDate?: string, endDate?: string) {
     try {
       let query = this.supabaseService
         .getClient()
@@ -146,7 +146,7 @@ export class SubscriptionsService {
     }
   }
 
-  async createChatbotBilling(empresaId: number, billingData: ChatbotBillingDto) {
+  async createChatbotBilling(empresaId: string, billingData: ChatbotBillingDto) {
     try {
       const { data, error } = await this.supabaseService
         .getClient()
@@ -172,7 +172,7 @@ export class SubscriptionsService {
 
   // ===== HISTÓRICO DE PAGAMENTOS =====
   
-  async getPaymentHistory(empresaId: number, startDate?: string, endDate?: string) {
+  async getPaymentHistory(empresaId: string, startDate?: string, endDate?: string) {
     try {
       let query = this.supabaseService
         .getClient()
@@ -202,7 +202,7 @@ export class SubscriptionsService {
     }
   }
 
-  async createPaymentRecord(empresaId: number, paymentData: PaymentHistoryDto) {
+  async createPaymentRecord(empresaId: string, paymentData: PaymentHistoryDto) {
     try {
       const { data, error } = await this.supabaseService
         .getClient()
@@ -228,7 +228,7 @@ export class SubscriptionsService {
 
   // ===== RESUMO FINANCEIRO =====
   
-  async getFinancialSummary(empresaId: number) {
+  async getFinancialSummary(empresaId: string) {
     try {
       const [subscription, chatbotBilling, paymentHistory] = await Promise.all([
         this.getEmpresaSubscription(empresaId),

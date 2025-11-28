@@ -4,6 +4,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { EmpresasService } from './empresas.service';
 import { UpdateEmpresaDto } from './dto/update-empresa.dto';
 import { TenantGuard } from '../auth/tenant.guard';
+import { EmpresaId } from '../auth/decorators/empresa.decorator';
 
 @ApiTags('empresas')
 @Controller('empresas')
@@ -16,11 +17,7 @@ export class EmpresasController {
   @ApiOperation({ summary: 'Obter dados da empresa atual' })
   @ApiResponse({ status: 200, description: 'Dados da empresa' })
   @ApiResponse({ status: 401, description: 'Não autorizado' })
-  async getDadosEmpresa(@Request() req) {
-    const empresaId = req.empresa?.id;
-    if (!empresaId) {
-      throw new Error('Empresa não encontrada');
-    }
+  async getDadosEmpresa(@EmpresaId() empresaId: string) {
     return this.empresasService.getDadosEmpresa(empresaId);
   }
 
@@ -28,11 +25,7 @@ export class EmpresasController {
   @ApiOperation({ summary: 'Atualizar dados da empresa' })
   @ApiResponse({ status: 200, description: 'Dados atualizados com sucesso' })
   @ApiResponse({ status: 401, description: 'Não autorizado' })
-  async updateDadosEmpresa(@Request() req, @Body() updateEmpresaDto: UpdateEmpresaDto) {
-    const empresaId = req.empresa?.id;
-    if (!empresaId) {
-      throw new Error('Empresa não encontrada');
-    }
+  async updateDadosEmpresa(@EmpresaId() empresaId: string, @Body() updateEmpresaDto: UpdateEmpresaDto) {
     return this.empresasService.updateDadosEmpresa(empresaId, updateEmpresaDto);
   }
 
@@ -42,11 +35,7 @@ export class EmpresasController {
   @ApiResponse({ status: 200, description: 'Logo enviada com sucesso' })
   @ApiResponse({ status: 401, description: 'Não autorizado' })
   @UseInterceptors(FileInterceptor('file'))
-  async uploadLogo(@Request() req, @UploadedFile() file: Express.Multer.File) {
-    const empresaId = req.empresa?.id;
-    if (!empresaId) {
-      throw new Error('Empresa não encontrada');
-    }
+  async uploadLogo(@EmpresaId() empresaId: string, @UploadedFile() file: Express.Multer.File) {
     return this.empresasService.uploadLogo(empresaId, file);
   }
 }

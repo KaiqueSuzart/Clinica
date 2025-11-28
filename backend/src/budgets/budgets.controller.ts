@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/
 import { BudgetsService } from './budgets.service';
 import { CreateBudgetDto } from './dto/create-budget.dto';
 import { UpdateBudgetDto } from './dto/update-budget.dto';
+import { EmpresaId } from '../auth/decorators/empresa.decorator';
 
 @ApiTags('Budgets')
 @Controller('budgets')
@@ -15,10 +16,10 @@ export class BudgetsController {
   @ApiOperation({ summary: 'Listar todos os orçamentos' })
   @ApiResponse({ status: 200, description: 'Lista de orçamentos retornada com sucesso' })
   @ApiResponse({ status: 500, description: 'Erro interno do servidor' })
-  async findAll() {
+  async findAll(@EmpresaId() empresaId: string) {
     console.log('BudgetsController.findAll() chamado');
     try {
-      return await this.budgetsService.findAll();
+      return await this.budgetsService.findAll(empresaId);
     } catch (error) {
       console.error('Erro ao buscar orçamentos:', error);
       return [];
@@ -31,8 +32,8 @@ export class BudgetsController {
   @ApiResponse({ status: 200, description: 'Orçamento encontrado com sucesso' })
   @ApiResponse({ status: 404, description: 'Orçamento não encontrado' })
   @ApiResponse({ status: 500, description: 'Erro interno do servidor' })
-  findOne(@Param('id') id: string) {
-    return this.budgetsService.findOne(id);
+  findOne(@Param('id') id: string, @EmpresaId() empresaId: string) {
+    return this.budgetsService.findOne(id, empresaId);
   }
 
   @Get('patient/:patientId')
@@ -40,8 +41,8 @@ export class BudgetsController {
   @ApiParam({ name: 'patientId', description: 'ID do paciente' })
   @ApiResponse({ status: 200, description: 'Orçamentos do paciente retornados com sucesso' })
   @ApiResponse({ status: 500, description: 'Erro interno do servidor' })
-  findByPatient(@Param('patientId') patientId: string) {
-    return this.budgetsService.findByPatient(patientId);
+  findByPatient(@Param('patientId') patientId: string, @EmpresaId() empresaId: string) {
+    return this.budgetsService.findByPatient(patientId, empresaId);
   }
 
   @Post()
@@ -49,7 +50,7 @@ export class BudgetsController {
   @ApiResponse({ status: 201, description: 'Orçamento criado com sucesso' })
   @ApiResponse({ status: 400, description: 'Dados inválidos' })
   @ApiResponse({ status: 500, description: 'Erro interno do servidor' })
-  async create(@Body() createBudgetDto: CreateBudgetDto) {
+  async create(@Body() createBudgetDto: CreateBudgetDto, @EmpresaId() empresaId: string) {
     try {
       console.log('BudgetsController.create - Dados recebidos:', JSON.stringify(createBudgetDto, null, 2));
       
@@ -66,7 +67,7 @@ export class BudgetsController {
       }
       
       console.log('BudgetsController.create - Validação passou, chamando service...');
-      const result = await this.budgetsService.create(createBudgetDto);
+      const result = await this.budgetsService.create(createBudgetDto, empresaId);
       console.log('BudgetsController.create - Resultado:', JSON.stringify(result, null, 2));
       return result;
     } catch (error) {
@@ -82,8 +83,8 @@ export class BudgetsController {
   @ApiResponse({ status: 404, description: 'Orçamento não encontrado' })
   @ApiResponse({ status: 400, description: 'Dados inválidos' })
   @ApiResponse({ status: 500, description: 'Erro interno do servidor' })
-  update(@Param('id') id: string, @Body() updateBudgetDto: UpdateBudgetDto) {
-    return this.budgetsService.update(id, updateBudgetDto);
+  update(@Param('id') id: string, @Body() updateBudgetDto: UpdateBudgetDto, @EmpresaId() empresaId: string) {
+    return this.budgetsService.update(id, updateBudgetDto, empresaId);
   }
 
   @Put(':id/status')
@@ -93,8 +94,8 @@ export class BudgetsController {
   @ApiResponse({ status: 200, description: 'Status atualizado com sucesso' })
   @ApiResponse({ status: 404, description: 'Orçamento não encontrado' })
   @ApiResponse({ status: 500, description: 'Erro interno do servidor' })
-  updateStatus(@Param('id') id: string, @Query('status') status: string) {
-    return this.budgetsService.updateStatus(id, status);
+  updateStatus(@Param('id') id: string, @Query('status') status: string, @EmpresaId() empresaId: string) {
+    return this.budgetsService.updateStatus(id, status, empresaId);
   }
 
   @Delete(':id')
@@ -103,7 +104,7 @@ export class BudgetsController {
   @ApiResponse({ status: 200, description: 'Orçamento deletado com sucesso' })
   @ApiResponse({ status: 404, description: 'Orçamento não encontrado' })
   @ApiResponse({ status: 500, description: 'Erro interno do servidor' })
-  remove(@Param('id') id: string) {
-    return this.budgetsService.remove(id);
+  remove(@Param('id') id: string, @EmpresaId() empresaId: string) {
+    return this.budgetsService.remove(id, empresaId);
   }
 }
