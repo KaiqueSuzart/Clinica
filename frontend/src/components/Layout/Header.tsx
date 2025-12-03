@@ -72,11 +72,19 @@ const Header: React.FC = () => {
                 onClick={() => setShowUserMenu(!showUserMenu)}
                 className="flex items-center text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md px-3 py-2 transition-colors"
               >
-                <div className="h-8 w-8 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                    {user?.nome?.charAt(0) || 'U'}
-                  </span>
-                </div>
+                {user?.avatar_url ? (
+                  <img 
+                    src={user.avatar_url} 
+                    alt={user.nome || 'Avatar'} 
+                    className="h-8 w-8 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="h-8 w-8 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                      {user?.nome?.charAt(0) || 'U'}
+                    </span>
+                  </div>
+                )}
                 <div className="ml-2 text-left">
                   <p className="text-sm font-medium text-gray-900 dark:text-white">
                     {user?.nome || 'Usuário'}

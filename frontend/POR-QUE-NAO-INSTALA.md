@@ -98,3 +98,4 @@ O problema **NÃO é técnico** - é uma **decisão do navegador** de não mostr
 
 O aplicativo está pronto para instalação! 🚀
 
+

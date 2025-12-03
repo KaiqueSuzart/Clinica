@@ -128,3 +128,4 @@ FRONTEND_PREVIEW_URL=https://clinione-b9cyb.ondigitalocean.app
   - Backend não está rodando
   - CORS bloqueando requisições
 
+

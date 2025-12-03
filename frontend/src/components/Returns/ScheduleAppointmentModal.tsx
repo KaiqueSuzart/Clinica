@@ -3,6 +3,7 @@ import { X, Calendar, Clock, User, Save, ChevronLeft, ChevronRight } from 'lucid
 import LoadingButton from '../UI/LoadingButton';
 import { apiService, Appointment } from '../../services/api';
 import { useBusinessHours } from '../../contexts/BusinessHoursContext';
+import { useDentistas } from '../../hooks/useDentistas';
 import { formatPhoneDisplay } from '../../utils/phoneFormatter';
 
 interface ScheduleAppointmentModalProps {
@@ -23,9 +24,10 @@ export default function ScheduleAppointmentModal({
   onSave 
 }: ScheduleAppointmentModalProps) {
   const { isWorkingDay } = useBusinessHours();
+  const { dentistas, getDentistasOptions } = useDentistas();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedTime, setSelectedTime] = useState('');
-  const [professional, setProfessional] = useState('Dr. Ana Silva');
+  const [professional, setProfessional] = useState('');
   const [duration, setDuration] = useState(60);
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,11 +42,18 @@ export default function ScheduleAppointmentModal({
     '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30'
   ];
 
-  const professionals = [
-    'Dr. Ana Silva',
-    'Dr. Pedro Costa',
-    'Dra. Maria Santos'
-  ];
+  // Usar dentistas do banco de dados
+  const professionalsOptions = getDentistasOptions();
+  const professionals = professionalsOptions.length > 0 
+    ? professionalsOptions.map(d => d.nome)
+    : ['Dr. Ana Silva']; // Fallback se não houver dentistas
+  
+  // Definir profissional padrão quando dentistas carregarem
+  useEffect(() => {
+    if (professionals.length > 0 && !professional) {
+      setProfessional(professionals[0]);
+    }
+  }, [dentistas]);
 
   // Carregar consultas existentes quando o modal abrir
   useEffect(() => {

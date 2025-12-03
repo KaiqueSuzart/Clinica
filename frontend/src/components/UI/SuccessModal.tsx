@@ -64,11 +64,12 @@ const SuccessModal: React.FC<SuccessModalProps> = ({
 
           {/* Progress bar */}
           {duration > 0 && (
-            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1 mb-4">
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1 mb-4 overflow-hidden">
               <div 
-                className="bg-green-500 h-1 rounded-full transition-all duration-100 ease-linear"
+                className="bg-green-500 h-1 rounded-full transition-all ease-linear"
                 style={{
-                  animation: `progress ${duration}ms linear forwards`
+                  width: '100%',
+                  animation: `shrink ${duration}ms linear forwards`
                 }}
               />
             </div>
@@ -84,8 +85,8 @@ const SuccessModal: React.FC<SuccessModalProps> = ({
         </div>
       </div>
 
-      <style jsx>{`
-        @keyframes progress {
+      <style>{`
+        @keyframes shrink {
           from { width: 100%; }
           to { width: 0%; }
         }

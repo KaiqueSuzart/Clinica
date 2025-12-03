@@ -7,7 +7,8 @@ import NewAppointmentModal from '../components/Appointments/NewAppointmentModal'
 import EditAppointmentModal from '../components/Appointments/EditAppointmentModal';
 import RegisterPaymentModal from '../components/Payments/RegisterPaymentModal';
 import { apiService, Appointment, ReturnVisit } from '../services/api';
-import { formatPhoneDisplay } from '../utils/phoneFormatter';
+import { formatPhoneDisplay, getWhatsAppLink } from '../utils/phoneFormatter';
+import { useDentistas } from '../hooks/useDentistas';
 
 export default function Agenda() {
   const [activeTab, setActiveTab] = useState<'today' | 'history'>('today');
@@ -38,7 +39,12 @@ export default function Agenda() {
     return localDate.toLocaleDateString('pt-BR', options);
   };
 
-  const professionals = ['Dr. Ana Silva', 'Dr. Pedro Costa', 'Dra. Maria Santos'];
+  const { dentistas, getDentistasOptions } = useDentistas();
+  // Usar dentistas do banco de dados
+  const professionalsOptions = getDentistasOptions();
+  const professionals = professionalsOptions.length > 0 
+    ? ['all', ...professionalsOptions.map(d => d.nome)]
+    : ['all', 'Dr. Ana Silva']; // Fallback se não houver dentistas
   const statuses = ['confirmado', 'pendente', 'cancelado', 'realizado'];
 
   // Carregar agendamentos da API
@@ -583,7 +589,19 @@ export default function Agenda() {
                         Editar
                       </Button>
                     )}
-                    <Button variant="outline" size="sm">WhatsApp</Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        const phone = (item as Appointment).patientPhone;
+                        const whatsappUrl = getWhatsAppLink(phone);
+                        if (whatsappUrl) {
+                          window.open(whatsappUrl, '_blank');
+                        }
+                      }}
+                    >
+                      WhatsApp
+                    </Button>
                     {activeTab === 'today' && !isReturn && (item as Appointment).status !== 'realizado' && (
                       <Button 
                         variant="primary" 

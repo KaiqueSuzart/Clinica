@@ -46,9 +46,10 @@ export const userPermissions: UserPermissions = {
     canDelete: ['pacientes', 'orcamentos', 'arquivos']
   },
   dentista: {
-    canView: ['dashboard', 'agenda', 'pacientes', 'anamnese', 'arquivos', 'relatorios'],
-    canEdit: ['agenda', 'pacientes', 'anamnese', 'arquivos'],
-    canDelete: ['arquivos']
+    // Dentista tem o mesmo acesso que admin
+    canView: ['dashboard', 'agenda', 'pacientes', 'mensagens', 'retornos', 'orcamentos', 'anamnese', 'arquivos', 'relatorios', 'configuracoes'],
+    canEdit: ['dashboard', 'agenda', 'pacientes', 'mensagens', 'retornos', 'orcamentos', 'anamnese', 'arquivos', 'relatorios', 'configuracoes'],
+    canDelete: ['pacientes', 'orcamentos', 'arquivos']
   },
   recepcionista: {
     canView: ['dashboard', 'agenda', 'pacientes', 'mensagens', 'retornos', 'configuracoes'],

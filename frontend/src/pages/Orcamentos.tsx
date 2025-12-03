@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Plus, DollarSign, Send, Eye, Edit, X, Save, CheckCircle, XCircle } from 'lucide-react';
+import { FileText, Plus, DollarSign, Send, Eye, Edit, X, Save, CheckCircle, XCircle, Trash2 } from 'lucide-react';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
 import StatusBadge from '../components/UI/StatusBadge';
@@ -7,6 +7,7 @@ import SuccessModal from '../components/UI/SuccessModal';
 import ErrorModal from '../components/UI/ErrorModal';
 import SendBudgetModal from '../components/UI/SendBudgetModal';
 import ApproveRejectModal from '../components/UI/ApproveRejectModal';
+import ConfirmModal from '../components/UI/ConfirmModal';
 import { apiService, Budget, CreateBudgetData, Patient, Procedure } from '../services/api';
 
 export default function Orcamentos() {
@@ -31,6 +32,8 @@ export default function Orcamentos() {
   const [showApproveRejectModal, setShowApproveRejectModal] = useState(false);
   const [budgetToApproveReject, setBudgetToApproveReject] = useState<Budget | null>(null);
   const [approveRejectAction, setApproveRejectAction] = useState<'approve' | 'reject' | null>(null);
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [budgetToDelete, setBudgetToDelete] = useState<Budget | null>(null);
   
   // Estados para novo orçamento
   const [newBudgetPatient, setNewBudgetPatient] = useState('');
@@ -236,6 +239,26 @@ export default function Orcamentos() {
     } catch (err) {
       console.error('Erro ao atualizar status do orçamento:', err);
       showError('Erro ao atualizar orçamento. Tente novamente.');
+    }
+  };
+
+  const handleDeleteBudget = (budget: Budget) => {
+    setBudgetToDelete(budget);
+    setShowDeleteConfirmModal(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!budgetToDelete) return;
+
+    try {
+      await apiService.deleteBudget(budgetToDelete.id);
+      showSuccess('Orçamento excluído com sucesso!');
+      await loadData(); // Recarregar dados
+      setShowDeleteConfirmModal(false);
+      setBudgetToDelete(null);
+    } catch (err) {
+      console.error('Erro ao excluir orçamento:', err);
+      showError('Erro ao excluir orçamento. Tente novamente.');
     }
   };
 
@@ -1453,6 +1476,15 @@ export default function Orcamentos() {
                       >
                         Enviar
                       </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        icon={Trash2}
+                        onClick={() => handleDeleteBudget(budget)}
+                        className="text-red-600 border-red-300 hover:bg-red-50"
+                      >
+                        Excluir
+                      </Button>
                       {(budget.status === 'enviado' || budget.status === 'rascunho') && (
                         <>
                           <Button 
@@ -1523,6 +1555,21 @@ export default function Orcamentos() {
         budget={budgetToApproveReject}
         action={approveRejectAction}
         onConfirm={handleConfirmApproveReject}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showDeleteConfirmModal}
+        onClose={() => {
+          setShowDeleteConfirmModal(false);
+          setBudgetToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        title="Confirmar Exclusão"
+        message={`Tem certeza que deseja excluir o orçamento de ${budgetToDelete?.clientelA?.nome}? Esta ação não pode ser desfeita.`}
+        confirmText="Excluir"
+        cancelText="Cancelar"
+        variant="danger"
       />
     </div>
   );

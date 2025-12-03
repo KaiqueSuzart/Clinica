@@ -63,3 +63,4 @@ echo "4. Execute: pm2 start ecosystem.config.js"
 echo "5. Configure o Nginx (veja DEPLOY-DIGITAL-OCEAN.md)"
 echo "6. Configure SSL com: certbot --nginx -d seudominio.com"
 
+

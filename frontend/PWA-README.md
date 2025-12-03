@@ -93,3 +93,4 @@ Quando uma nova versão é publicada:
 - Limpe o cache e recarregue a página
 - Verifique os logs do console
 
+

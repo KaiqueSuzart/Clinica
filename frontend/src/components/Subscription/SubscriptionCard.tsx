@@ -120,6 +120,21 @@ export default function SubscriptionCard() {
     );
   }
 
+  // Verificar se data.summary existe antes de renderizar
+  if (!data.summary) {
+    return (
+      <Card>
+        <div className="text-center text-gray-600 dark:text-gray-400">
+          <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+          <p>Dados de resumo financeiro não disponíveis</p>
+          <Button onClick={loadSubscriptionData} variant="outline" className="mt-2">
+            Tentar Novamente
+          </Button>
+        </div>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Resumo Financeiro */}
@@ -140,7 +155,7 @@ export default function SubscriptionCard() {
               <div>
                 <p className="text-sm text-blue-600 dark:text-blue-400">Assinatura Mensal</p>
                 <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">
-                  {formatCurrency(data.summary.monthlySubscription)}
+                  {formatCurrency(data.summary.monthlySubscription || 0)}
                 </p>
               </div>
               <CreditCard className="h-8 w-8 text-blue-600 dark:text-blue-400" />
@@ -152,7 +167,7 @@ export default function SubscriptionCard() {
               <div>
                 <p className="text-sm text-green-600 dark:text-green-400">Chatbot (30 dias)</p>
                 <p className="text-2xl font-bold text-green-900 dark:text-green-100">
-                  {formatCurrency(data.summary.monthlyChatbotCost)}
+                  {formatCurrency(data.summary.monthlyChatbotCost || 0)}
                 </p>
               </div>
               <TrendingUp className="h-8 w-8 text-green-600 dark:text-green-400" />
@@ -164,7 +179,7 @@ export default function SubscriptionCard() {
               <div>
                 <p className="text-sm text-purple-600 dark:text-purple-400">Total Mensal</p>
                 <p className="text-2xl font-bold text-purple-900 dark:text-purple-100">
-                  {formatCurrency(data.summary.totalMonthlyCost)}
+                  {formatCurrency(data.summary.totalMonthlyCost || 0)}
                 </p>
               </div>
               <DollarSign className="h-8 w-8 text-purple-600 dark:text-purple-400" />
@@ -176,7 +191,7 @@ export default function SubscriptionCard() {
               <div>
                 <p className="text-sm text-orange-600 dark:text-orange-400">Pagos (30 dias)</p>
                 <p className="text-2xl font-bold text-orange-900 dark:text-orange-100">
-                  {formatCurrency(data.summary.totalPayments)}
+                  {formatCurrency(data.summary.totalPayments || 0)}
                 </p>
               </div>
               <CheckCircle className="h-8 w-8 text-orange-600 dark:text-orange-400" />

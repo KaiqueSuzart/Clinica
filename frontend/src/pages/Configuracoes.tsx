@@ -23,6 +23,8 @@ export default function Configuracoes() {
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [loadingUsuarios, setLoadingUsuarios] = useState(false);
   const [showNovoUsuarioModal, setShowNovoUsuarioModal] = useState(false);
+  const [showEditarUsuarioModal, setShowEditarUsuarioModal] = useState(false);
+  const [usuarioEditando, setUsuarioEditando] = useState<any>(null);
   const [novoUsuario, setNovoUsuario] = useState({
     nome: '',
     email: '',
@@ -164,6 +166,32 @@ export default function Configuracoes() {
     } catch (error: any) {
       console.error('Erro ao criar usuário:', error);
       alert('Erro ao criar usuário: ' + (error.message || 'Erro desconhecido'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleEditarUsuario = async () => {
+    if (!usuarioEditando) return;
+    
+    try {
+      setSaving(true);
+      const response = await apiService.updateUsuario(usuarioEditando.id, {
+        nome: usuarioEditando.nome,
+        cargo: usuarioEditando.cargo,
+        telefone: usuarioEditando.telefone || undefined,
+        ativo: usuarioEditando.ativo !== undefined ? usuarioEditando.ativo : true
+      });
+
+      if (response.success) {
+        alert('Usuário atualizado com sucesso!');
+        setShowEditarUsuarioModal(false);
+        setUsuarioEditando(null);
+        await loadUsuarios();
+      }
+    } catch (error: any) {
+      console.error('Erro ao atualizar usuário:', error);
+      alert('Erro ao atualizar usuário: ' + (error.message || 'Erro desconhecido'));
     } finally {
       setSaving(false);
     }
@@ -809,7 +837,16 @@ export default function Configuracoes() {
                             </span>
                           )}
                           {canEdit('configuracoes') && (
-                            <Button variant="outline" size="sm">Editar</Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => {
+                                setUsuarioEditando(usuario);
+                                setShowEditarUsuarioModal(true);
+                              }}
+                            >
+                              Editar
+                            </Button>
                           )}
                         </div>
                       </div>
@@ -821,7 +858,7 @@ export default function Configuracoes() {
                   <h4 className="font-semibold text-yellow-900 mb-2">Níveis de Acesso</h4>
                   <div className="text-sm text-yellow-800 space-y-1">
                     <p><strong>Admin:</strong> Acesso completo a todas as funcionalidades</p>
-                    <p><strong>Dentista:</strong> Pode ver e editar pacientes, agenda e relatórios</p>
+                    <p><strong>Dentista:</strong> Acesso completo a todas as funcionalidades (mesmo que admin)</p>
                     <p><strong>Recepcionista:</strong> Pode gerenciar agenda e mensagens</p>
                   </div>
                 </div>
@@ -1063,6 +1100,116 @@ export default function Configuracoes() {
                 disabled={saving || !novoUsuario.nome || !novoUsuario.email}
               >
                 {saving ? 'Criando...' : 'Criar Usuário'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Editar Usuário */}
+      {showEditarUsuarioModal && usuarioEditando && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-900">Editar Usuário</h2>
+              <button
+                onClick={() => {
+                  setShowEditarUsuarioModal(false);
+                  setUsuarioEditando(null);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nome Completo *
+                </label>
+                <input
+                  type="text"
+                  value={usuarioEditando.nome}
+                  onChange={(e) => setUsuarioEditando({...usuarioEditando, nome: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Digite o nome completo"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={usuarioEditando.email}
+                  disabled
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
+                  placeholder="email@exemplo.com"
+                />
+                <p className="text-xs text-gray-500 mt-1">O email não pode ser alterado</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Cargo *
+                </label>
+                <select
+                  value={usuarioEditando.cargo}
+                  onChange={(e) => setUsuarioEditando({...usuarioEditando, cargo: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="Admin">Admin</option>
+                  <option value="Dentista">Dentista</option>
+                  <option value="Recepcionista">Recepcionista</option>
+                  <option value="Financeiro">Financeiro</option>
+                  <option value="Auxiliar">Auxiliar</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Telefone
+                </label>
+                <input
+                  type="text"
+                  value={usuarioEditando.telefone || ''}
+                  onChange={(e) => setUsuarioEditando({...usuarioEditando, telefone: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="(00) 00000-0000"
+                />
+              </div>
+
+              <div>
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={usuarioEditando.ativo !== false}
+                    onChange={(e) => setUsuarioEditando({...usuarioEditando, ativo: e.target.checked})}
+                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700">Usuário ativo</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowEditarUsuarioModal(false);
+                  setUsuarioEditando(null);
+                }}
+                disabled={saving}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleEditarUsuario}
+                disabled={saving || !usuarioEditando.nome}
+              >
+                {saving ? 'Salvando...' : 'Salvar Alterações'}
               </Button>
             </div>
           </div>

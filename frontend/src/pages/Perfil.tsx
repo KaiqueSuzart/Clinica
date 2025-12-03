@@ -8,6 +8,17 @@ import { apiService } from '../services/api';
 
 export default function Perfil() {
   const { user, empresa, updateUser } = useAuth();
+  
+  // Log para debug
+  React.useEffect(() => {
+    console.log('[Perfil] 🔍 Estado do usuário atualizado:', {
+      id: user?.id,
+      nome: user?.nome,
+      avatar_url: user?.avatar_url,
+      user: user
+    });
+  }, [user]);
+  
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'profile' | 'subscription'>('profile');
@@ -18,6 +29,9 @@ export default function Perfil() {
     cargo: user?.cargo || '',
     bio: user?.bio || '',
   });
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Carregar dados do perfil quando o componente monta
   useEffect(() => {
@@ -29,6 +43,8 @@ export default function Perfil() {
       setLoading(true);
       const response = await apiService.getPerfilUsuario();
       
+      console.log('[Perfil.loadPerfilData] 📥 Dados do perfil carregados:', response);
+      
       if (response) {
         setFormData({
           nome: response.nome || '',
@@ -38,13 +54,22 @@ export default function Perfil() {
           bio: response.bio || '',
         });
         
-        // Atualizar o contexto do usuário
+        // Resetar erro de avatar quando carregar novos dados
+        if (response.avatar_url) {
+          setAvatarError(false);
+        }
+        
+        // Atualizar o contexto do usuário com todos os dados, incluindo avatar_url
         if (updateUser) {
-          updateUser(response);
+          updateUser({
+            ...response,
+            avatar_url: response.avatar_url, // Garantir que avatar_url seja incluído
+          });
+          console.log('[Perfil.loadPerfilData] ✅ Contexto do usuário atualizado com avatar_url:', response.avatar_url);
         }
       }
     } catch (error) {
-      console.error('Erro ao carregar perfil:', error);
+      console.error('[Perfil.loadPerfilData] ❌ Erro ao carregar perfil:', error);
       // Fallback para dados do contexto de auth
       setFormData({
         nome: user?.nome || '',
@@ -62,21 +87,26 @@ export default function Perfil() {
     setLoading(true);
     try {
       const updateData = {
-        nome: formData.nome,
-        telefone: formData.telefone,
+        nome: formData.nome?.trim() || '',
+        telefone: formData.telefone?.trim() || '',
       };
 
+      console.log('[Perfil.handleSave] 📤 Enviando dados para atualização:', updateData);
+
       const response = await apiService.updatePerfilUsuario(updateData);
+      
+      console.log('[Perfil.handleSave] 📥 Resposta recebida:', response);
+      
       if (response.success) {
-        // Atualizar o contexto do usuário
-        if (updateUser) {
-          updateUser(response.data);
-        }
+        // Recarregar dados do perfil para garantir sincronização
+        await loadPerfilData();
         setIsEditing(false);
         alert('Perfil atualizado com sucesso!');
+      } else {
+        throw new Error(response.message || 'Erro ao atualizar perfil');
       }
     } catch (error) {
-      console.error('Erro ao salvar perfil:', error);
+      console.error('[Perfil.handleSave] ❌ Erro ao salvar perfil:', error);
       alert('Erro ao salvar perfil. Tente novamente.');
     } finally {
       setLoading(false);
@@ -92,6 +122,68 @@ export default function Perfil() {
       bio: user?.bio || '',
     });
     setIsEditing(false);
+  };
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validar tipo de arquivo
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Tipo de arquivo não permitido. Use JPEG, PNG, GIF ou WebP');
+      return;
+    }
+
+    // Validar tamanho (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Arquivo muito grande. Tamanho máximo: 5MB');
+      return;
+    }
+
+    try {
+      setUploadingAvatar(true);
+      const response = await apiService.uploadAvatar(file);
+      
+      console.log('[Perfil.handleAvatarChange] 📥 Resposta do upload:', response);
+      
+      if (response.success) {
+        console.log('[Perfil.handleAvatarChange] ✅ Upload bem-sucedido, dados retornados:', response.data);
+        console.log('[Perfil.handleAvatarChange] 📸 avatar_url retornado:', response.data?.avatar_url);
+        
+        // Atualizar o contexto do usuário imediatamente com os dados retornados
+        if (updateUser && response.data) {
+          console.log('[Perfil.handleAvatarChange] 🔄 Atualizando contexto do usuário com:', response.data);
+          updateUser(response.data);
+        }
+        
+        // Resetar erro de avatar
+        setAvatarError(false);
+        
+        // Recarregar dados do perfil para garantir que o avatar_url esteja atualizado
+        await loadPerfilData();
+        
+        // Verificar novamente após recarregar
+        console.log('[Perfil.handleAvatarChange] 🔍 Estado do usuário após recarregar:', user);
+        
+        alert('Foto de perfil atualizada com sucesso!');
+      } else {
+        throw new Error(response.message || 'Erro ao fazer upload do avatar');
+      }
+    } catch (error) {
+      console.error('[Perfil.handleAvatarChange] ❌ Erro ao fazer upload do avatar:', error);
+      alert('Erro ao fazer upload da foto. Tente novamente.');
+    } finally {
+      setUploadingAvatar(false);
+      // Limpar o input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   };
 
   if (loading) {
@@ -161,15 +253,55 @@ export default function Perfil() {
         <Card className="lg:col-span-1">
           <div className="text-center">
             <div className="relative inline-block">
-              <div className="h-32 w-32 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center mx-auto">
-                <span className="text-4xl font-bold text-gray-700 dark:text-gray-200">
-                  {user?.nome?.charAt(0) || 'U'}
-                </span>
-              </div>
+              {user?.avatar_url && !avatarError ? (
+                <img 
+                  key={user.avatar_url} // Forçar re-render quando URL mudar
+                  src={user.avatar_url} 
+                  alt={user.nome || 'Avatar'} 
+                  className="h-32 w-32 rounded-full object-cover mx-auto border-4 border-gray-200 dark:border-gray-700 block"
+                  style={{ display: 'block' }}
+                  onError={(e) => {
+                    console.error('[Perfil] ❌ Erro ao carregar avatar:', {
+                      url: user.avatar_url,
+                      error: e,
+                      target: e.currentTarget
+                    });
+                    setAvatarError(true);
+                  }}
+                  onLoad={() => {
+                    console.log('[Perfil] ✅ Avatar carregado com sucesso:', user.avatar_url);
+                    setAvatarError(false);
+                  }}
+                />
+              ) : (
+                <div className="h-32 w-32 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center mx-auto">
+                  <span className="text-4xl font-bold text-gray-700 dark:text-gray-200">
+                    {user?.nome?.charAt(0) || 'U'}
+                  </span>
+                </div>
+              )}
               {isEditing && (
-                <button className="absolute bottom-0 right-0 p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors">
-                  <Camera className="h-4 w-4" />
-                </button>
+                <>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                    onChange={handleAvatarChange}
+                    className="hidden"
+                    disabled={uploadingAvatar}
+                  />
+                  <button 
+                    onClick={handleAvatarClick}
+                    disabled={uploadingAvatar}
+                    className="absolute bottom-0 right-0 p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {uploadingAvatar ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    ) : (
+                      <Camera className="h-4 w-4" />
+                    )}
+                  </button>
+                </>
               )}
             </div>
             <h2 className="mt-4 text-xl font-semibold text-gray-900 dark:text-white">
@@ -244,7 +376,9 @@ export default function Perfil() {
                   ) : (
                     <div className="flex items-center space-x-2 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                       <Phone className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                      <span className="text-gray-900 dark:text-white">{formData.telefone || 'Não informado'}</span>
+                      <span className="text-gray-900 dark:text-white">
+                        {user?.telefone || formData.telefone || 'Não informado'}
+                      </span>
                     </div>
                   )}
                 </div>

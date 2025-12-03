@@ -103,3 +103,4 @@ R: Não! Um app pode ter múltiplos componentes. Crie 1 app e adicione 2 compone
 **P: Como sei qual URL usar?**
 R: Após o primeiro deploy, o Digital Ocean mostra as URLs de cada componente na dashboard.
 
+

@@ -9,6 +9,7 @@ interface User {
   role: string;
   telefone?: string;
   bio?: string;
+  avatar_url?: string;
   empresa_id: number;
   empresa: {
     id: string;
@@ -272,14 +273,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const updateUser = (data: any) => {
-    console.log('updateUser chamado com:', data);
-    console.log('Usuário atual:', user);
+    console.log('[AuthProvider.updateUser] 📥 Dados recebidos:', data);
+    console.log('[AuthProvider.updateUser] 👤 Usuário atual:', user);
     setUser(prevUser => {
+      if (!prevUser) {
+        console.log('[AuthProvider.updateUser] ⚠️ prevUser é null, criando novo usuário');
+        return data;
+      }
       const newUser = {
         ...prevUser,
-        ...data
+        ...data,
+        // Garantir que avatar_url seja preservado se estiver nos dados
+        avatar_url: data.avatar_url !== undefined ? data.avatar_url : prevUser.avatar_url
       };
-      console.log('Novo usuário:', newUser);
+      console.log('[AuthProvider.updateUser] ✅ Novo usuário criado:', newUser);
+      console.log('[AuthProvider.updateUser] 📸 avatar_url no novo usuário:', newUser.avatar_url);
       return newUser;
     });
   };

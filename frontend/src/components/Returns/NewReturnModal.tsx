@@ -4,6 +4,7 @@ import LoadingButton from '../UI/LoadingButton';
 import { apiService, Patient } from '../../services/api';
 import { useToast } from '../UI/Toast';
 import { useBusinessHours } from '../../contexts/BusinessHoursContext';
+import { useDentistas } from '../../hooks/useDentistas';
 
 interface NewReturnModalProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ interface NewReturnModalProps {
 export default function NewReturnModal({ isOpen, onClose, onSave }: NewReturnModalProps) {
   const { showSuccess, showError } = useToast();
   const { isWorkingDay, getAvailableTimeSlots } = useBusinessHours();
+  const { dentistas, getDentistasOptions } = useDentistas();
   const [selectedPatient, setSelectedPatient] = useState('');
   const [procedure, setProcedure] = useState('');
   const [returnDate, setReturnDate] = useState<Date | null>(null);
@@ -25,7 +27,7 @@ export default function NewReturnModal({ isOpen, onClose, onSave }: NewReturnMod
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [occupiedTimes, setOccupiedTimes] = useState<string[]>([]);
   const [loadingTimes, setLoadingTimes] = useState(false);
-  const [professional, setProfessional] = useState('Dr. Ana Silva');
+  const [professional, setProfessional] = useState('');
 
   const procedures = [
     'Avaliação pós-limpeza',
@@ -41,11 +43,18 @@ export default function NewReturnModal({ isOpen, onClose, onSave }: NewReturnMod
   // Usar horários disponíveis baseados nas configurações de business hours
   const timeSlots = returnDate ? getAvailableTimeSlots(returnDate) : [];
 
-  const professionals = [
-    'Dr. Ana Silva',
-    'Dr. Pedro Costa',
-    'Dra. Maria Santos'
-  ];
+  // Usar dentistas do banco de dados
+  const professionalsOptions = getDentistasOptions();
+  const professionals = professionalsOptions.length > 0 
+    ? professionalsOptions.map(d => d.nome)
+    : ['Dr. Ana Silva']; // Fallback se não houver dentistas
+  
+  // Definir profissional padrão quando dentistas carregarem
+  useEffect(() => {
+    if (professionals.length > 0 && !professional) {
+      setProfessional(professionals[0]);
+    }
+  }, [dentistas]);
 
   // Carregar pacientes quando o modal abrir
   useEffect(() => {

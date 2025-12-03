@@ -82,19 +82,25 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
 
   const canView = (section: string): boolean => {
     if (!user) return false;
-    const rolePermissions = userPermissions[user.role];
+    // Dentista tem o mesmo acesso que admin
+    const role = user.role === 'dentista' ? 'admin' : user.role;
+    const rolePermissions = userPermissions[role as keyof typeof userPermissions] || userPermissions.recepcionista;
     return rolePermissions.canView.includes(section);
   };
 
   const canEdit = (section: string): boolean => {
     if (!user) return false;
-    const rolePermissions = userPermissions[user.role];
+    // Dentista tem o mesmo acesso que admin
+    const role = user.role === 'dentista' ? 'admin' : user.role;
+    const rolePermissions = userPermissions[role as keyof typeof userPermissions] || userPermissions.recepcionista;
     return rolePermissions.canEdit.includes(section);
   };
 
   const canDelete = (section: string): boolean => {
     if (!user) return false;
-    const rolePermissions = userPermissions[user.role];
+    // Dentista tem o mesmo acesso que admin
+    const role = user.role === 'dentista' ? 'admin' : user.role;
+    const rolePermissions = userPermissions[role as keyof typeof userPermissions] || userPermissions.recepcionista;
     return rolePermissions.canDelete.includes(section);
   };
 

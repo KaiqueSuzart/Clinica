@@ -66,3 +66,4 @@ Abra o DevTools (F12) e verifique:
 O botão aparece automaticamente quando o navegador detecta que o PWA pode ser instalado. Se não aparecer, você ainda pode instalar usando o menu do navegador ou o ícone na barra de endereços.
 
 
+

@@ -347,13 +347,26 @@ export interface PaymentFilters {
 }
 
 export interface FinancialSummary {
-  total: number;
-  quantidade: number;
-  por_forma_pagamento: Record<string, number>;
-  periodo: {
-    inicio: string | null;
-    fim: string | null;
+  subscription?: {
+    id: number;
+    status: string;
+    valor_mensal: number;
+    proxima_cobranca: string;
+    plan: {
+      nome: string;
+      descricao: string;
+      preco_mensal: number;
+    };
   };
+  summary: {
+    monthlySubscription: number;
+    monthlyChatbotCost: number;
+    totalMonthlyCost: number;
+    totalPayments: number;
+    nextBilling: string | null;
+  };
+  chatbotBilling: any[];
+  paymentHistory: any[];
 }
 
 // Interfaces de Procedimentos
@@ -411,7 +424,7 @@ class ApiService {
       try {
         const errorText = await response.text();
         console.error('API: Erro na resposta:', errorText);
-        errorData = JSON.parse(errorText);
+        errorData = errorText ? JSON.parse(errorText) : { message: `Erro ${response.status}: ${response.statusText}` };
       } catch {
         errorData = { message: `Erro ${response.status}: ${response.statusText}` };
       }
@@ -421,8 +434,22 @@ class ApiService {
       throw error;
     }
 
-    const result = await response.json();
-    return result;
+    // Sempre ler o texto primeiro para evitar erros de parsing
+    const text = await response.text();
+    
+    // Se não há conteúdo, retornar objeto de sucesso padrão
+    if (!text || text.trim() === '') {
+      return { success: true, message: 'Operação realizada com sucesso' } as T;
+    }
+    
+    // Tentar fazer parse JSON
+    try {
+      return JSON.parse(text);
+    } catch (parseError) {
+      // Se falhar o parse, retornar objeto com o texto como mensagem
+      console.warn('API: Erro ao fazer parse JSON, retornando texto:', text);
+      return { success: true, message: text } as T;
+    }
   }
 
   // ===== PACIENTES =====
@@ -996,11 +1023,25 @@ class ApiService {
   }
 
   async getFinancialSummary(dataInicio?: string, dataFim?: string): Promise<FinancialSummary> {
+    // Usar o endpoint correto que retorna subscription, summary, chatbotBilling e paymentHistory
+    return this.request<FinancialSummary>('/subscriptions/financial-summary');
+  }
+
+  async getPaymentsSummary(dataInicio?: string, dataFim?: string): Promise<{
+    total: number;
+    quantidade: number;
+    por_forma_pagamento: Record<string, number>;
+    periodo: {
+      inicio: string | null;
+      fim: string | null;
+    };
+  }> {
+    let url = '/payments/summary';
     const params = new URLSearchParams();
     if (dataInicio) params.append('data_inicio', dataInicio);
     if (dataFim) params.append('data_fim', dataFim);
-    const queryString = params.toString();
-    return this.request<FinancialSummary>(`/payments/summary${queryString ? `?${queryString}` : ''}`);
+    if (params.toString()) url += `?${params.toString()}`;
+    return this.request(url);
   }
 
   // Procedures methods
@@ -1157,10 +1198,53 @@ class ApiService {
     });
   }
 
+  async uploadAvatar(file: File): Promise<any> {
+    const formData = new FormData();
+    formData.append('avatar', file);
+
+    const token = localStorage.getItem('auth_token');
+    const url = `${API_BASE_URL}/usuarios/perfil/avatar`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        ...(token && { 'Authorization': `Bearer ${token}` }),
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      let errorData: any;
+      try {
+        const errorText = await response.text();
+        errorData = errorText ? JSON.parse(errorText) : { message: `Erro ${response.status}: ${response.statusText}` };
+      } catch {
+        errorData = { message: `Erro ${response.status}: ${response.statusText}` };
+      }
+      
+      const error = new Error(errorData.message || `API Error: ${response.status} ${response.statusText}`);
+      (error as any).response = { data: errorData, status: response.status };
+      throw error;
+    }
+
+    return await response.json();
+  }
+
   // ===== GERENCIAMENTO DE USUÁRIOS =====
   
   async getAllUsuarios(): Promise<{ success: boolean; data: any[]; total: number }> {
     return this.request<{ success: boolean; data: any[]; total: number }>('/usuarios');
+  }
+
+  async getDentistas(): Promise<any[]> {
+    try {
+      // Usar endpoint específico que retorna apenas dentistas
+      const response = await this.request<{ success: boolean; data: any[]; total: number }>('/usuarios/dentistas');
+      return response.data || [];
+    } catch (error) {
+      console.error('Erro ao buscar dentistas:', error);
+      return [];
+    }
   }
 
   async createUsuario(data: {

@@ -43,3 +43,4 @@ O PWA em si não pode abrir automaticamente quando o computador inicia (por limi
 As instruções completas estão na aba "Aplicativo" das Configurações!
 
 
+

@@ -12,6 +12,15 @@ export default function Financeiro() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [filteredPayments, setFilteredPayments] = useState<Payment[]>([]);
   const [summary, setSummary] = useState<FinancialSummary | null>(null);
+  const [paymentsSummary, setPaymentsSummary] = useState<{
+    total: number;
+    quantidade: number;
+    por_forma_pagamento: Record<string, number>;
+    periodo: {
+      inicio: string | null;
+      fim: string | null;
+    };
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
@@ -35,18 +44,36 @@ export default function Financeiro() {
     applyFilters();
   }, [payments, searchTerm, filterDateStart, filterDateEnd, filterPaymentMethod, filterConfirmed]);
 
+  // Recarregar resumo de pagamentos quando os filtros de data mudarem
+  useEffect(() => {
+    const reloadPaymentsSummary = async () => {
+      try {
+        const summaryData = await apiService.getPaymentsSummary(
+          filterDateStart || undefined, 
+          filterDateEnd || undefined
+        );
+        setPaymentsSummary(summaryData);
+      } catch (err) {
+        console.error('Erro ao recarregar resumo de pagamentos:', err);
+      }
+    };
+    reloadPaymentsSummary();
+  }, [filterDateStart, filterDateEnd]);
+
   const loadData = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const [paymentsData, summaryData] = await Promise.all([
+      const [paymentsData, summaryData, paymentsSummaryData] = await Promise.all([
         apiService.getAllPayments(),
-        apiService.getFinancialSummary()
+        apiService.getFinancialSummary(),
+        apiService.getPaymentsSummary(filterDateStart || undefined, filterDateEnd || undefined)
       ]);
       
       setPayments(paymentsData);
       setSummary(summaryData);
+      setPaymentsSummary(paymentsSummaryData);
     } catch (err) {
       console.error('Erro ao carregar dados financeiros:', err);
       setError('Erro ao carregar dados financeiros');
@@ -187,14 +214,14 @@ export default function Financeiro() {
       </div>
 
       {/* Resumo Financeiro */}
-      {summary && (
+      {paymentsSummary && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Total Recebido</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {formatCurrency(summary.total)}
+                  {formatCurrency(paymentsSummary?.total || 0)}
                 </p>
               </div>
               <div className="p-3 bg-green-100 dark:bg-green-900 rounded-lg">
@@ -208,7 +235,7 @@ export default function Financeiro() {
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Total de Pagamentos</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {summary.quantidade}
+                  {paymentsSummary?.quantidade || 0}
                 </p>
               </div>
               <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
@@ -218,23 +245,25 @@ export default function Financeiro() {
           </Card>
 
           {/* Por forma de pagamento */}
-          {Object.entries(summary.por_forma_pagamento).slice(0, 2).map(([method, value]) => (
-            <Card key={method}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {getPaymentMethodLabel(method as PaymentMethod)}
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {formatCurrency(value)}
-                  </p>
-                </div>
-                <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-lg">
-                  {getPaymentMethodIcon(method as PaymentMethod)}
-                </div>
-              </div>
-            </Card>
-          ))}
+          {paymentsSummary?.por_forma_pagamento && typeof paymentsSummary.por_forma_pagamento === 'object' 
+            ? Object.entries(paymentsSummary.por_forma_pagamento).slice(0, 2).map(([method, value]) => (
+                <Card key={method}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {getPaymentMethodLabel(method as PaymentMethod)}
+                      </p>
+                      <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                        {formatCurrency(value as number)}
+                      </p>
+                    </div>
+                    <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-lg">
+                      {getPaymentMethodIcon(method as PaymentMethod)}
+                    </div>
+                  </div>
+                </Card>
+              ))
+            : null}
         </div>
       )}
 

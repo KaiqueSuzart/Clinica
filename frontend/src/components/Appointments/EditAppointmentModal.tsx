@@ -4,6 +4,7 @@ import LoadingButton from '../UI/LoadingButton';
 import { apiService } from '../../services/api';
 import { useBusinessHours } from '../../contexts/BusinessHoursContext';
 import { formatPhoneDisplay } from '../../utils/phoneFormatter';
+import { useDentistas } from '../../hooks/useDentistas';
 
 interface EditAppointmentModalProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ interface EditAppointmentModalProps {
 
 export default function EditAppointmentModal({ isOpen, onClose, appointment, onSave }: EditAppointmentModalProps) {
   const { isWorkingDay } = useBusinessHours();
+  const { dentistas, getDentistasOptions } = useDentistas();
   
   // Função para criar data segura
   const createSafeDate = (dateString?: string) => {
@@ -181,11 +183,11 @@ export default function EditAppointmentModal({ isOpen, onClose, appointment, onS
     'Implante'
   ];
 
-  const professionals = [
-    'Dr. Ana Silva',
-    'Dr. Pedro Costa',
-    'Dra. Maria Santos'
-  ];
+  // Usar dentistas do banco de dados
+  const professionalsOptions = getDentistasOptions();
+  const professionals = professionalsOptions.length > 0 
+    ? professionalsOptions.map(d => d.nome)
+    : ['Dr. Ana Silva']; // Fallback se não houver dentistas
 
   const statusOptions = [
     { value: 'pendente', label: 'Pendente' },

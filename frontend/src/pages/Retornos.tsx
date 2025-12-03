@@ -8,7 +8,7 @@ import NewReturnModal from '../components/Returns/NewReturnModal';
 import ScheduleAppointmentModal from '../components/Returns/ScheduleAppointmentModal';
 import { useToast } from '../components/UI/Toast';
 import { apiService, ReturnVisit } from '../services/api';
-import { formatPhoneDisplay } from '../utils/phoneFormatter';
+import { formatPhoneDisplay, getWhatsAppLink, getPhoneLink } from '../utils/phoneFormatter';
 
 export default function Retornos() {
   const { showSuccess, showError } = useToast();
@@ -565,10 +565,30 @@ export default function Retornos() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
-                          <Button variant="outline" size="sm" icon={Phone}>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            icon={Phone}
+                            onClick={() => {
+                              const phoneLink = getPhoneLink(possibleReturn.paciente_telefone);
+                              if (phoneLink) {
+                                window.location.href = phoneLink;
+                              }
+                            }}
+                          >
                             Ligar
                           </Button>
-                          <Button variant="outline" size="sm" icon={MessageSquare}>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            icon={MessageSquare}
+                            onClick={() => {
+                              const whatsappUrl = getWhatsAppLink(possibleReturn.paciente_telefone);
+                              if (whatsappUrl) {
+                                window.open(whatsappUrl, '_blank');
+                              }
+                            }}
+                          >
                             WhatsApp
                           </Button>
                           <Button 
@@ -650,7 +670,17 @@ export default function Retornos() {
                       >
                         Reagendar
                       </Button>
-                      <Button variant="outline" size="sm" icon={Phone}>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        icon={Phone}
+                        onClick={() => {
+                          const phoneLink = getPhoneLink(returnVisit.paciente_telefone);
+                          if (phoneLink) {
+                            window.location.href = phoneLink;
+                          }
+                        }}
+                      >
                         Ligar
                       </Button>
                       {returnVisit.status === 'pendente' && (
@@ -736,10 +766,30 @@ export default function Retornos() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">
-                        <Button variant="outline" size="sm" icon={Phone}>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          icon={Phone}
+                          onClick={() => {
+                            const phoneLink = getPhoneLink(returnVisit.paciente_telefone);
+                            if (phoneLink) {
+                              window.location.href = phoneLink;
+                            }
+                          }}
+                        >
                           Ligar
                         </Button>
-                        <Button variant="outline" size="sm" icon={MessageSquare}>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          icon={MessageSquare}
+                          onClick={() => {
+                            const whatsappUrl = getWhatsAppLink(returnVisit.paciente_telefone);
+                            if (whatsappUrl) {
+                              window.open(whatsappUrl, '_blank');
+                            }
+                          }}
+                        >
                           WhatsApp
                         </Button>
                       </div>
@@ -832,10 +882,30 @@ export default function Retornos() {
                           >
                             Reagendar
                           </Button>
-                          <Button variant="outline" size="sm" icon={Phone}>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            icon={Phone}
+                            onClick={() => {
+                              const phoneLink = getPhoneLink(possibleReturn.paciente_telefone);
+                              if (phoneLink) {
+                                window.location.href = phoneLink;
+                              }
+                            }}
+                          >
                             Ligar
                           </Button>
-                          <Button variant="outline" size="sm" icon={MessageSquare}>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            icon={MessageSquare}
+                            onClick={() => {
+                              const whatsappUrl = getWhatsAppLink(possibleReturn.paciente_telefone);
+                              if (whatsappUrl) {
+                                window.open(whatsappUrl, '_blank');
+                              }
+                            }}
+                          >
                             WhatsApp
                           </Button>
                           {returnVisit.status === 'pendente' && (
