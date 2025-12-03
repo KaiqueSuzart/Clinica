@@ -69,7 +69,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         const token = localStorage.getItem('auth_token');
         if (token) {
-          const response = await fetch(`${API_BASE_URL}/auth/me`, {
+          const url = `${API_BASE_URL}/auth/me`;
+          console.log('🔍 Verificando autenticação em:', url);
+          
+          const response = await fetch(url, {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json',
@@ -81,11 +84,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setUser(userData);
             setEmpresa(userData.empresa);
           } else {
+            // Se não for OK, apenas remover token silenciosamente (usuário não está logado)
+            console.log('⚠️ Token inválido ou expirado, removendo do localStorage');
             localStorage.removeItem('auth_token');
           }
+        } else {
+          console.log('ℹ️ Nenhum token encontrado, usuário não está logado');
         }
       } catch (err) {
-        console.error('Erro ao verificar autenticação:', err);
+        // Erro de rede ou outro erro - não mostrar na tela, apenas logar
+        console.error('❌ Erro ao verificar autenticação:', err);
         localStorage.removeItem('auth_token');
       } finally {
         setLoading(false);
