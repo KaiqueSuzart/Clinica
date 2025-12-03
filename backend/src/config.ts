@@ -17,20 +17,3 @@ export const config = {
   }
 };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { config } from '../../config';
+import { config } from '../config';
 import type { Database } from '../types/database';
 
 @Injectable()
