@@ -1,9 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType, NotificationPriority } from '../notifications/dto/create-notification.dto';
 
 @Injectable()
 export class AppointmentsService {
-  constructor(private supabaseService: SupabaseService) {}
+  constructor(
+    private supabaseService: SupabaseService,
+    private notificationsService: NotificationsService
+  ) {}
 
   async findAll(empresaId: string) {
     try {
@@ -201,6 +206,35 @@ export class AppointmentsService {
         console.error('Erro ao buscar paciente:', patientError);
       }
       console.log('Dados do paciente encontrados:', patientData);
+    
+      // Criar notificação automática para consulta agendada
+      try {
+        const appointmentDate = new Date(`${data.data_consulta}T${data.hora_inicio}`);
+        const now = new Date();
+        const hoursUntilAppointment = (appointmentDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+        
+        // Se a consulta for nas próximas 2 horas, criar notificação imediata
+        if (hoursUntilAppointment <= 2 && hoursUntilAppointment > 0) {
+          await this.notificationsService.create({
+            type: NotificationType.APPOINTMENT,
+            title: '⏰ Consulta Próxima',
+            message: `Consulta de ${patientData?.nome || 'Paciente'} agendada para ${data.hora_inicio} - ${data.procedimento || 'Consulta'}`,
+            priority: hoursUntilAppointment <= 1 ? NotificationPriority.HIGH : NotificationPriority.NORMAL,
+            data: {
+              appointment_id: data.id,
+              patient_name: patientData?.nome,
+              patient_id: data.cliente_id,
+              time: data.hora_inicio,
+              date: data.data_consulta,
+              procedure: data.procedimento
+            }
+          }, empresaId);
+          console.log('✅ Notificação criada para consulta agendada');
+        }
+      } catch (notifError) {
+        console.error('Erro ao criar notificação automática (não crítico):', notifError);
+        // Não falhar a criação da consulta se a notificação falhar
+      }
     
       // Retornar no formato esperado pelo frontend
       return {

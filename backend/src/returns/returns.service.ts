@@ -1,5 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType, NotificationPriority } from '../notifications/dto/create-notification.dto';
 
 export interface ReturnWithPatient {
   id: string;
@@ -25,7 +27,10 @@ export interface ReturnWithPatient {
 
 @Injectable()
 export class ReturnsService {
-  constructor(private readonly supabaseService: SupabaseService) {}
+  constructor(
+    private readonly supabaseService: SupabaseService,
+    private readonly notificationsService: NotificationsService
+  ) {}
 
   async findAll(empresaId: string): Promise<ReturnWithPatient[]> {
     if (!empresaId) {
@@ -427,6 +432,35 @@ export class ReturnsService {
       .select('nome, telefone, email')
       .eq('id', data.cliente_id)
       .single();
+
+    // Criar notificação automática para retorno agendado
+    try {
+      const returnDate = new Date(`${data.data_retorno}T${data.hora_retorno || '09:00'}`);
+      const now = new Date();
+      const daysUntilReturn = (returnDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+      
+      // Se o retorno for amanhã ou hoje, criar notificação
+      if (daysUntilReturn <= 1 && daysUntilReturn >= 0) {
+        await this.notificationsService.create({
+          type: NotificationType.RETURN,
+          title: daysUntilReturn < 1 ? '🔄 Retorno Hoje' : '🔄 Retorno Amanhã',
+          message: `Retorno de ${clienteData?.nome || 'Paciente'} ${daysUntilReturn < 1 ? 'hoje' : 'amanhã'} às ${data.hora_retorno || '09:00'} - ${data.procedimento || 'Retorno'}`,
+          priority: NotificationPriority.NORMAL,
+          data: {
+            return_id: data.id,
+            patient_name: clienteData?.nome,
+            patient_id: data.cliente_id,
+            date: data.data_retorno,
+            time: data.hora_retorno,
+            procedure: data.procedimento
+          }
+        }, empresaId);
+        console.log('✅ Notificação criada para retorno agendado');
+      }
+    } catch (notifError) {
+      console.error('Erro ao criar notificação automática (não crítico):', notifError);
+      // Não falhar a criação do retorno se a notificação falhar
+    }
 
     return {
       id: data.id,

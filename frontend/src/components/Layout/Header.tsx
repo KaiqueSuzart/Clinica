@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../Auth/AuthProvider';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useNotifications } from '../../hooks/useNotifications';
+import NotificationDropdown from '../Notifications/NotificationDropdown';
+import { Bell } from 'lucide-react';
 
 const Header: React.FC = () => {
   const { user, empresa, logout } = useAuth();
@@ -9,6 +12,14 @@ const Header: React.FC = () => {
   const navigate = useNavigate();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showEmpresaMenu, setShowEmpresaMenu] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  
+  const {
+    unreadCount,
+    loadUnreadNotifications,
+    runAutoCheck,
+    refresh
+  } = useNotifications();
 
   const handleLogout = async () => {
     try {
@@ -18,9 +29,22 @@ const Header: React.FC = () => {
     }
   };
 
-  // Sistema de notificações desabilitado temporariamente
-  // (WhatsApp não integrado ainda)
-  // Será reativado quando integração estiver completa
+  // Sistema de notificações - verificação automática a cada minuto
+  useEffect(() => {
+    if (!user?.id) return;
+
+    // Carregar notificações ao montar
+    loadUnreadNotifications();
+    runAutoCheck();
+
+    // Verificar automaticamente a cada 1 minuto
+    const interval = setInterval(() => {
+      runAutoCheck();
+      loadUnreadNotifications();
+    }, 60000); // 60 segundos
+
+    return () => clearInterval(interval);
+  }, [user?.id, loadUnreadNotifications, runAutoCheck]);
 
   return (
     <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 transition-colors">
@@ -47,6 +71,34 @@ const Header: React.FC = () => {
 
           {/* Controles do usuário - Direita */}
           <div className="flex items-center space-x-4">
+            {/* Sistema de Notificações */}
+            <div className="relative">
+              <button
+                onClick={() => {
+                  setShowNotifications(!showNotifications);
+                  if (!showNotifications) {
+                    refresh();
+                  }
+                }}
+                className="relative p-2 rounded-md text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                title="Notificações"
+              >
+                <Bell className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-0 right-0 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+              
+              {showNotifications && (
+                <NotificationDropdown
+                  isOpen={showNotifications}
+                  onClose={() => setShowNotifications(false)}
+                />
+              )}
+            </div>
+
             {/* Toggle tema escuro */}
             <button
               onClick={toggleTheme}

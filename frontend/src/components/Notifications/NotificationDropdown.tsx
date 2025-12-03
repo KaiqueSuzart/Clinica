@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell, X, CheckCircle, AlertCircle, MessageCircle, Calendar, Clock } from 'lucide-react';
 import { apiService, Notification } from '../../services/api';
+import { useAuth } from '../Auth/AuthProvider';
 
 interface NotificationDropdownProps {
   isOpen: boolean;
@@ -8,6 +9,7 @@ interface NotificationDropdownProps {
 }
 
 export default function NotificationDropdown({ isOpen, onClose }: NotificationDropdownProps) {
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,10 +38,15 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
   }, [isOpen, onClose]);
 
   const loadNotifications = async () => {
+    if (!user?.id) return;
+    
     try {
       setLoading(true);
       setError(null);
-      const data = await apiService.getUnreadNotifications();
+      // Primeiro executar verificação automática
+      await apiService.runAutoNotificationCheck();
+      // Depois carregar notificações não lidas
+      const data = await apiService.getUnreadNotifications(user.id);
       setNotifications(data);
     } catch (err) {
       console.error('Erro ao carregar notificações:', err);
@@ -65,8 +72,10 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
   };
 
   const handleMarkAllAsRead = async () => {
+    if (!user?.id) return;
+    
     try {
-      await apiService.markAllNotificationsAsRead();
+      await apiService.markAllNotificationsAsRead(user.id);
       setNotifications(prev => 
         prev.map(notif => ({ 
           ...notif, 

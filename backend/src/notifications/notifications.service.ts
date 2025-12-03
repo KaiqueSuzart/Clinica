@@ -36,8 +36,9 @@ export class NotificationsService {
 
   async create(createNotificationDto: CreateNotificationDto, empresaId: string): Promise<Notification> {
     try {
+      // Usar getAdminClient() para bypassar RLS
       const { data, error } = await this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('notifications')
         .insert({
           empresa_id: empresaId,
@@ -48,6 +49,9 @@ export class NotificationsService {
           data: createNotificationDto.data,
           priority: createNotificationDto.priority || NotificationPriority.NORMAL,
           expires_at: createNotificationDto.expires_at,
+          is_read: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         })
         .select('*')
         .single();
@@ -57,6 +61,7 @@ export class NotificationsService {
         throw new Error(`Erro ao criar notificação: ${error.message}`);
       }
 
+      this.logger.log(`✅ Notificação criada: ${createNotificationDto.title}`);
       return data;
     } catch (error) {
       this.logger.error('Erro ao criar notificação:', error);
@@ -66,8 +71,9 @@ export class NotificationsService {
 
   async findAll(empresaId: string, userId?: string, limit = 50, offset = 0): Promise<Notification[]> {
     try {
+      // Usar getAdminClient() para bypassar RLS
       let query = this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('notifications')
         .select('*')
         .eq('empresa_id', empresaId)
@@ -94,8 +100,9 @@ export class NotificationsService {
 
   async findUnread(empresaId: string, userId?: string): Promise<Notification[]> {
     try {
+      // Usar getAdminClient() para bypassar RLS
       let query = this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('notifications')
         .select('*')
         .eq('empresa_id', empresaId)
@@ -122,8 +129,9 @@ export class NotificationsService {
 
   async findOne(id: string, empresaId: string): Promise<Notification> {
     try {
+      // Usar getAdminClient() para bypassar RLS
       const { data, error } = await this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('notifications')
         .select('*')
         .eq('id', id)
@@ -144,12 +152,14 @@ export class NotificationsService {
 
   async markAsRead(id: string, empresaId: string): Promise<boolean> {
     try {
+      // Usar getAdminClient() para bypassar RLS
       const { error } = await this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('notifications')
         .update({
           is_read: true,
           read_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         })
         .eq('id', id)
         .eq('empresa_id', empresaId);
@@ -168,12 +178,14 @@ export class NotificationsService {
 
   async markAllAsRead(empresaId: string, userId?: string): Promise<number> {
     try {
+      // Usar getAdminClient() para bypassar RLS
       let query = this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('notifications')
         .update({
           is_read: true,
           read_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         })
         .eq('empresa_id', empresaId)
         .eq('is_read', false);
@@ -182,14 +194,14 @@ export class NotificationsService {
         query = query.or(`user_id.eq.${userId},user_id.is.null`);
       }
 
-      const { count, error } = await query;
+      const { data, error } = await query.select('id');
 
       if (error) {
         this.logger.error('Erro ao marcar todas as notificações como lidas:', error);
         throw new Error(`Erro ao marcar todas as notificações como lidas: ${error.message}`);
       }
 
-      return count || 0;
+      return data?.length || 0;
     } catch (error) {
       this.logger.error('Erro ao marcar todas as notificações como lidas:', error);
       throw error;
@@ -198,9 +210,10 @@ export class NotificationsService {
 
   async getStats(empresaId: string, userId?: string): Promise<NotificationStats> {
     try {
+      // Usar getAdminClient() para bypassar RLS
       // Buscar todas as notificações para calcular estatísticas
       let query = this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('notifications')
         .select('*')
         .eq('empresa_id', empresaId);
@@ -244,10 +257,14 @@ export class NotificationsService {
 
   async update(id: string, updateNotificationDto: any, empresaId: string): Promise<Notification> {
     try {
+      // Usar getAdminClient() para bypassar RLS
       const { data, error } = await this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('notifications')
-        .update(updateNotificationDto)
+        .update({
+          ...updateNotificationDto,
+          updated_at: new Date().toISOString(),
+        })
         .eq('id', id)
         .eq('empresa_id', empresaId)
         .select('*')
@@ -267,8 +284,9 @@ export class NotificationsService {
 
   async delete(id: string, empresaId: string): Promise<boolean> {
     try {
+      // Usar getAdminClient() para bypassar RLS
       const { error } = await this.supabaseService
-        .getClient()
+        .getAdminClient()
         .from('notifications')
         .delete()
         .eq('id', id)

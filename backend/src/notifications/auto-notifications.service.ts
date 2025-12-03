@@ -17,13 +17,16 @@ export class AutoNotificationsService {
    */
   async checkUpcomingAppointments(empresaId: string) {
     try {
-      const client = this.supabaseService.getClient();
+      // Usar getAdminClient() para bypassar RLS
+      const client = this.supabaseService.getAdminClient();
       const now = new Date();
       const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
       
       const today = now.toISOString().split('T')[0];
       const currentTime = now.toTimeString().slice(0, 5); // HH:MM
       const targetTime = oneHourLater.toTimeString().slice(0, 5);
+
+      this.logger.log(`[AutoNotifications] Verificando consultas próximas: ${currentTime} - ${targetTime} (${today})`);
 
       // Buscar consultas de hoje que começam na próxima hora
       const query = client
@@ -47,8 +50,11 @@ export class AutoNotificationsService {
       }
 
       if (!consultas || consultas.length === 0) {
+        this.logger.log('[AutoNotifications] Nenhuma consulta próxima encontrada');
         return [];
       }
+
+      this.logger.log(`[AutoNotifications] Encontradas ${consultas.length} consultas próximas`);
 
       // Criar notificações para cada consulta
       const notifications = [];
@@ -60,22 +66,27 @@ export class AutoNotificationsService {
           .eq('type', 'appointment')
           .eq('empresa_id', empresaId)
           .eq('data->>appointment_id', consulta.id)
-          .single();
+          .maybeSingle();
 
         if (!existing) {
           const notification = await this.notificationsService.create({
             type: NotificationType.APPOINTMENT,
             title: '⏰ Consulta em 1 hora',
-            message: `Consulta de ${consulta.paciente?.nome} às ${consulta.hora_inicio} - ${consulta.procedimento}`,
+            message: `Consulta de ${consulta.paciente?.nome || 'Paciente'} às ${consulta.hora_inicio} - ${consulta.procedimento || 'Consulta'}`,
             priority: NotificationPriority.HIGH,
             data: {
               appointment_id: consulta.id,
               patient_name: consulta.paciente?.nome,
+              patient_id: consulta.cliente_id,
               time: consulta.hora_inicio,
-              procedure: consulta.procedimento
+              procedure: consulta.procedimento,
+              date: consulta.data_consulta
             }
           }, empresaId);
           notifications.push(notification);
+          this.logger.log(`[AutoNotifications] Notificação criada para consulta ${consulta.id}`);
+        } else {
+          this.logger.log(`[AutoNotifications] Notificação já existe para consulta ${consulta.id}`);
         }
       }
 
@@ -92,10 +103,13 @@ export class AutoNotificationsService {
    */
   async checkUpcomingReturns(empresaId: string) {
     try {
-      const client = this.supabaseService.getClient();
+      // Usar getAdminClient() para bypassar RLS
+      const client = this.supabaseService.getAdminClient();
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       const tomorrowDate = tomorrow.toISOString().split('T')[0];
+
+      this.logger.log(`[AutoNotifications] Verificando retornos para: ${tomorrowDate}`);
 
       // Buscar retornos de amanhã
       const query = client
@@ -116,8 +130,11 @@ export class AutoNotificationsService {
       }
 
       if (!retornos || retornos.length === 0) {
+        this.logger.log('[AutoNotifications] Nenhum retorno próximo encontrado');
         return [];
       }
+
+      this.logger.log(`[AutoNotifications] Encontrados ${retornos.length} retornos próximos`);
 
       // Criar notificações para cada retorno
       const notifications = [];
@@ -129,23 +146,27 @@ export class AutoNotificationsService {
           .eq('type', 'return')
           .eq('empresa_id', empresaId)
           .eq('data->>return_id', retorno.id)
-          .single();
+          .maybeSingle();
 
         if (!existing) {
           const notification = await this.notificationsService.create({
             type: NotificationType.RETURN,
             title: '🔄 Retorno Amanhã',
-            message: `Retorno de ${retorno.paciente?.nome} amanhã às ${retorno.hora_retorno || '09:00'} - ${retorno.procedimento}`,
+            message: `Retorno de ${retorno.paciente?.nome || 'Paciente'} amanhã às ${retorno.hora_retorno || '09:00'} - ${retorno.procedimento || 'Retorno'}`,
             priority: NotificationPriority.NORMAL,
             data: {
               return_id: retorno.id,
               patient_name: retorno.paciente?.nome,
+              patient_id: retorno.cliente_id,
               date: retorno.data_retorno,
               time: retorno.hora_retorno,
               procedure: retorno.procedimento
             }
           }, empresaId);
           notifications.push(notification);
+          this.logger.log(`[AutoNotifications] Notificação criada para retorno ${retorno.id}`);
+        } else {
+          this.logger.log(`[AutoNotifications] Notificação já existe para retorno ${retorno.id}`);
         }
       }
 
@@ -162,10 +183,13 @@ export class AutoNotificationsService {
    */
   async checkLateAppointments(empresaId: string) {
     try {
-      const client = this.supabaseService.getClient();
+      // Usar getAdminClient() para bypassar RLS
+      const client = this.supabaseService.getAdminClient();
       const now = new Date();
       const today = now.toISOString().split('T')[0];
       const currentTime = now.toTimeString().slice(0, 5);
+
+      this.logger.log(`[AutoNotifications] Verificando consultas atrasadas: ${currentTime} (${today})`);
 
       // Buscar consultas de hoje que já passaram e ainda estão pendentes
       const query = client
@@ -187,8 +211,11 @@ export class AutoNotificationsService {
       }
 
       if (!consultas || consultas.length === 0) {
+        this.logger.log('[AutoNotifications] Nenhuma consulta atrasada encontrada');
         return [];
       }
+
+      this.logger.log(`[AutoNotifications] Encontradas ${consultas.length} consultas atrasadas`);
 
       // Criar notificações para consultas atrasadas
       const notifications = [];
@@ -200,22 +227,25 @@ export class AutoNotificationsService {
           .eq('empresa_id', empresaId)
           .eq('data->>appointment_id', consulta.id)
           .eq('title', '⚠️ Consulta Atrasada')
-          .single();
+          .maybeSingle();
 
         if (!existing) {
           const notification = await this.notificationsService.create({
             type: NotificationType.APPOINTMENT,
             title: '⚠️ Consulta Atrasada',
-            message: `Consulta de ${consulta.paciente?.nome} às ${consulta.hora_inicio} ainda está pendente`,
+            message: `Consulta de ${consulta.paciente?.nome || 'Paciente'} às ${consulta.hora_inicio} ainda está pendente`,
             priority: NotificationPriority.URGENT,
             data: {
               appointment_id: consulta.id,
               patient_name: consulta.paciente?.nome,
+              patient_id: consulta.cliente_id,
               time: consulta.hora_inicio,
-              status: consulta.status
+              status: consulta.status,
+              date: consulta.data_consulta
             }
           }, empresaId);
           notifications.push(notification);
+          this.logger.log(`[AutoNotifications] Notificação criada para consulta atrasada ${consulta.id}`);
         }
       }
 
