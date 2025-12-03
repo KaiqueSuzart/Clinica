@@ -34,6 +34,35 @@ Este guia mostra como fazer deploy completo da aplicação (Backend + Frontend) 
 
 ## 🌐 Opção 1: Digital Ocean App Platform (Recomendado)
 
+### ⚡ Resumo Rápido
+
+O App Platform permite fazer deploy de **backend e frontend juntos** no mesmo app, adicionando múltiplos componentes:
+
+```
+App: clinica
+├── Componente 1: Backend (Web Service)
+│   ├── Source: backend/
+│   ├── Build: npm install && npm run build
+│   ├── Run: npm run start:prod
+│   ├── Port: 3001
+│   └── Env: SUPABASE_URL, JWT_SECRET, etc.
+│
+└── Componente 2: Frontend (Static Site)
+    ├── Source: frontend/
+    ├── Build: npm install && npm run build
+    ├── Output: dist/
+    └── Env: VITE_API_BASE_URL
+```
+
+**Passos principais:**
+1. Conectar repositório GitHub
+2. Configurar componente Backend (Web Service)
+3. Adicionar componente Frontend (Static Site)
+4. Configurar variáveis de ambiente
+5. Deploy!
+
+---
+
 ### Passo 1: Preparar o Repositório Git
 
 ```bash
@@ -51,20 +80,26 @@ git push -u origin main
 1. Acesse: https://cloud.digitalocean.com/apps
 2. Clique em **"Create App"**
 3. Conecte seu repositório GitHub/GitLab
-4. Selecione o repositório e branch
+4. Selecione o repositório `KaiqueSuzart/Clinica` e branch `main`
 
-### Passo 3: Configurar Backend
+### Passo 3: Configurar os Componentes (Backend + Frontend)
 
-1. **Detectar Componente:**
-   - Digital Ocean detecta automaticamente o backend
-   - Se não detectar, adicione manualmente:
-     - **Type**: Web Service
-     - **Source Directory**: `backend`
-     - **Build Command**: `npm install && npm run build`
-     - **Run Command**: `npm run start:prod`
-     - **HTTP Port**: `3001`
+**IMPORTANTE:** O App Platform permite adicionar múltiplos componentes no mesmo app! Você vai configurar backend e frontend juntos.
 
-2. **Variáveis de Ambiente:**
+#### 3.1: Configurar Backend (Componente 1)
+
+1. **O Digital Ocean pode detectar automaticamente o backend**, mas se não detectar ou você quiser configurar manualmente:
+   - Clique em **"Edit"** no componente detectado OU **"Add Component"**
+   - **Type**: `Web Service`
+   - **Name**: `backend` (ou deixe o padrão)
+   - **Source Directory**: `backend`
+   - **Build Command**: `npm install --include=dev && npm run build`
+   - **Run Command**: `node dist/main.js`
+   - **HTTP Port**: `3001` (mude de 8080 para 3001)
+
+2. **Variáveis de Ambiente do Backend:**
+   - Clique em **"Edit"** na seção "Environment variables"
+   - Adicione as seguintes variáveis (uma por linha):
    ```
    SUPABASE_URL=sua_url_do_supabase
    SUPABASE_ANON_KEY=sua_chave_anonima
@@ -73,38 +108,70 @@ git push -u origin main
    NODE_ENV=production
    JWT_SECRET=seu_jwt_secret_forte_aqui
    JWT_EXPIRES_IN=7d
+   FRONTEND_URL=https://seu-app.ondigitalocean.app
+   FRONTEND_PREVIEW_URL=https://seu-app.ondigitalocean.app
    ```
+   **Nota:** Você vai precisar pegar a URL do frontend depois que criar o componente. Pode deixar temporariamente como `https://seu-app.ondigitalocean.app` e atualizar depois.
 
-3. **Configurar CORS:**
-   - Adicione a URL do frontend nas variáveis de ambiente
-   - Ou configure no código (ver abaixo)
+#### 3.2: Adicionar Frontend (Componente 2)
 
-### Passo 4: Configurar Frontend
+**💡 ONDE ENCONTRAR "Add Component":**
+- Se você está na tela de configuração inicial, procure um botão **"Add Component"** ou **"Edit Components"** na parte superior ou lateral
+- Se você já criou o app, vá em **Settings** > **Components** e clique em **"Add Component"**
 
-1. **Adicionar Componente:**
-   - Clique em **"Add Component"**
-   - **Type**: Static Site
+1. **Adicionar Novo Componente:**
+   - Clique em **"Add Component"** ou **"Edit Components"**
+   - Selecione **"Static Site"** (NÃO Web Service!)
+   - **Name**: `frontend` (ou deixe o padrão)
    - **Source Directory**: `frontend`
    - **Build Command**: `npm install && npm run build`
    - **Output Directory**: `dist`
 
-2. **Variáveis de Ambiente:**
+2. **Variáveis de Ambiente do Frontend:**
+   - Clique em **"Edit"** na seção "Environment variables" do componente frontend
+   - Adicione:
    ```
-   VITE_API_URL=https://seu-backend.ondigitalocean.app
+   VITE_API_BASE_URL=https://seu-backend.ondigitalocean.app
    ```
+   **Nota:** Substitua `seu-backend.ondigitalocean.app` pela URL real do componente backend que o Digital Ocean vai gerar (algo como `clinica-backend-xxxxx.ondigitalocean.app`). Você pode ver essa URL depois de fazer o primeiro deploy ou na seção de componentes.
 
-### Passo 5: Configurar Domínio
+#### 3.3: Verificar Configuração
+
+Você deve ter **2 componentes** configurados:
+- ✅ **Componente 1**: Backend (Web Service) na porta 3001
+- ✅ **Componente 2**: Frontend (Static Site) com output em `dist`
+
+### Passo 4: Configurar Domínio (Opcional)
 
 1. No App Platform, vá em **Settings** > **Domains**
 2. Adicione seu domínio
 3. Configure os registros DNS conforme instruções
 4. SSL será configurado automaticamente
 
-### Passo 6: Deploy
+### Passo 5: Fazer Deploy
 
-1. Clique em **"Deploy"**
-2. Aguarde o build e deploy
-3. Acesse sua aplicação!
+1. **Revisar Configurações:**
+   - Verifique se ambos os componentes estão configurados
+   - Verifique se as variáveis de ambiente estão corretas
+   - **Importante:** Anote a URL do backend que será gerada (algo como `clinica-backend-xxxxx.ondigitalocean.app`)
+
+2. **Primeiro Deploy:**
+   - Clique em **"Deploy"** ou **"Create Resources"**
+   - Aguarde o build e deploy (pode levar 5-10 minutos)
+   - O Digital Ocean vai gerar URLs para cada componente
+
+3. **Atualizar Variáveis de Ambiente:**
+   - Após o primeiro deploy, copie a URL do backend gerada
+   - Vá em **Settings** > **Components** > **Frontend** > **Environment Variables**
+   - Atualize `VITE_API_BASE_URL` com a URL real do backend
+   - Vá em **Settings** > **Components** > **Backend** > **Environment Variables**
+   - Atualize `FRONTEND_URL` e `FRONTEND_PREVIEW_URL` com a URL real do frontend
+   - Faça um novo deploy para aplicar as mudanças
+
+4. **Acessar Aplicação:**
+   - A URL do frontend será algo como: `https://clinica-frontend-xxxxx.ondigitalocean.app`
+   - A URL do backend será algo como: `https://clinica-backend-xxxxx.ondigitalocean.app`
+   - Acesse a URL do frontend no navegador!
 
 ---
 
