@@ -7,29 +7,62 @@ export class TenantMiddleware implements NestMiddleware {
   constructor(private supabaseService: SupabaseService) {}
 
   // Lista de rotas públicas que não precisam de autenticação
-  private readonly publicRoutes = [
+  // Suporta tanto com quanto sem prefixo /api
+  private readonly publicRoutePatterns = [
     '/auth/login',
     '/api/auth/login',
+    'auth/login', // Sem barra inicial
+    'api/auth/login', // Sem barra inicial
     '/auth/register',
     '/api/auth/register',
+    'auth/register',
+    'api/auth/register',
     '/auth/register-empresa',
     '/api/auth/register-empresa',
+    'auth/register-empresa',
+    'api/auth/register-empresa',
     '/auth/logout',
     '/api/auth/logout',
+    'auth/logout',
+    'api/auth/logout',
   ];
 
   private isPublicRoute(path: string): boolean {
-    // Verificar se o path está na lista de rotas públicas
-    return this.publicRoutes.some(route => path === route || path.endsWith(route));
+    // Normalizar o path (remover query strings e trailing slashes)
+    const normalizedPath = path.split('?')[0].replace(/\/$/, '');
+    
+    // Verificar se o path corresponde a alguma rota pública
+    const isPublic = this.publicRoutePatterns.some(route => {
+      // Comparação exata
+      if (normalizedPath === route || normalizedPath === `/${route}`) {
+        return true;
+      }
+      // Verificar se termina com a rota
+      if (normalizedPath.endsWith(route) || normalizedPath.endsWith(`/${route}`)) {
+        return true;
+      }
+      // Verificar se contém a rota (para casos como /api/auth/login)
+      if (normalizedPath.includes(route)) {
+        return true;
+      }
+      return false;
+    });
+    
+    return isPublic;
   }
 
   async use(req: Request, res: Response, next: NextFunction) {
     try {
+      // Log do path recebido para debug
+      console.log(`[TenantMiddleware] Verificando rota: ${req.method} ${req.path} (originalUrl: ${req.originalUrl})`);
+      
       // Se for uma rota pública, pular autenticação
-      if (this.isPublicRoute(req.path)) {
-        console.log(`[TenantMiddleware] Rota pública detectada: ${req.path}, pulando autenticação`);
+      if (this.isPublicRoute(req.path) || this.isPublicRoute(req.originalUrl)) {
+        console.log(`[TenantMiddleware] ✅ Rota pública detectada: ${req.path}, pulando autenticação`);
         return next();
       }
+      
+      console.log(`[TenantMiddleware] 🔒 Rota protegida: ${req.path}, exigindo autenticação`);
 
       // Extrair token do header Authorization
       const authHeader = req.headers.authorization;
