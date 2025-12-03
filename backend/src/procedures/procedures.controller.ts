@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Put, Param, Delete, Query, Headers } from '@nestjs/common';
+import { Controller, Get, Post, Body, Put, Param, Delete, Query, Headers, HttpException, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { ProceduresService } from './procedures.service';
 import { CreateProcedureDto } from './dto/create-procedure.dto';
@@ -15,13 +15,25 @@ export class ProceduresController {
   @ApiQuery({ name: 'categoria', required: false, description: 'Filtrar por categoria' })
   @ApiQuery({ name: 'ativo', required: false, description: 'Filtrar por status ativo' })
   @ApiResponse({ status: 200, description: 'Lista de procedimentos retornada com sucesso' })
-  findAll(
+  @ApiResponse({ status: 500, description: 'Erro interno do servidor' })
+  async findAll(
     @EmpresaId() empresaId: string,
     @Query('categoria') categoria?: string,
     @Query('ativo') ativo?: string
   ) {
-    const ativoBoolean = ativo !== undefined ? ativo === 'true' : undefined;
-    return this.proceduresService.findAll(empresaId, categoria, ativoBoolean);
+    try {
+      const ativoBoolean = ativo !== undefined ? ativo === 'true' : undefined;
+      return await this.proceduresService.findAll(empresaId, categoria, ativoBoolean);
+    } catch (error) {
+      console.error('[ProceduresController.findAll] ❌ Erro:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        error.message || 'Erro interno do servidor ao listar procedimentos',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   @Get('categorias')
@@ -42,11 +54,27 @@ export class ProceduresController {
   @Post()
   @ApiOperation({ summary: 'Criar novo procedimento' })
   @ApiResponse({ status: 201, description: 'Procedimento criado com sucesso' })
-  create(
+  @ApiResponse({ status: 400, description: 'Dados inválidos' })
+  @ApiResponse({ status: 500, description: 'Erro interno do servidor' })
+  async create(
     @Body() createProcedureDto: CreateProcedureDto,
     @EmpresaId() empresaId: string
   ) {
-    return this.proceduresService.create(createProcedureDto, empresaId);
+    try {
+      console.log('[ProceduresController.create] 📥 Recebido:', { createProcedureDto, empresaId });
+      const result = await this.proceduresService.create(createProcedureDto, empresaId);
+      console.log('[ProceduresController.create] ✅ Resultado:', result);
+      return result;
+    } catch (error) {
+      console.error('[ProceduresController.create] ❌ Erro:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        error.message || 'Erro interno do servidor ao criar procedimento',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   @Put(':id')

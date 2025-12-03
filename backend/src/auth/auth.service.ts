@@ -126,7 +126,18 @@ export class AuthService {
         };
 
         return {
-          user: fakeSession.user,
+          user: {
+            ...fakeSession.user,
+            nome: userData.nome,
+            cargo: userData.cargo,
+            role: userData.cargo?.toLowerCase() || 'admin',
+            telefone: userData.telefone || null,
+            bio: userData.bio || null,
+            avatar_url: userData.avatar_url || null,
+            empresa_id: userData.empresa_id,
+            permissoes: userData.permissoes || {},
+            ativo: userData.ativo !== false
+          },
           session: fakeSession,
           empresa: userData.empresa,
           message: 'Login realizado com sucesso',
@@ -233,7 +244,19 @@ export class AuthService {
             .eq('id', userByEmail.id);
           
           return {
-            user: data.user,
+            user: {
+              id: userByEmail.id,
+              email: userByEmail.email,
+              nome: userByEmail.nome,
+              cargo: userByEmail.cargo,
+              role: userByEmail.cargo?.toLowerCase() || 'funcionario',
+              telefone: userByEmail.telefone || null,
+              bio: userByEmail.bio || null,
+              avatar_url: userByEmail.avatar_url || null,
+              empresa_id: userByEmail.empresa_id,
+              permissoes: userByEmail.permissoes || {},
+              ativo: userByEmail.ativo !== false
+            },
             session: data.session,
             empresa: userByEmail.empresa,
             message: 'Login realizado com sucesso',
@@ -295,7 +318,19 @@ export class AuthService {
           .eq('id', novoUsuario.id);
 
         return {
-          user: data.user,
+          user: {
+            id: novoUsuario.id,
+            email: novoUsuario.email,
+            nome: novoUsuario.nome,
+            cargo: novoUsuario.cargo,
+            role: novoUsuario.cargo?.toLowerCase() || 'funcionario',
+            telefone: novoUsuario.telefone || null,
+            bio: novoUsuario.bio || null,
+            avatar_url: novoUsuario.avatar_url || null,
+            empresa_id: novoUsuario.empresa_id,
+            permissoes: novoUsuario.permissoes || {},
+            ativo: novoUsuario.ativo !== false
+          },
           session: data.session,
           empresa: novoUsuario.empresa,
           message: 'Login realizado com sucesso. Registro criado automaticamente.',
@@ -314,7 +349,19 @@ export class AuthService {
         .eq('id', userData.id);
 
       return {
-        user: data.user,
+        user: {
+          id: userData.id,
+          email: userData.email,
+          nome: userData.nome,
+          cargo: userData.cargo,
+          role: userData.cargo?.toLowerCase() || 'funcionario',
+          telefone: userData.telefone || null,
+          bio: userData.bio || null,
+          avatar_url: userData.avatar_url || null,
+          empresa_id: userData.empresa_id,
+          permissoes: userData.permissoes || {},
+          ativo: userData.ativo !== false
+        },
         session: data.session,
         empresa: userData.empresa,
         message: 'Login realizado com sucesso',
@@ -395,7 +442,19 @@ export class AuthService {
       }
 
       return {
-        user: data.user,
+        user: {
+          id: newUser.id,
+          email: newUser.email,
+          nome: newUser.nome,
+          cargo: newUser.cargo,
+          role: newUser.cargo?.toLowerCase() || 'funcionario',
+          telefone: newUser.telefone || null,
+          bio: newUser.bio || null,
+          avatar_url: newUser.avatar_url || null,
+          empresa_id: newUser.empresa_id,
+          permissoes: newUser.permissoes || {},
+          ativo: newUser.ativo !== false
+        },
         empresa: newUser.empresa,
         message: 'Usuário registrado com sucesso',
       };

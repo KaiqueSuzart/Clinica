@@ -82,6 +82,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
           if (response.ok) {
             const userData = await response.json();
+            console.log('[AuthProvider.checkAuth] 📥 Dados do usuário recebidos:', userData);
+            console.log('[AuthProvider.checkAuth] 📸 avatar_url:', userData.avatar_url);
             setUser(userData);
             setEmpresa(userData.empresa);
           } else {
@@ -128,6 +130,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         localStorage.setItem('auth_token', data.session.access_token);
       }
 
+      console.log('[AuthProvider.login] 📥 Dados do usuário recebidos:', data.user);
+      console.log('[AuthProvider.login] 📸 avatar_url:', data.user.avatar_url);
       setUser(data.user);
       setEmpresa(data.empresa);
     } catch (err) {
