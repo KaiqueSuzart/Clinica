@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { X, Calendar, Clock, User, Save, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
 import LoadingButton from '../UI/LoadingButton';
 import { apiService } from '../../services/api';
 import { useBusinessHours } from '../../contexts/BusinessHoursContext';
 import { formatPhoneDisplay } from '../../utils/phoneFormatter';
 import { useDentistas } from '../../hooks/useDentistas';
+import { useProcedimentos } from '../../hooks/useProcedimentos';
 
 interface NewAppointmentModalProps {
   isOpen: boolean;
@@ -32,6 +33,7 @@ export default function NewAppointmentModal({ isOpen, onClose, onSave }: NewAppo
   
   const { getAvailableTimeSlots, isWorkingDay } = useBusinessHours();
   const { dentistas, getDentistasOptions } = useDentistas();
+  const { procedimentos, getProcedimentosPorCategoria, loading: loadingProcedimentos } = useProcedimentos();
 
   // Usar dentistas do banco de dados
   const professionalsOptions = getDentistasOptions();
@@ -45,31 +47,6 @@ export default function NewAppointmentModal({ isOpen, onClose, onSave }: NewAppo
       setProfessional(professionals[0]);
     }
   }, [dentistas.length, professional]);
-
-  // Carregar pacientes quando o modal abrir
-  useEffect(() => {
-    if (isOpen) {
-      loadPatients();
-    }
-  }, [isOpen]);
-
-  // Carregar horários ocupados quando a data mudar
-  useEffect(() => {
-    if (selectedDate) {
-      loadOccupiedTimes();
-    }
-  }, [selectedDate]);
-
-  // Carregar procedimentos do paciente quando um paciente for selecionado
-  useEffect(() => {
-    if (selectedPatient) {
-      loadPatientProcedures(selectedPatient);
-      // Encontrar os dados do paciente selecionado
-      const patientData = patients.find(p => String(p.id) === String(selectedPatient));
-      setSelectedPatientData(patientData);
-      console.log('Paciente selecionado:', patientData);
-    }
-  }, [selectedPatient, patients]);
 
   const loadPatients = async () => {
     try {
@@ -91,7 +68,7 @@ export default function NewAppointmentModal({ isOpen, onClose, onSave }: NewAppo
     }
   };
 
-  const loadOccupiedTimes = async () => {
+  const loadOccupiedTimes = useCallback(async () => {
     try {
       setLoadingTimes(true);
       
@@ -104,6 +81,7 @@ export default function NewAppointmentModal({ isOpen, onClose, onSave }: NewAppo
       console.log('Verificando horários ocupados para data:', dateStr);
       
       // Buscar todas as consultas da data selecionada
+      // Forçar atualização adicionando timestamp ao cache bust
       const allAppointments = await apiService.getAllAppointments();
       
       // Filtrar consultas do dia selecionado (excluindo canceladas)
@@ -152,7 +130,38 @@ export default function NewAppointmentModal({ isOpen, onClose, onSave }: NewAppo
     } finally {
       setLoadingTimes(false);
     }
-  };
+  }, [selectedDate]);
+
+  // Carregar pacientes quando o modal abrir
+  useEffect(() => {
+    if (isOpen) {
+      loadPatients();
+    }
+  }, [isOpen]);
+
+  // Carregar horários ocupados quando a data mudar ou quando o modal abrir
+  useEffect(() => {
+    if (selectedDate && isOpen) {
+      loadOccupiedTimes();
+    }
+  }, [selectedDate, isOpen, loadOccupiedTimes]);
+
+  // Escutar evento de consulta atualizada para recarregar horários ocupados
+  useEffect(() => {
+    const handleAppointmentUpdated = () => {
+      console.log('[NewAppointmentModal] Consulta atualizada, recarregando horários ocupados...');
+      if (selectedDate && isOpen) {
+        // Forçar recarregamento dos horários ocupados
+        loadOccupiedTimes();
+      }
+    };
+
+    window.addEventListener('appointmentUpdated', handleAppointmentUpdated);
+    
+    return () => {
+      window.removeEventListener('appointmentUpdated', handleAppointmentUpdated);
+    };
+  }, [selectedDate, isOpen, loadOccupiedTimes]);
 
   const loadPatientProcedures = async (patientId: string) => {
     try {
@@ -171,10 +180,26 @@ export default function NewAppointmentModal({ isOpen, onClose, onSave }: NewAppo
     }
   };
 
+  // Carregar procedimentos do paciente quando um paciente for selecionado
+  useEffect(() => {
+    if (selectedPatient) {
+      loadPatientProcedures(selectedPatient);
+      // Encontrar os dados do paciente selecionado
+      const patientData = patients.find(p => String(p.id) === String(selectedPatient));
+      setSelectedPatientData(patientData);
+      console.log('Paciente selecionado:', patientData);
+    }
+  }, [selectedPatient, patients]);
+
   // Usar slots de tempo baseados nas configurações de horário de funcionamento para a data selecionada
   const timeSlots = getAvailableTimeSlots(selectedDate);
 
-  const procedures = [
+  // Obter procedimentos agrupados por categoria do backend
+  const { categorias, semCategoria } = getProcedimentosPorCategoria();
+  
+  // Se não houver procedimentos no backend, usar lista padrão como fallback
+  const hasProcedimentos = procedimentos.length > 0;
+  const defaultProcedures = [
     'Consulta',
     'Limpeza',
     'Restauração',
@@ -465,6 +490,18 @@ export default function NewAppointmentModal({ isOpen, onClose, onSave }: NewAppo
                     } else {
                       setShowCustomProcedure(false);
                       setProcedure(e.target.value);
+                      
+                      // Buscar o procedimento selecionado e atualizar a duração
+                      if (e.target.value && hasProcedimentos) {
+                        const procedimentoSelecionado = procedimentos.find(
+                          proc => proc.nome === e.target.value
+                        );
+                        
+                        if (procedimentoSelecionado && procedimentoSelecionado.tempo_estimado_min) {
+                          setDuration(procedimentoSelecionado.tempo_estimado_min);
+                          console.log('[NewAppointmentModal] Duração atualizada para:', procedimentoSelecionado.tempo_estimado_min, 'minutos');
+                        }
+                      }
                     }
                   }}
                   required={!showCustomProcedure}
@@ -472,12 +509,35 @@ export default function NewAppointmentModal({ isOpen, onClose, onSave }: NewAppo
                 >
                   <option value="">Selecione um procedimento</option>
                   
-                  {/* Procedimentos padrão */}
-                  <optgroup label="Procedimentos Padrão">
-                    {procedures.map(proc => (
-                      <option key={proc} value={proc}>{proc}</option>
-                    ))}
-                  </optgroup>
+                  {/* Procedimentos do backend agrupados por categoria */}
+                  {hasProcedimentos ? (
+                    <>
+                      {/* Procedimentos padrão (sem categoria ou categoria "Padrão") */}
+                      {(categorias['Padrão'] || semCategoria.length > 0) && (
+                        <optgroup label="Procedimentos Padrão">
+                          {[...(categorias['Padrão'] || []), ...semCategoria].map(proc => (
+                            <option key={proc.id} value={proc.nome}>{proc.nome}</option>
+                          ))}
+                        </optgroup>
+                      )}
+                      
+                      {/* Outras categorias */}
+                      {Object.keys(categorias).filter(cat => cat !== 'Padrão').map(categoria => (
+                        <optgroup key={categoria} label={categoria}>
+                          {categorias[categoria].map(proc => (
+                            <option key={proc.id} value={proc.nome}>{proc.nome}</option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </>
+                  ) : (
+                    /* Fallback para procedimentos padrão se não houver no backend */
+                    <optgroup label="Procedimentos Padrão">
+                      {defaultProcedures.map(proc => (
+                        <option key={proc} value={proc}>{proc}</option>
+                      ))}
+                    </optgroup>
+                  )}
                   
                   {/* Procedimentos do paciente */}
                   {patientProcedures.length > 0 && (

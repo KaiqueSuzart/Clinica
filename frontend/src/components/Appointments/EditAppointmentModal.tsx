@@ -5,6 +5,7 @@ import { apiService } from '../../services/api';
 import { useBusinessHours } from '../../contexts/BusinessHoursContext';
 import { formatPhoneDisplay } from '../../utils/phoneFormatter';
 import { useDentistas } from '../../hooks/useDentistas';
+import { useProcedimentos } from '../../hooks/useProcedimentos';
 
 interface EditAppointmentModalProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ interface EditAppointmentModalProps {
 export default function EditAppointmentModal({ isOpen, onClose, appointment, onSave }: EditAppointmentModalProps) {
   const { isWorkingDay } = useBusinessHours();
   const { dentistas, getDentistasOptions } = useDentistas();
+  const { procedimentos, getProcedimentosPorCategoria, loading: loadingProcedimentos } = useProcedimentos();
   
   // Função para criar data segura
   const createSafeDate = (dateString?: string) => {
@@ -172,7 +174,12 @@ export default function EditAppointmentModal({ isOpen, onClose, appointment, onS
     '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30'
   ];
 
-  const procedures = [
+  // Obter procedimentos agrupados por categoria do backend
+  const { categorias, semCategoria } = getProcedimentosPorCategoria();
+  
+  // Se não houver procedimentos no backend, usar lista padrão como fallback
+  const hasProcedimentos = procedimentos.length > 0;
+  const defaultProcedures = [
     'Consulta',
     'Limpeza',
     'Restauração',
@@ -448,14 +455,53 @@ export default function EditAppointmentModal({ isOpen, onClose, appointment, onS
                 </label>
                 <select
                   value={procedure}
-                  onChange={(e) => setProcedure(e.target.value)}
+                  onChange={(e) => {
+                    setProcedure(e.target.value);
+                    
+                    // Buscar o procedimento selecionado e atualizar a duração
+                    if (e.target.value && hasProcedimentos) {
+                      const procedimentoSelecionado = procedimentos.find(
+                        proc => proc.nome === e.target.value
+                      );
+                      
+                      if (procedimentoSelecionado && procedimentoSelecionado.tempo_estimado_min) {
+                        setDuration(procedimentoSelecionado.tempo_estimado_min);
+                        console.log('[EditAppointmentModal] Duração atualizada para:', procedimentoSelecionado.tempo_estimado_min, 'minutos');
+                      }
+                    }
+                  }}
                   required
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                 >
                   <option value="">Selecione um procedimento</option>
-                  {procedures.map(proc => (
-                    <option key={proc} value={proc}>{proc}</option>
-                  ))}
+                  
+                  {/* Procedimentos do backend agrupados por categoria */}
+                  {hasProcedimentos ? (
+                    <>
+                      {/* Procedimentos padrão (sem categoria ou categoria "Padrão") */}
+                      {(categorias['Padrão'] || semCategoria.length > 0) && (
+                        <optgroup label="Procedimentos Padrão">
+                          {[...(categorias['Padrão'] || []), ...semCategoria].map(proc => (
+                            <option key={proc.id} value={proc.nome}>{proc.nome}</option>
+                          ))}
+                        </optgroup>
+                      )}
+                      
+                      {/* Outras categorias */}
+                      {Object.keys(categorias).filter(cat => cat !== 'Padrão').map(categoria => (
+                        <optgroup key={categoria} label={categoria}>
+                          {categorias[categoria].map(proc => (
+                            <option key={proc.id} value={proc.nome}>{proc.nome}</option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </>
+                  ) : (
+                    /* Fallback para procedimentos padrão se não houver no backend */
+                    defaultProcedures.map(proc => (
+                      <option key={proc} value={proc}>{proc}</option>
+                    ))
+                  )}
                 </select>
               </div>
 

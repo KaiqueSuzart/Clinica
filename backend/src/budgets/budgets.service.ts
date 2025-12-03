@@ -16,6 +16,23 @@ type BudgetItemUpdate = Database['public']['Tables']['itens_orcamento']['Update'
 export class BudgetsService {
   constructor(private readonly supabase: SupabaseService) {}
 
+  // Valores permitidos para o status de orçamentos
+  private readonly statusPermitidos = ['rascunho', 'enviado', 'aprovado', 'recusado', 'cancelado'];
+
+  // Normalizar status para garantir formato correto
+  private normalizeStatus(status: string | null | undefined): string {
+    if (!status) return 'rascunho'; // Status padrão
+    
+    const statusNormalizado = String(status).trim().toLowerCase();
+    
+    if (!this.statusPermitidos.includes(statusNormalizado)) {
+      console.warn(`[BudgetsService] Status inválido recebido: ${status}, usando 'rascunho' como padrão`);
+      return 'rascunho';
+    }
+    
+    return statusNormalizado;
+  }
+
   async findAll(empresaId: string): Promise<Budget[]> {
     try {
       const { data, error } = await this.supabase.getAdminClient()
@@ -148,7 +165,7 @@ export class BudgetsService {
                     const orcamentoData = {
                         ...budgetData,
                         empresa_id: empresaId,
-                        status: budgetData.status || 'rascunho'
+                        status: this.normalizeStatus(budgetData.status)
                     };
 
       console.log('Dados do orçamento a serem inseridos:', orcamentoData);
@@ -211,13 +228,20 @@ export class BudgetsService {
   async update(id: string, updateBudgetDto: UpdateBudgetDto, empresaId: string): Promise<Budget> {
     const { itens, ...budgetData } = updateBudgetDto;
 
+    // Normalizar status se estiver sendo atualizado
+    const dataToUpdate: any = {
+      ...budgetData,
+      updated_at: new Date().toISOString()
+    };
+
+    if (budgetData.status !== undefined) {
+      dataToUpdate.status = this.normalizeStatus(budgetData.status);
+    }
+
     // Atualizar orçamento
     const { data: budget, error: budgetError } = await this.supabase.getAdminClient()
       .from('orcamentos')
-      .update({
-        ...budgetData,
-        updated_at: new Date().toISOString()
-      })
+      .update(dataToUpdate)
       .eq('id', id)
       .eq('empresa_id', empresaId)
       .select()
@@ -289,10 +313,17 @@ export class BudgetsService {
 
   async updateStatus(id: string, status: string, empresaId: string): Promise<Budget> {
     try {
+      console.log('[BudgetsService.updateStatus] 📥 Atualizando status:', { id, status, empresaId });
+
+      // Normalizar o status para garantir que está no formato correto
+      const statusNormalizado = this.normalizeStatus(status);
+      
+      console.log('[BudgetsService.updateStatus] ✅ Status normalizado:', { original: status, normalizado: statusNormalizado });
+
       const { data, error } = await this.supabase.getAdminClient()
         .from('orcamentos')
         .update({
-          status,
+          status: statusNormalizado,
           updated_at: new Date().toISOString()
         })
         .eq('id', id)
@@ -301,17 +332,29 @@ export class BudgetsService {
         .single();
 
       if (error) {
-        console.error('[BudgetsService.updateStatus] Erro do Supabase:', error);
+        console.error('[BudgetsService.updateStatus] ❌ Erro do Supabase:', error);
         throw new Error(`Erro ao atualizar status do orçamento: ${error.message}`);
       }
 
       if (!data) {
+        console.error('[BudgetsService.updateStatus] ❌ Orçamento não encontrado após atualização');
         throw new Error('Orçamento não encontrado após atualização');
       }
 
-      return data;
+      console.log('[BudgetsService.updateStatus] ✅ Status atualizado com sucesso:', { id, status, newStatus: data.status });
+
+      // Retornar apenas os campos essenciais para evitar problemas de serialização
+      return {
+        id: data.id,
+        status: data.status,
+        updated_at: data.updated_at,
+        cliente_id: data.cliente_id,
+        empresa_id: data.empresa_id,
+        valor_total: data.valor_total,
+        valor_final: data.valor_final
+      } as Budget;
     } catch (error) {
-      console.error('[BudgetsService.updateStatus] Erro genérico:', error);
+      console.error('[BudgetsService.updateStatus] ❌ Erro genérico:', error);
       throw error;
     }
   }

@@ -971,10 +971,18 @@ class ApiService {
     });
   }
 
-  async updateBudgetStatus(id: string, status: string): Promise<Budget> {
-    return this.request<Budget>(`/budgets/${id}/status?status=${status}`, {
-      method: 'PUT',
-    });
+  async updateBudgetStatus(id: string, status: string): Promise<any> {
+    try {
+      const response = await this.request<{ success: boolean; message: string; data: Budget }>(`/budgets/${id}/status?status=${status}`, {
+        method: 'PUT',
+      });
+      // Se a resposta tiver a estrutura { success, data }, retornar apenas data
+      // Caso contrário, retornar a resposta completa (compatibilidade com versões antigas)
+      return response.success !== undefined ? response.data || response : response;
+    } catch (error) {
+      console.error('[ApiService.updateBudgetStatus] Erro:', error);
+      throw error;
+    }
   }
 
   async deleteBudget(id: string): Promise<{ message: string }> {

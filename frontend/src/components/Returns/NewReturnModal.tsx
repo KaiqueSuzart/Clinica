@@ -5,6 +5,7 @@ import { apiService, Patient } from '../../services/api';
 import { useToast } from '../UI/Toast';
 import { useBusinessHours } from '../../contexts/BusinessHoursContext';
 import { useDentistas } from '../../hooks/useDentistas';
+import { useProcedimentos } from '../../hooks/useProcedimentos';
 
 interface NewReturnModalProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ export default function NewReturnModal({ isOpen, onClose, onSave }: NewReturnMod
   const { showSuccess, showError } = useToast();
   const { isWorkingDay, getAvailableTimeSlots } = useBusinessHours();
   const { dentistas, getDentistasOptions } = useDentistas();
+  const { procedimentos, getProcedimentosPorCategoria } = useProcedimentos();
   const [selectedPatient, setSelectedPatient] = useState('');
   const [procedure, setProcedure] = useState('');
   const [returnDate, setReturnDate] = useState<Date | null>(null);
@@ -29,7 +31,12 @@ export default function NewReturnModal({ isOpen, onClose, onSave }: NewReturnMod
   const [loadingTimes, setLoadingTimes] = useState(false);
   const [professional, setProfessional] = useState('');
 
-  const procedures = [
+  // Obter procedimentos do backend
+  const { categorias, semCategoria } = getProcedimentosPorCategoria();
+  const hasProcedimentos = procedimentos.length > 0;
+  
+  // Procedimentos específicos de retorno (sempre disponíveis)
+  const returnProcedures = [
     'Avaliação pós-limpeza',
     'Controle do canal',
     'Remoção de pontos',
@@ -473,9 +480,36 @@ export default function NewReturnModal({ isOpen, onClose, onSave }: NewReturnMod
                   className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                 >
                   <option value="">Selecione o motivo do retorno</option>
-                  {procedures.map((proc) => (
-                    <option key={proc} value={proc}>{proc}</option>
-                  ))}
+                  
+                  {/* Procedimentos específicos de retorno */}
+                  <optgroup label="Procedimentos de Retorno">
+                    {returnProcedures.map((proc) => (
+                      <option key={proc} value={proc}>
+                        {proc}
+                      </option>
+                    ))}
+                  </optgroup>
+                  
+                  {/* Procedimentos do catálogo do backend */}
+                  {hasProcedimentos && (
+                    <>
+                      {(categorias['Padrão'] || semCategoria.length > 0) && (
+                        <optgroup label="Procedimentos Padrão">
+                          {[...(categorias['Padrão'] || []), ...semCategoria].map(proc => (
+                            <option key={proc.id} value={proc.nome}>{proc.nome}</option>
+                          ))}
+                        </optgroup>
+                      )}
+                      
+                      {Object.keys(categorias).filter(cat => cat !== 'Padrão').map(categoria => (
+                        <optgroup key={categoria} label={categoria}>
+                          {categorias[categoria].map(proc => (
+                            <option key={proc.id} value={proc.nome}>{proc.nome}</option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </>
+                  )}
                 </select>
               </div>
             </div>

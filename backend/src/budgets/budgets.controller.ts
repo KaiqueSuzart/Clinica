@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Put, Param, Delete, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Put, Param, Delete, Query, HttpException, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { BudgetsService } from './budgets.service';
 import { CreateBudgetDto } from './dto/create-budget.dto';
@@ -94,8 +94,33 @@ export class BudgetsController {
   @ApiResponse({ status: 200, description: 'Status atualizado com sucesso' })
   @ApiResponse({ status: 404, description: 'Orçamento não encontrado' })
   @ApiResponse({ status: 500, description: 'Erro interno do servidor' })
-  updateStatus(@Param('id') id: string, @Query('status') status: string, @EmpresaId() empresaId: string) {
-    return this.budgetsService.updateStatus(id, status, empresaId);
+  async updateStatus(@Param('id') id: string, @Query('status') status: string, @EmpresaId() empresaId: string) {
+    try {
+      console.log('[BudgetsController.updateStatus] 📥 Recebido:', { id, status, empresaId });
+      const result = await this.budgetsService.updateStatus(id, status, empresaId);
+      console.log('[BudgetsController.updateStatus] ✅ Resultado obtido:', { id: result?.id, status: result?.status });
+      
+      // Retornar apenas os dados essenciais para evitar problemas de serialização
+      const response = {
+        success: true,
+        message: 'Status do orçamento atualizado com sucesso',
+        data: {
+          id: result?.id,
+          status: result?.status,
+          updated_at: result?.updated_at
+        }
+      };
+      
+      console.log('[BudgetsController.updateStatus] ✅ Retornando resposta:', response);
+      return response;
+    } catch (error) {
+      console.error('[BudgetsController.updateStatus] ❌ Erro:', error);
+      // Se for um Error genérico, converter para HttpException
+      if (error instanceof Error) {
+        throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+      throw error;
+    }
   }
 
   @Delete(':id')

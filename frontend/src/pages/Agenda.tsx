@@ -281,17 +281,16 @@ export default function Agenda() {
     try {
       const updated = await apiService.updateAppointment(updatedAppointment.id, updatedAppointment);
       
-      // Atualizar na lista correta baseado na data
-      const today = new Date().toISOString().split('T')[0];
-      if (updated.date === today) {
-        setTodayAppointments(prev => prev.map(apt => 
-          apt.id === updated.id ? updated : apt
-        ));
-      } else {
-        setHistoryAppointments(prev => prev.map(apt => 
-          apt.id === updated.id ? updated : apt
-        ));
-      }
+      // Recarregar todos os dados da agenda para garantir consistência
+      await loadAppointments();
+      
+      // Disparar evento customizado para notificar que uma consulta foi editada
+      // Isso permite que outros componentes (como NewAppointmentModal) recarreguem seus dados
+      window.dispatchEvent(new CustomEvent('appointmentUpdated', { 
+        detail: { appointment: updated } 
+      }));
+      
+      console.log('Consulta editada e dados recarregados:', updated);
     } catch (err) {
       setError('Erro ao atualizar agendamento');
       console.error('Erro ao atualizar agendamento:', err);
