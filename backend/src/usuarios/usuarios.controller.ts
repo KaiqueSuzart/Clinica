@@ -1,5 +1,6 @@
-import { Controller, Get, Put, Post, Request, Body, UseGuards, Param, HttpException, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Get, Put, Post, Request, Body, UseGuards, Param, HttpException, HttpStatus, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { UsuariosService } from './usuarios.service';
 import { UpdateUsuarioDto } from './dto/update-usuario.dto';
 import { CreateUsuarioDto } from './dto/create-usuario.dto';
@@ -21,26 +22,83 @@ export class UsuariosController {
   @ApiOperation({ summary: 'Buscar perfil do usuário logado' })
   @ApiResponse({ status: 200, description: 'Perfil encontrado com sucesso' })
   @ApiResponse({ status: 401, description: 'Não autorizado' })
+  @ApiResponse({ status: 500, description: 'Erro interno do servidor' })
   async getPerfilUsuario(@Request() req) {
     const authUserId = req.user?.id;
     if (!authUserId) {
-      throw new Error('Usuário não encontrado');
+      throw new HttpException('Usuário não autenticado', HttpStatus.UNAUTHORIZED);
     }
 
-    return this.usuariosService.getPerfilUsuario(authUserId);
+    try {
+      return await this.usuariosService.getPerfilUsuario(authUserId);
+    } catch (error) {
+      console.error('[UsuariosController.getPerfilUsuario] Erro:', error);
+      throw new HttpException(
+        error.message || 'Erro ao buscar perfil do usuário',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   @Put('perfil')
   @ApiOperation({ summary: 'Atualizar perfil do usuário logado' })
   @ApiResponse({ status: 200, description: 'Perfil atualizado com sucesso' })
   @ApiResponse({ status: 401, description: 'Não autorizado' })
+  @ApiResponse({ status: 500, description: 'Erro interno do servidor' })
   async updatePerfilUsuario(@Request() req, @Body() updateUsuarioDto: UpdateUsuarioDto) {
     const authUserId = req.user?.id;
     if (!authUserId) {
-      throw new Error('Usuário não encontrado');
+      throw new HttpException('Usuário não autenticado', HttpStatus.UNAUTHORIZED);
     }
 
-    return this.usuariosService.updatePerfilUsuario(authUserId, updateUsuarioDto);
+    try {
+      return await this.usuariosService.updatePerfilUsuario(authUserId, updateUsuarioDto);
+    } catch (error) {
+      console.error('[UsuariosController.updatePerfilUsuario] Erro:', error);
+      throw error; // Re-lançar HttpException do service
+    }
+  }
+
+  @Post('perfil/avatar')
+  @UseInterceptors(FileInterceptor('avatar'))
+  @ApiOperation({ summary: 'Upload de avatar do usuário' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        avatar: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Avatar atualizado com sucesso' })
+  @ApiResponse({ status: 401, description: 'Não autorizado' })
+  @ApiResponse({ status: 400, description: 'Arquivo inválido' })
+  async uploadAvatar(@Request() req, @UploadedFile() file: Express.Multer.File) {
+    const authUserId = req.user?.id;
+    if (!authUserId) {
+      throw new HttpException('Usuário não autenticado', HttpStatus.UNAUTHORIZED);
+    }
+
+    if (!file) {
+      throw new BadRequestException('Nenhum arquivo foi enviado');
+    }
+
+    // Validar tipo de arquivo
+    const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedMimes.includes(file.mimetype)) {
+      throw new BadRequestException('Tipo de arquivo não permitido. Use JPEG, PNG, GIF ou WebP');
+    }
+
+    try {
+      return await this.usuariosService.uploadAvatar(authUserId, file);
+    } catch (error) {
+      console.error('[UsuariosController.uploadAvatar] Erro:', error);
+      throw error;
+    }
   }
 
   @Get()
@@ -200,8 +258,18 @@ export class UsuariosController {
   @ApiOperation({ summary: 'Atualizar usuário' })
   @ApiResponse({ status: 200, description: 'Usuário atualizado com sucesso' })
   @ApiResponse({ status: 404, description: 'Usuário não encontrado' })
+  @ApiResponse({ status: 500, description: 'Erro interno do servidor' })
   async update(@Param('id') id: string, @Body() updateUsuarioDto: UpdateUsuarioDto) {
-    return this.usuariosService.update(id, updateUsuarioDto);
+    try {
+      console.log('[UsuariosController.update] Recebido:', { id, updateUsuarioDto });
+      const result = await this.usuariosService.update(id, updateUsuarioDto);
+      console.log('[UsuariosController.update] Sucesso:', result);
+      return result;
+    } catch (error) {
+      console.error('[UsuariosController.update] Erro completo:', error);
+      console.error('[UsuariosController.update] Stack:', error.stack);
+      throw error; // Re-lançar HttpException do service
+    }
   }
 
   @Put(':id/deactivate')
@@ -210,5 +278,13 @@ export class UsuariosController {
   @ApiResponse({ status: 404, description: 'Usuário não encontrado' })
   async deactivate(@Param('id') id: string) {
     return this.usuariosService.deactivate(id);
+  }
+
+  @Get('dentistas')
+  @ApiOperation({ summary: 'Listar apenas dentistas da empresa' })
+  @ApiResponse({ status: 200, description: 'Lista de dentistas' })
+  @ApiResponse({ status: 401, description: 'Não autorizado' })
+  async findAllDentistas(@EmpresaId() empresaId: string) {
+    return this.usuariosService.findAllDentistas(empresaId);
   }
 }

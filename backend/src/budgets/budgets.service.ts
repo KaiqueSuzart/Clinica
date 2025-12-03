@@ -259,12 +259,16 @@ export class BudgetsService {
     return budget;
   }
 
-  async remove(id: string, empresaId: string): Promise<void> {
+  async remove(id: string, empresaId: string): Promise<{ success: boolean; message: string }> {
     // Deletar itens primeiro (devido à foreign key)
-    await this.supabase.getAdminClient()
+    const { error: itensError } = await this.supabase.getAdminClient()
       .from('itens_orcamento')
       .delete()
       .eq('orcamento_id', id);
+
+    if (itensError) {
+      throw new Error(`Erro ao deletar itens do orçamento: ${itensError.message}`);
+    }
 
     // Deletar orçamento
     const { error } = await this.supabase.getAdminClient()
@@ -276,24 +280,39 @@ export class BudgetsService {
     if (error) {
       throw new Error(`Erro ao deletar orçamento: ${error.message}`);
     }
+
+    return {
+      success: true,
+      message: 'Orçamento deletado com sucesso'
+    };
   }
 
   async updateStatus(id: string, status: string, empresaId: string): Promise<Budget> {
-    const { data, error } = await this.supabase.getAdminClient()
-      .from('orcamentos')
-      .update({
-        status,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .eq('empresa_id', empresaId)
-      .select()
-      .single();
+    try {
+      const { data, error } = await this.supabase.getAdminClient()
+        .from('orcamentos')
+        .update({
+          status,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .eq('empresa_id', empresaId)
+        .select()
+        .single();
 
-    if (error) {
-      throw new Error(`Erro ao atualizar status do orçamento: ${error.message}`);
+      if (error) {
+        console.error('[BudgetsService.updateStatus] Erro do Supabase:', error);
+        throw new Error(`Erro ao atualizar status do orçamento: ${error.message}`);
+      }
+
+      if (!data) {
+        throw new Error('Orçamento não encontrado após atualização');
+      }
+
+      return data;
+    } catch (error) {
+      console.error('[BudgetsService.updateStatus] Erro genérico:', error);
+      throw error;
     }
-
-    return data;
   }
 }

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString, IsEmail, IsPhoneNumber } from 'class-validator';
+import { IsOptional, IsString, IsEmail, IsPhoneNumber, IsBoolean } from 'class-validator';
 
 export class UpdateUsuarioDto {
   @ApiProperty({ 
@@ -20,7 +20,22 @@ export class UpdateUsuarioDto {
   @IsString()
   telefone?: string;
 
+  @ApiProperty({ 
+    description: 'Cargo do usuário',
+    example: 'Dentista',
+    required: false 
+  })
+  @IsOptional()
+  @IsString()
+  cargo?: string;
 
+  @ApiProperty({ 
+    description: 'Status ativo do usuário',
+    example: true,
+    required: false 
+  })
+  @IsOptional()
+  ativo?: boolean;
 
   @ApiProperty({ 
     description: 'URL do avatar do usuário',

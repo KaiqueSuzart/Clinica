@@ -4,7 +4,7 @@ import { SupabaseService } from '../supabase/supabase.service';
 @Injectable()
 export class PatientsService {
   constructor(private supabaseService: SupabaseService) {}
-  
+
   // Função auxiliar para normalizar empresa_id (pode ser string ou number)
   private normalizeEmpresaId(empresaId: string | number): { num: number | null; str: string } {
     const str = empresaId?.toString() || '';
@@ -55,11 +55,11 @@ export class PatientsService {
           console.log('[PatientsService.findAll] Tentando novamente como string...');
           const { data: dataStr, error: errorStr } = await this.supabaseService
             .getAdminClient()
-            .from('clientelA')
-            .select('*')
+      .from('clientelA')
+      .select('*')
             .eq('empresa', empresaIdStr)
-            .order('nome');
-          
+      .order('nome');
+
           if (errorStr) {
             console.error('[PatientsService.findAll] Erro também como string:', errorStr);
             throw errorStr;
@@ -67,7 +67,7 @@ export class PatientsService {
           
           console.log('[PatientsService.findAll] Pacientes encontrados (string):', dataStr?.length || 0);
           return dataStr || [];
-        }
+  }
         throw error;
       }
       
@@ -117,24 +117,24 @@ export class PatientsService {
     try {
       // Converter empresaId para número se necessário (a tabela pode esperar número)
       const empresaIdNum = typeof empresaId === 'string' ? parseInt(empresaId, 10) : Number(empresaId);
-      
-      const { data, error } = await this.supabaseService
+    
+    const { data, error } = await this.supabaseService
         .getAdminClient()
-        .from('clientelA')
+      .from('clientelA')
         .insert({
           ...patientData,
           empresa: empresaIdNum
         })
-        .select()
-        .single();
+      .select()
+      .single();
 
-      if (error) {
+    if (error) {
         console.error('[PatientsService.create] Erro ao criar paciente:', error);
-        throw error;
-      }
-      
+      throw error;
+    }
+    
       console.log('[PatientsService.create] Paciente criado com sucesso:', data);
-      return data;
+    return data;
     } catch (error) {
       console.error('[PatientsService.create] Erro completo:', error);
       throw error;

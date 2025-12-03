@@ -111,3 +111,4 @@ Após o deploy, verifique:
 4. ✅ `GET /api/patients` retorna 401 sem token
 5. ✅ Rotas protegidas continuam funcionando com token válido
 
+
