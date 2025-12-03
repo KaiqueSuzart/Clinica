@@ -17,6 +17,7 @@ Sistema completo de gestão odontológica desenvolvido com **NestJS**, **React**
 
 ## ✨ Características
 
+
 - 📅 **Gestão de Agenda** - Agendamento e controle de consultas
 - 👥 **Gestão de Pacientes** - CRUD completo com histórico
 - 💼 **Catálogo de Procedimentos** - Gestão de procedimentos odontológicos
