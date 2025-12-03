@@ -1,6 +1,7 @@
 import { Controller, Post, Body, HttpCode, HttpStatus, Get, UseGuards, Request, UnauthorizedException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
+import { Public } from './decorators/public.decorator';
 
 class LoginDto {
   email: string;
@@ -42,6 +43,7 @@ class SwitchEmpresaDto {
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Realizar login' })
@@ -51,6 +53,7 @@ export class AuthController {
     return this.authService.login(loginDto.email, loginDto.password);
   }
 
+  @Public()
   @Post('register')
   @ApiOperation({ summary: 'Registrar novo usuário em empresa existente' })
   @ApiResponse({ status: 201, description: 'Usuário registrado com sucesso' })
@@ -66,6 +69,7 @@ export class AuthController {
     return this.authService.register(registerDto.email, registerDto.password, userData);
   }
 
+  @Public()
   @Post('register-empresa')
   @ApiOperation({ summary: 'Registrar nova empresa e usuário administrador' })
   @ApiResponse({ status: 201, description: 'Empresa e usuário registrados com sucesso' })

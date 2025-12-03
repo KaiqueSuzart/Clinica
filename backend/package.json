@@ -7,6 +7,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "nest build",
+    "build:verify": "nest build && test -f dist/main.js && echo 'Build successful: dist/main.js exists' || (echo 'Build failed: dist/main.js not found' && exit 1)",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",

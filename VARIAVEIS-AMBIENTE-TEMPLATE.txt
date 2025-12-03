@@ -1,0 +1,45 @@
+# 🔑 Template de Variáveis de Ambiente para Digital Ocean
+
+# COPIE E COLE NO EDITOR DE VARIÁVEIS DO DIGITAL OCEAN
+# Substitua os valores abaixo pelos seus valores reais do Supabase
+
+# ============================================
+# BACKEND - Variáveis de Ambiente
+# ============================================
+
+SUPABASE_URL=https://seu-projeto.supabase.co
+SUPABASE_ANON_KEY=sua_chave_anon_aqui
+SUPABASE_SERVICE_ROLE_KEY=sua_service_role_key_aqui
+PORT=3001
+NODE_ENV=production
+JWT_SECRET=GERE_UMA_CHAVE_SECRETA_FORTE_AQUI
+JWT_EXPIRES_IN=7d
+FRONTEND_URL=https://seu-app.ondigitalocean.app
+FRONTEND_PREVIEW_URL=https://seu-app.ondigitalocean.app
+
+# ============================================
+# ONDE ENCONTRAR OS VALORES:
+# ============================================
+# 
+# 1. Acesse: https://app.supabase.com
+# 2. Selecione seu projeto
+# 3. Vá em: Settings > API
+# 4. Copie:
+#    - Project URL → SUPABASE_URL
+#    - anon public → SUPABASE_ANON_KEY
+#    - service_role (secret) → SUPABASE_SERVICE_ROLE_KEY
+#
+# 5. Para JWT_SECRET, gere uma chave forte:
+#    - Online: https://generate-secret.vercel.app/32
+#    - Terminal: openssl rand -base64 32
+#
+# ============================================
+# FRONTEND - Variáveis de Ambiente
+# ============================================
+# (Adicione depois de criar o componente Frontend)
+#
+# VITE_API_BASE_URL=https://seu-backend.ondigitalocean.app
+#
+# Nota: Você vai atualizar essa URL depois do primeiro deploy,
+# quando o Digital Ocean gerar a URL real do backend.
+

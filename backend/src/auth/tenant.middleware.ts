@@ -6,8 +6,31 @@ import { SupabaseService } from '../supabase/supabase.service';
 export class TenantMiddleware implements NestMiddleware {
   constructor(private supabaseService: SupabaseService) {}
 
+  // Lista de rotas públicas que não precisam de autenticação
+  private readonly publicRoutes = [
+    '/auth/login',
+    '/api/auth/login',
+    '/auth/register',
+    '/api/auth/register',
+    '/auth/register-empresa',
+    '/api/auth/register-empresa',
+    '/auth/logout',
+    '/api/auth/logout',
+  ];
+
+  private isPublicRoute(path: string): boolean {
+    // Verificar se o path está na lista de rotas públicas
+    return this.publicRoutes.some(route => path === route || path.endsWith(route));
+  }
+
   async use(req: Request, res: Response, next: NextFunction) {
     try {
+      // Se for uma rota pública, pular autenticação
+      if (this.isPublicRoute(req.path)) {
+        console.log(`[TenantMiddleware] Rota pública detectada: ${req.path}, pulando autenticação`);
+        return next();
+      }
+
       // Extrair token do header Authorization
       const authHeader = req.headers.authorization;
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
