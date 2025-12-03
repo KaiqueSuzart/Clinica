@@ -33,18 +33,47 @@ export class FilesService {
     createFileDto: any,
     empresaId: string
   ): Promise<PatientFile> {
-    const supabase = this.supabaseService.getClient();
+    const supabase = this.supabaseService.getAdminClient();
 
     try {
-      // Validar que o paciente pertence à empresa
+      // Validar que o paciente pertence à empresa usando comparação robusta
       const { data: patient, error: patientError } = await supabase
         .from('clientelA')
         .select('id, empresa')
         .eq('id', createFileDto.patient_id)
-        .eq('empresa', empresaId)
-        .single();
+        .maybeSingle();
 
-      if (patientError || !patient) {
+      if (patientError) {
+        console.error('❌ [FilesService.uploadFile] Erro ao buscar paciente:', patientError);
+        throw new NotFoundException('Erro ao buscar paciente');
+      }
+
+      if (!patient) {
+        throw new NotFoundException('Paciente não encontrado ou não pertence à empresa');
+      }
+
+      // Comparação robusta de empresa_id (pode ser string ou number)
+      const patientEmpresaStr = patient.empresa?.toString();
+      const empresaIdStr = empresaId?.toString();
+      const patientEmpresaNum = Number(patient.empresa);
+      const empresaIdNum = Number(empresaId);
+
+      let isSameEmpresa = false;
+      if (patientEmpresaStr === empresaIdStr) {
+        isSameEmpresa = true;
+      } else if (patientEmpresaNum === empresaIdNum && !isNaN(patientEmpresaNum) && !isNaN(empresaIdNum)) {
+        isSameEmpresa = true;
+      } else if (patient.empresa === empresaId) {
+        isSameEmpresa = true;
+      }
+
+      if (!isSameEmpresa) {
+        console.error('❌ [FilesService.uploadFile] Paciente não pertence à empresa:', {
+          patientId: createFileDto.patient_id,
+          patientEmpresa: patient.empresa,
+          empresaId,
+          tipos: { patientEmpresa: typeof patient.empresa, empresaId: typeof empresaId }
+        });
         throw new NotFoundException('Paciente não encontrado ou não pertence à empresa');
       }
 
@@ -107,17 +136,46 @@ export class FilesService {
   }
 
   async findAllByPatient(patientId: string, empresaId: string): Promise<PatientFile[]> {
-    const supabase = this.supabaseService.getClient();
+    const supabase = this.supabaseService.getAdminClient();
 
-    // Validar que o paciente pertence à empresa
+    // Validar que o paciente pertence à empresa usando comparação robusta
     const { data: patient, error: patientError } = await supabase
       .from('clientelA')
       .select('id, empresa')
       .eq('id', patientId)
-      .eq('empresa', empresaId)
-      .single();
+      .maybeSingle();
 
-    if (patientError || !patient) {
+    if (patientError) {
+      console.error('❌ [FilesService.findAllByPatient] Erro ao buscar paciente:', patientError);
+      throw new NotFoundException('Erro ao buscar paciente');
+    }
+
+    if (!patient) {
+      throw new NotFoundException('Paciente não encontrado ou não pertence à empresa');
+    }
+
+    // Comparação robusta de empresa_id (pode ser string ou number)
+    const patientEmpresaStr = patient.empresa?.toString();
+    const empresaIdStr = empresaId?.toString();
+    const patientEmpresaNum = Number(patient.empresa);
+    const empresaIdNum = Number(empresaId);
+
+    let isSameEmpresa = false;
+    if (patientEmpresaStr === empresaIdStr) {
+      isSameEmpresa = true;
+    } else if (patientEmpresaNum === empresaIdNum && !isNaN(patientEmpresaNum) && !isNaN(empresaIdNum)) {
+      isSameEmpresa = true;
+    } else if (patient.empresa === empresaId) {
+      isSameEmpresa = true;
+    }
+
+    if (!isSameEmpresa) {
+      console.error('❌ [FilesService.findAllByPatient] Paciente não pertence à empresa:', {
+        patientId,
+        patientEmpresa: patient.empresa,
+        empresaId,
+        tipos: { patientEmpresa: typeof patient.empresa, empresaId: typeof empresaId }
+      });
       throw new NotFoundException('Paciente não encontrado ou não pertence à empresa');
     }
 
@@ -145,7 +203,7 @@ export class FilesService {
   }
 
   async findOne(id: string, empresaId: string): Promise<PatientFile> {
-    const supabase = this.supabaseService.getClient();
+    const supabase = this.supabaseService.getAdminClient();
 
     // Buscar arquivo primeiro
     const { data: fileData, error: fileError } = await supabase
@@ -158,15 +216,44 @@ export class FilesService {
       throw new NotFoundException('Arquivo não encontrado');
     }
 
-    // Validar que o paciente pertence à empresa
+    // Validar que o paciente pertence à empresa usando comparação robusta
     const { data: patient, error: patientError } = await supabase
       .from('clientelA')
       .select('id, empresa')
       .eq('id', fileData.patient_id)
-      .eq('empresa', empresaId)
-      .single();
+      .maybeSingle();
 
-    if (patientError || !patient) {
+    if (patientError) {
+      console.error('❌ [FilesService.findOne] Erro ao buscar paciente:', patientError);
+      throw new NotFoundException('Arquivo não encontrado');
+    }
+
+    if (!patient) {
+      throw new NotFoundException('Arquivo não encontrado');
+    }
+
+    // Comparação robusta de empresa_id (pode ser string ou number)
+    const patientEmpresaStr = patient.empresa?.toString();
+    const empresaIdStr = empresaId?.toString();
+    const patientEmpresaNum = Number(patient.empresa);
+    const empresaIdNum = Number(empresaId);
+
+    let isSameEmpresa = false;
+    if (patientEmpresaStr === empresaIdStr) {
+      isSameEmpresa = true;
+    } else if (patientEmpresaNum === empresaIdNum && !isNaN(patientEmpresaNum) && !isNaN(empresaIdNum)) {
+      isSameEmpresa = true;
+    } else if (patient.empresa === empresaId) {
+      isSameEmpresa = true;
+    }
+
+    if (!isSameEmpresa) {
+      console.error('❌ [FilesService.findOne] Paciente não pertence à empresa:', {
+        patientId: fileData.patient_id,
+        patientEmpresa: patient.empresa,
+        empresaId,
+        tipos: { patientEmpresa: typeof patient.empresa, empresaId: typeof empresaId }
+      });
       throw new NotFoundException('Arquivo não encontrado');
     }
 
@@ -184,7 +271,7 @@ export class FilesService {
   }
 
   async update(id: string, updateFileDto: UpdateFileDto, empresaId: string): Promise<PatientFile> {
-    const supabase = this.supabaseService.getClient();
+    const supabase = this.supabaseService.getAdminClient();
 
     // Primeiro buscar o arquivo
     const { data: fileData, error: findError } = await supabase
@@ -197,15 +284,44 @@ export class FilesService {
       throw new NotFoundException('Arquivo não encontrado');
     }
 
-    // Validar que o paciente pertence à empresa
+    // Validar que o paciente pertence à empresa usando comparação robusta
     const { data: patient, error: patientError } = await supabase
       .from('clientelA')
       .select('id, empresa')
       .eq('id', fileData.patient_id)
-      .eq('empresa', empresaId)
-      .single();
+      .maybeSingle();
 
-    if (patientError || !patient) {
+    if (patientError) {
+      console.error('❌ [FilesService.update] Erro ao buscar paciente:', patientError);
+      throw new NotFoundException('Arquivo não encontrado');
+    }
+
+    if (!patient) {
+      throw new NotFoundException('Arquivo não encontrado');
+    }
+
+    // Comparação robusta de empresa_id (pode ser string ou number)
+    const patientEmpresaStr = patient.empresa?.toString();
+    const empresaIdStr = empresaId?.toString();
+    const patientEmpresaNum = Number(patient.empresa);
+    const empresaIdNum = Number(empresaId);
+
+    let isSameEmpresa = false;
+    if (patientEmpresaStr === empresaIdStr) {
+      isSameEmpresa = true;
+    } else if (patientEmpresaNum === empresaIdNum && !isNaN(patientEmpresaNum) && !isNaN(empresaIdNum)) {
+      isSameEmpresa = true;
+    } else if (patient.empresa === empresaId) {
+      isSameEmpresa = true;
+    }
+
+    if (!isSameEmpresa) {
+      console.error('❌ [FilesService.update] Paciente não pertence à empresa:', {
+        patientId: fileData.patient_id,
+        patientEmpresa: patient.empresa,
+        empresaId,
+        tipos: { patientEmpresa: typeof patient.empresa, empresaId: typeof empresaId }
+      });
       throw new NotFoundException('Arquivo não encontrado');
     }
 
@@ -232,7 +348,7 @@ export class FilesService {
   }
 
   async remove(id: string, empresaId: string): Promise<void> {
-    const supabase = this.supabaseService.getClient();
+    const supabase = this.supabaseService.getAdminClient();
 
     // Buscar o arquivo primeiro
     const { data: fileData, error: findError } = await supabase
@@ -245,15 +361,44 @@ export class FilesService {
       throw new NotFoundException('Arquivo não encontrado');
     }
 
-    // Validar que o paciente pertence à empresa
+    // Validar que o paciente pertence à empresa usando comparação robusta
     const { data: patient, error: patientError } = await supabase
       .from('clientelA')
       .select('id, empresa')
       .eq('id', fileData.patient_id)
-      .eq('empresa', empresaId)
-      .single();
+      .maybeSingle();
 
-    if (patientError || !patient) {
+    if (patientError) {
+      console.error('❌ [FilesService.remove] Erro ao buscar paciente:', patientError);
+      throw new NotFoundException('Arquivo não encontrado');
+    }
+
+    if (!patient) {
+      throw new NotFoundException('Arquivo não encontrado');
+    }
+
+    // Comparação robusta de empresa_id (pode ser string ou number)
+    const patientEmpresaStr = patient.empresa?.toString();
+    const empresaIdStr = empresaId?.toString();
+    const patientEmpresaNum = Number(patient.empresa);
+    const empresaIdNum = Number(empresaId);
+
+    let isSameEmpresa = false;
+    if (patientEmpresaStr === empresaIdStr) {
+      isSameEmpresa = true;
+    } else if (patientEmpresaNum === empresaIdNum && !isNaN(patientEmpresaNum) && !isNaN(empresaIdNum)) {
+      isSameEmpresa = true;
+    } else if (patient.empresa === empresaId) {
+      isSameEmpresa = true;
+    }
+
+    if (!isSameEmpresa) {
+      console.error('❌ [FilesService.remove] Paciente não pertence à empresa:', {
+        patientId: fileData.patient_id,
+        patientEmpresa: patient.empresa,
+        empresaId,
+        tipos: { patientEmpresa: typeof patient.empresa, empresaId: typeof empresaId }
+      });
       throw new NotFoundException('Arquivo não encontrado');
     }
 
@@ -278,17 +423,46 @@ export class FilesService {
   }
 
   async getFilesByCategory(patientId: string, category: FileCategory, empresaId: string): Promise<PatientFile[]> {
-    const supabase = this.supabaseService.getClient();
+    const supabase = this.supabaseService.getAdminClient();
 
-    // Validar que o paciente pertence à empresa
+    // Validar que o paciente pertence à empresa usando comparação robusta
     const { data: patient, error: patientError } = await supabase
       .from('clientelA')
       .select('id, empresa')
       .eq('id', patientId)
-      .eq('empresa', empresaId)
-      .single();
+      .maybeSingle();
 
-    if (patientError || !patient) {
+    if (patientError) {
+      console.error('❌ [FilesService.getFilesByCategory] Erro ao buscar paciente:', patientError);
+      throw new NotFoundException('Erro ao buscar paciente');
+    }
+
+    if (!patient) {
+      throw new NotFoundException('Paciente não encontrado ou não pertence à empresa');
+    }
+
+    // Comparação robusta de empresa_id (pode ser string ou number)
+    const patientEmpresaStr = patient.empresa?.toString();
+    const empresaIdStr = empresaId?.toString();
+    const patientEmpresaNum = Number(patient.empresa);
+    const empresaIdNum = Number(empresaId);
+
+    let isSameEmpresa = false;
+    if (patientEmpresaStr === empresaIdStr) {
+      isSameEmpresa = true;
+    } else if (patientEmpresaNum === empresaIdNum && !isNaN(patientEmpresaNum) && !isNaN(empresaIdNum)) {
+      isSameEmpresa = true;
+    } else if (patient.empresa === empresaId) {
+      isSameEmpresa = true;
+    }
+
+    if (!isSameEmpresa) {
+      console.error('❌ [FilesService.getFilesByCategory] Paciente não pertence à empresa:', {
+        patientId,
+        patientEmpresa: patient.empresa,
+        empresaId,
+        tipos: { patientEmpresa: typeof patient.empresa, empresaId: typeof empresaId }
+      });
       throw new NotFoundException('Paciente não encontrado ou não pertence à empresa');
     }
 
@@ -317,17 +491,46 @@ export class FilesService {
   }
 
   async getPatientStats(patientId: string, empresaId: string) {
-    const supabase = this.supabaseService.getClient();
+    const supabase = this.supabaseService.getAdminClient();
 
-    // Validar que o paciente pertence à empresa
+    // Validar que o paciente pertence à empresa usando comparação robusta
     const { data: patient, error: patientError } = await supabase
       .from('clientelA')
       .select('id, empresa')
       .eq('id', patientId)
-      .eq('empresa', empresaId)
-      .single();
+      .maybeSingle();
 
-    if (patientError || !patient) {
+    if (patientError) {
+      console.error('❌ [FilesService.getPatientStats] Erro ao buscar paciente:', patientError);
+      throw new NotFoundException('Erro ao buscar paciente');
+    }
+
+    if (!patient) {
+      throw new NotFoundException('Paciente não encontrado ou não pertence à empresa');
+    }
+
+    // Comparação robusta de empresa_id (pode ser string ou number)
+    const patientEmpresaStr = patient.empresa?.toString();
+    const empresaIdStr = empresaId?.toString();
+    const patientEmpresaNum = Number(patient.empresa);
+    const empresaIdNum = Number(empresaId);
+
+    let isSameEmpresa = false;
+    if (patientEmpresaStr === empresaIdStr) {
+      isSameEmpresa = true;
+    } else if (patientEmpresaNum === empresaIdNum && !isNaN(patientEmpresaNum) && !isNaN(empresaIdNum)) {
+      isSameEmpresa = true;
+    } else if (patient.empresa === empresaId) {
+      isSameEmpresa = true;
+    }
+
+    if (!isSameEmpresa) {
+      console.error('❌ [FilesService.getPatientStats] Paciente não pertence à empresa:', {
+        patientId,
+        patientEmpresa: patient.empresa,
+        empresaId,
+        tipos: { patientEmpresa: typeof patient.empresa, empresaId: typeof empresaId }
+      });
       throw new NotFoundException('Paciente não encontrado ou não pertence à empresa');
     }
 
