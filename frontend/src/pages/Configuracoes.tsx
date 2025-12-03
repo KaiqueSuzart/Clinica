@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Save, User, MessageSquare, Bell, Shield, Clock, Calendar, Users, Upload, X } from 'lucide-react';
+import { Settings, Save, User, MessageSquare, Bell, Shield, Clock, Calendar, Users, Upload, X, Smartphone, Info } from 'lucide-react';
 import Card from '../components/UI/Card';
 import Button from '../components/UI/Button';
 import { clinicSettings } from '../data/mockData';
@@ -7,6 +7,7 @@ import { useBusinessHours } from '../contexts/BusinessHoursContext';
 import { useUser } from '../contexts/UserContext';
 import { useAuth } from '../components/Auth/AuthProvider';
 import { apiService } from '../services/api';
+import InstallPromptCard from '../components/PWA/InstallPromptCard';
 
 export default function Configuracoes() {
   const [settings, setSettings] = useState(clinicSettings);
@@ -39,7 +40,8 @@ export default function Configuracoes() {
     { id: 'schedule', label: 'Horário de Funcionamento', icon: Clock, permission: 'configuracoes', requiresAdmin: true },
     { id: 'users', label: 'Usuários', icon: User, permission: 'configuracoes', requiresAdmin: true },
     { id: 'messages', label: 'Templates de Mensagens', icon: MessageSquare, permission: 'mensagens', requiresAdmin: false },
-    { id: 'notifications', label: 'Notificações', icon: Bell, permission: 'configuracoes', requiresAdmin: false }
+    { id: 'notifications', label: 'Notificações', icon: Bell, permission: 'configuracoes', requiresAdmin: false },
+    { id: 'app', label: 'Aplicativo', icon: Smartphone, permission: 'configuracoes', requiresAdmin: false }
   ];
 
   const tabs = allTabs.filter(tab => {
@@ -912,6 +914,46 @@ export default function Configuracoes() {
                 </div>
                 </div>
               )}
+            </Card>
+          )}
+
+          {activeTab === 'app' && (
+            <Card title="Aplicativo" subtitle="Instale e configure o aplicativo PWA">
+              <div className="space-y-6">
+                <InstallPromptCard />
+                
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                  <h4 className="font-semibold text-yellow-900 dark:text-yellow-100 mb-2 flex items-center">
+                    <Info className="w-5 h-5 mr-2" />
+                    Abrir Automaticamente ao Iniciar o Computador
+                  </h4>
+                  <p className="text-sm text-yellow-700 dark:text-yellow-300 mb-3">
+                    Para fazer o aplicativo abrir automaticamente quando o computador iniciar:
+                  </p>
+                  <div className="space-y-2 text-sm text-yellow-800 dark:text-yellow-200">
+                    <p><strong>Windows:</strong></p>
+                    <ol className="list-decimal list-inside ml-4 space-y-1">
+                      <li>Instale o aplicativo (use o botão acima)</li>
+                      <li>Abra o aplicativo instalado</li>
+                      <li>Pressione <code className="bg-yellow-100 dark:bg-yellow-800 px-1 rounded">Win + R</code></li>
+                      <li>Digite: <code className="bg-yellow-100 dark:bg-yellow-800 px-1 rounded">shell:startup</code> e pressione Enter</li>
+                      <li>Arraste o atalho do aplicativo para essa pasta</li>
+                    </ol>
+                    <p className="mt-3"><strong>Mac:</strong></p>
+                    <ol className="list-decimal list-inside ml-4 space-y-1">
+                      <li>Instale o aplicativo</li>
+                      <li>Abra &quot;Preferências do Sistema&quot; &gt; &quot;Usuários e Grupos&quot;</li>
+                      <li>Vá em &quot;Itens de Login&quot;</li>
+                      <li>Adicione o aplicativo à lista</li>
+                    </ol>
+                    <p className="mt-3"><strong>Linux:</strong></p>
+                    <ol className="list-decimal list-inside ml-4 space-y-1">
+                      <li>Instale o aplicativo</li>
+                      <li>Adicione um arquivo .desktop em <code className="bg-yellow-100 dark:bg-yellow-800 px-1 rounded">~/.config/autostart/</code></li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
             </Card>
           )}
         </div>
