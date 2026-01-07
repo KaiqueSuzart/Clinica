@@ -75,11 +75,15 @@ export default function EditAppointmentModal({ isOpen, onClose, appointment, onS
       console.log('Inicializando modal com appointment.date:', appointment.date);
       console.log('Data local criada:', localDate);
       console.log('Dia da data local:', localDate.getDate());
+      console.log('Procedimento da consulta:', appointment.procedure);
       
       setSelectedDate(localDate);
       setSelectedTime(appointment.time);
       setSelectedPatient(appointment.patientId);
-      setProcedure(appointment.procedure);
+      // Garantir que o procedimento seja setado mesmo que os procedimentos ainda não estejam carregados
+      if (appointment.procedure) {
+        setProcedure(appointment.procedure);
+      }
       setProfessional(appointment.professional);
       setDuration(appointment.duration);
       setStatus(appointment.status);
@@ -87,6 +91,26 @@ export default function EditAppointmentModal({ isOpen, onClose, appointment, onS
       setCurrentMonth(localDate);
     }
   }, [appointment]);
+
+  // Atualizar procedimento quando os procedimentos forem carregados do backend
+  // Isso garante que o procedimento seja selecionado mesmo se os dados ainda não estiverem carregados
+  useEffect(() => {
+    if (appointment?.procedure && procedimentos.length > 0 && !procedure) {
+      // Verificar se o procedimento existe no backend
+      const procedimentoEncontrado = procedimentos.find(
+        proc => proc.nome === appointment.procedure
+      );
+      
+      if (procedimentoEncontrado) {
+        console.log('Procedimento encontrado no backend, setando:', procedimentoEncontrado.nome);
+        setProcedure(procedimentoEncontrado.nome);
+      } else {
+        // Se não encontrar, usar o valor original mesmo assim
+        console.log('Procedimento não encontrado no backend, usando valor original:', appointment.procedure);
+        setProcedure(appointment.procedure);
+      }
+    }
+  }, [procedimentos.length, appointment?.procedure]);
 
   const loadPatients = async () => {
     try {

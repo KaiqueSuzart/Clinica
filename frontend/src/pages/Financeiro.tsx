@@ -193,12 +193,12 @@ export default function Financeiro() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Financeiro</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">Financeiro</h1>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
             Gerencie pagamentos e receitas da clínica
           </p>
         </div>
@@ -208,38 +208,40 @@ export default function Financeiro() {
             setShowRegisterModal(true);
           }}
           icon={Plus}
+          className="w-full sm:w-auto"
         >
-          Registrar Pagamento
+          <span className="hidden sm:inline">Registrar Pagamento</span>
+          <span className="sm:hidden">Registrar</span>
         </Button>
       </div>
 
       {/* Resumo Financeiro */}
       {paymentsSummary && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <Card>
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Total Recebido</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Total Recebido</p>
+                <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white truncate">
                   {formatCurrency(paymentsSummary?.total || 0)}
                 </p>
               </div>
-              <div className="p-3 bg-green-100 dark:bg-green-900 rounded-lg">
-                <TrendingUp className="w-6 h-6 text-green-600 dark:text-green-400" />
+              <div className="p-2 sm:p-3 bg-green-100 dark:bg-green-900 rounded-lg flex-shrink-0">
+                <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 dark:text-green-400" />
               </div>
             </div>
           </Card>
 
           <Card>
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Total de Pagamentos</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Total de Pagamentos</p>
+                <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
                   {paymentsSummary?.quantidade || 0}
                 </p>
               </div>
-              <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                <DollarSign className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              <div className="p-2 sm:p-3 bg-blue-100 dark:bg-blue-900 rounded-lg flex-shrink-0">
+                <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400" />
               </div>
             </div>
           </Card>
@@ -249,15 +251,15 @@ export default function Financeiro() {
             ? Object.entries(paymentsSummary.por_forma_pagamento).slice(0, 2).map(([method, value]) => (
                 <Card key={method}>
                   <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">
                         {getPaymentMethodLabel(method as PaymentMethod)}
                       </p>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                      <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white truncate">
                         {formatCurrency(value as number)}
                       </p>
                     </div>
-                    <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-lg">
+                    <div className="p-2 sm:p-3 bg-purple-100 dark:bg-purple-900 rounded-lg flex-shrink-0">
                       {getPaymentMethodIcon(method as PaymentMethod)}
                     </div>
                   </div>
@@ -269,9 +271,9 @@ export default function Financeiro() {
 
       {/* Filtros */}
       <Card>
-        <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
+          <div className="sm:col-span-2 lg:col-span-2 xl:col-span-2">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Buscar
             </label>
             <div className="relative">
@@ -281,43 +283,43 @@ export default function Financeiro() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Paciente, procedimento, valor..."
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Data Início
             </label>
             <input
               type="date"
               value={filterDateStart}
               onChange={(e) => setFilterDateStart(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+              className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Data Fim
             </label>
             <input
               type="date"
               value={filterDateEnd}
               onChange={(e) => setFilterDateEnd(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+              className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Forma de Pagamento
             </label>
             <select
               value={filterPaymentMethod}
               onChange={(e) => setFilterPaymentMethod(e.target.value as PaymentMethod | 'all')}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+              className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             >
               <option value="all">Todas</option>
               <option value="dinheiro">Dinheiro</option>
@@ -329,13 +331,13 @@ export default function Financeiro() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Status
             </label>
             <select
               value={filterConfirmed}
               onChange={(e) => setFilterConfirmed(e.target.value as 'all' | 'true' | 'false')}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+              className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             >
               <option value="all">Todos</option>
               <option value="true">Confirmados</option>
@@ -347,71 +349,82 @@ export default function Financeiro() {
 
       {/* Lista de Pagamentos */}
       <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-200 dark:border-gray-700">
-                <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Data</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Paciente</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Procedimento</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Valor</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Forma de Pagamento</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700 dark:text-gray-300">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredPayments.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="text-center py-8 text-gray-500">
-                    Nenhum pagamento encontrado
-                  </td>
-                </tr>
-              ) : (
-                filteredPayments.map((payment) => (
-                  <tr
-                    key={payment.id}
-                    onClick={() => {
-                      setPaymentToView(payment);
-                      setShowPaymentDetails(true);
-                    }}
-                    className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
-                  >
-                    <td className="py-3 px-4 text-gray-900 dark:text-gray-100">
-                      {formatDate(payment.data_pagamento)}
-                    </td>
-                    <td className="py-3 px-4 text-gray-900 dark:text-gray-100">
-                      {payment.paciente_nome || `Paciente ${payment.paciente_id}`}
-                    </td>
-                    <td className="py-3 px-4 text-gray-900 dark:text-gray-100">
-                      {payment.consulta_procedimento || payment.descricao || '-'}
-                    </td>
-                    <td className="py-3 px-4 font-semibold text-gray-900 dark:text-gray-100">
-                      {formatCurrency(payment.valor)}
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center space-x-2">
-                        {getPaymentMethodIcon(payment.forma_pagamento)}
-                        <span className="text-gray-900 dark:text-gray-100">
-                          {getPaymentMethodLabel(payment.forma_pagamento)}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          payment.confirmado
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                            : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                        }`}
-                      >
-                        {payment.confirmado ? 'Confirmado' : 'Pendente'}
-                      </span>
-                    </td>
+        <div className="overflow-x-auto -mx-4 sm:mx-0">
+          <div className="inline-block min-w-full align-middle sm:px-0">
+            <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Data</th>
+                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Paciente</th>
+                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider hidden sm:table-cell">Procedimento</th>
+                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Valor</th>
+                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider hidden md:table-cell">Forma de Pagamento</th>
+                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Status</th>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                </thead>
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  {filteredPayments.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-8 text-gray-500 dark:text-gray-400">
+                        Nenhum pagamento encontrado
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredPayments.map((payment) => (
+                      <tr
+                        key={payment.id}
+                        onClick={() => {
+                          setPaymentToView(payment);
+                          setShowPaymentDetails(true);
+                        }}
+                        className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
+                      >
+                        <td className="px-3 sm:px-4 py-3 text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                          {formatDate(payment.data_pagamento)}
+                        </td>
+                        <td className="px-3 sm:px-4 py-3 text-sm">
+                          <div className="min-w-0">
+                            <div className="text-gray-900 dark:text-gray-100 font-medium truncate">
+                              {payment.paciente_nome || `Paciente ${payment.paciente_id}`}
+                            </div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400 sm:hidden mt-1 truncate">
+                              {payment.consulta_procedimento || payment.descricao || '-'}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-3 sm:px-4 py-3 text-sm text-gray-900 dark:text-gray-100 hidden sm:table-cell truncate">
+                          {payment.consulta_procedimento || payment.descricao || '-'}
+                        </td>
+                        <td className="px-3 sm:px-4 py-3 text-sm font-semibold text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                          {formatCurrency(payment.valor)}
+                        </td>
+                        <td className="px-3 sm:px-4 py-3 text-sm hidden md:table-cell">
+                          <div className="flex items-center space-x-2">
+                            {getPaymentMethodIcon(payment.forma_pagamento)}
+                            <span className="text-gray-900 dark:text-gray-100">
+                              {getPaymentMethodLabel(payment.forma_pagamento)}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-3 sm:px-4 py-3 text-sm">
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                              payment.confirmado
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                            }`}
+                          >
+                            {payment.confirmado ? 'Confirmado' : 'Pendente'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </Card>
 

@@ -110,17 +110,18 @@ export default function Relatorios() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Relatórios</h1>
-          <p className="text-gray-600 dark:text-gray-400">Análise de performance da clínica</p>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-gray-100">Relatórios</h1>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">Análise de performance da clínica</p>
         </div>
-        <div className="flex space-x-3">
-          <Button variant="outline" icon={Filter} onClick={() => setShowFilters(!showFilters)}>
-            {showFilters ? 'Ocultar Filtros' : 'Filtros'}
+        <div className="flex flex-wrap gap-2 sm:gap-3">
+          <Button variant="outline" icon={Filter} onClick={() => setShowFilters(!showFilters)} className="text-sm">
+            <span className="hidden sm:inline">{showFilters ? 'Ocultar Filtros' : 'Filtros'}</span>
+            <span className="sm:hidden">{showFilters ? 'Ocultar' : 'Filtros'}</span>
           </Button>
-          <Button variant="outline" icon={Download} onClick={() => exportData('csv')}>
+          <Button variant="outline" icon={Download} onClick={() => exportData('csv')} className="text-sm">
             CSV
           </Button>
         </div>
@@ -129,26 +130,27 @@ export default function Relatorios() {
       {/* Navegação por Abas */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
         <div className="border-b border-gray-200 dark:border-gray-700">
-          <nav className="-mb-px flex space-x-8 px-6">
+          <nav className="-mb-px flex overflow-x-auto px-3 sm:px-6">
             {[
-              { id: 'overview', label: 'Visão Geral', icon: BarChart3 },
-              { id: 'procedures', label: 'Procedimentos', icon: FileText },
-              { id: 'financial', label: 'Financeiro', icon: DollarSign },
-              { id: 'productivity', label: 'Produtividade', icon: Activity }
+              { id: 'overview', label: 'Visão Geral', icon: BarChart3, shortLabel: 'Geral' },
+              { id: 'procedures', label: 'Procedimentos', icon: FileText, shortLabel: 'Proced.' },
+              { id: 'financial', label: 'Financeiro', icon: DollarSign, shortLabel: 'Financeiro' },
+              { id: 'productivity', label: 'Produtividade', icon: Activity, shortLabel: 'Produt.' }
             ].map((tab) => {
               const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm ${
+                  className={`flex items-center py-3 sm:py-4 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap flex-shrink-0 ${
                     activeTab === tab.id
                       ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
                   }`}
                 >
-                  <Icon className="w-4 h-4 mr-2" />
-                  {tab.label}
+                  <Icon className="w-4 h-4 mr-1 sm:mr-2 flex-shrink-0" />
+                  <span className="hidden sm:inline">{tab.label}</span>
+                  <span className="sm:hidden">{tab.shortLabel}</span>
                 </button>
               );
             })}

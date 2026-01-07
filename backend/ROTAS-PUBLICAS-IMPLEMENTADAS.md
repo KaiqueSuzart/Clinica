@@ -112,3 +112,5 @@ Após o deploy, verifique:
 5. ✅ Rotas protegidas continuam funcionando com token válido
 
 
+
+

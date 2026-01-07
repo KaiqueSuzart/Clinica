@@ -255,17 +255,20 @@ export default function Agenda() {
         throw new Error('ID da consulta não encontrado');
       }
       
+      // Se for um retorno (isReturn), não marcar como realizado diretamente
+      // Retornos devem ser tratados separadamente
+      if ((appointment as any).isReturn) {
+        console.log('É um retorno, não deve ser marcado como realizado aqui');
+        return;
+      }
+      
       const updated = await apiService.markAppointmentAsCompleted(appointment.id);
       
-      // Remover de todas as listas de consultas
-      setTodayAppointments(prev => prev.filter(apt => apt.id !== appointment.id));
-      setWeekAppointments(prev => prev.filter(apt => apt.id !== appointment.id));
-      setMonthAppointments(prev => prev.filter(apt => apt.id !== appointment.id));
+      // Recarregar todos os dados da agenda para garantir consistência
+      // Isso evita duplicações e garante que os dados estejam atualizados
+      await loadAppointments();
       
-      // Adicionar ao histórico
-      setHistoryAppointments(prev => [updated, ...prev]);
-      
-      console.log('Consulta marcada como realizada:', updated);
+      console.log('Consulta marcada como realizada e dados recarregados:', updated);
     } catch (err) {
       setError('Erro ao marcar consulta como realizada');
       console.error('Erro ao marcar consulta como realizada:', err);
@@ -345,14 +348,15 @@ export default function Agenda() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Agenda</h1>
-          <p className="text-gray-600">Gerencie os agendamentos da clínica</p>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">Agenda</h1>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">Gerencie os agendamentos da clínica</p>
         </div>
-        <Button icon={Plus} onClick={() => setShowNewAppointment(true)}>
-          Nova Consulta
+        <Button icon={Plus} onClick={() => setShowNewAppointment(true)} className="w-full sm:w-auto">
+          <span className="hidden sm:inline">Nova Consulta</span>
+          <span className="sm:hidden">Nova</span>
         </Button>
       </div>
 
@@ -511,14 +515,14 @@ export default function Agenda() {
               
               
               return (
-            <div key={item.id} className={`border rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
+            <div key={item.id} className={`border rounded-lg p-3 sm:p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
                 isPast 
                   ? 'border-gray-300 dark:border-gray-600 bg-gray-50/50 dark:bg-gray-800/50 opacity-75' 
                   : 'border-gray-200 dark:border-gray-700'
               }`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="flex flex-col items-center bg-blue-50 dark:bg-blue-900/30 rounded-lg p-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+                <div className="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
+                  <div className="flex flex-col items-center bg-blue-50 dark:bg-blue-900/30 rounded-lg p-2 sm:p-3 flex-shrink-0">
                     <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
                       {formatDateSafe(
                         isReturn 
@@ -537,26 +541,26 @@ export default function Agenda() {
                     </span>
                   </div>
                   
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <User className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-                      <h3 className="font-semibold text-gray-900 dark:text-gray-100">{(item as Appointment).patientName}</h3>
-                      <div className="flex items-center space-x-1 ml-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center space-x-2 mb-1 flex-wrap">
+                      <User className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate">{(item as Appointment).patientName}</h3>
+                      <div className="flex items-center space-x-1 ml-2 flex-shrink-0">
                         {getStatusIcon((item as Appointment).status)}
                         <MessageCircle className="w-4 h-4 text-blue-500" />
                       </div>
                     </div>
-                    <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-300">
+                    <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-gray-600 dark:text-gray-300">
                       <div className="flex items-center space-x-1">
                         <Clock className="w-4 h-4" />
                         <span>{(item as Appointment).time}</span>
                       </div>
-                      <span>•</span>
-                      <span>{(item as Appointment).procedure}</span>
-                      <span>•</span>
-                      <span>{(item as Appointment).professional}</span>
+                      <span className="hidden sm:inline">•</span>
+                      <span className="truncate">{(item as Appointment).procedure}</span>
+                      <span className="hidden sm:inline">•</span>
+                      <span className="truncate">{(item as Appointment).professional}</span>
                     </div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{formatPhoneDisplay((item as Appointment).patientPhone)}</p>
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1 truncate">{formatPhoneDisplay((item as Appointment).patientPhone)}</p>
                     {!isPast && !isReturn && (
                       <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
                         {(() => {
@@ -576,14 +580,17 @@ export default function Agenda() {
                   </div>
                 </div>
                 
-                <div className="flex items-center space-x-3">
-                  <StatusBadge status={(item as Appointment).status} />
-                  <div className="flex space-x-2">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:space-x-3 flex-shrink-0">
+                  <div className="flex-shrink-0">
+                    <StatusBadge status={(item as Appointment).status} />
+                  </div>
+                  <div className="flex flex-wrap gap-2">
                     {!isReturn && (
                       <Button 
                         variant="outline" 
                         size="sm"
                         onClick={() => handleEditAppointment(item as Appointment)}
+                        className="text-xs sm:text-sm"
                       >
                         Editar
                       </Button>
@@ -598,6 +605,7 @@ export default function Agenda() {
                           window.open(whatsappUrl, '_blank');
                         }
                       }}
+                      className="text-xs sm:text-sm"
                     >
                       WhatsApp
                     </Button>
@@ -614,7 +622,7 @@ export default function Agenda() {
                           }
                           handleMarkAsCompleted(appointment);
                         }}
-                        className="bg-green-600 hover:bg-green-700 text-white"
+                        className="bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm"
                       >
                         Realizar
                       </Button>
@@ -627,7 +635,7 @@ export default function Agenda() {
                           setAppointmentForPayment(item as Appointment);
                           setShowRegisterPayment(true);
                         }}
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm whitespace-nowrap"
                       >
                         Registrar Pagamento
                       </Button>
@@ -636,7 +644,20 @@ export default function Agenda() {
                       <Button 
                         variant="primary" 
                         size="sm"
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                        onClick={async () => {
+                          // Para retornos, marcar como realizado no backend
+                          const returnId = (item as any).id?.replace('return_', '');
+                          if (returnId) {
+                            try {
+                              await apiService.updateReturn(returnId, { status: 'realizado' });
+                              await loadAppointments(); // Recarregar dados
+                            } catch (err) {
+                              console.error('Erro ao marcar retorno como realizado:', err);
+                              setError('Erro ao marcar retorno como realizado');
+                            }
+                          }
+                        }}
+                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm"
                       >
                         Realizar Consulta
                       </Button>

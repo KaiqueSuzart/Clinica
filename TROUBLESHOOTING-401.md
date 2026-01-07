@@ -129,3 +129,5 @@ FRONTEND_PREVIEW_URL=https://clinione-b9cyb.ondigitalocean.app
   - CORS bloqueando requisições
 
 
+
+

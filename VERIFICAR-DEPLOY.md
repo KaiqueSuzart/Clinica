@@ -73,3 +73,5 @@ curl -X POST https://clinione-b9cyb.ondigitalocean.app/api/auth/login \
 - [ ] Teste de login funciona
 
 
+
+

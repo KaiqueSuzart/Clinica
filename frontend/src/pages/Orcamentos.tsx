@@ -505,58 +505,59 @@ export default function Orcamentos() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Orçamentos</h1>
-          <p className="text-gray-600">Gerencie os orçamentos da clínica</p>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">Orçamentos</h1>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">Gerencie os orçamentos da clínica</p>
         </div>
-        <Button icon={Plus} onClick={() => setShowNewBudget(true)}>
-          Novo Orçamento
+        <Button icon={Plus} onClick={() => setShowNewBudget(true)} className="w-full sm:w-auto">
+          <span className="hidden sm:inline">Novo Orçamento</span>
+          <span className="sm:hidden">Novo</span>
         </Button>
       </div>
 
       {/* Estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="p-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
+        <Card className="p-4 sm:p-6">
           <div className="flex items-center">
-            <FileText className="w-8 h-8 text-blue-600 mr-3" />
-            <div>
-              <p className="text-sm text-gray-600">Total</p>
-              <p className="text-2xl font-bold text-gray-900">{filteredBudgets.length}</p>
+            <FileText className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600 mr-2 sm:mr-3 flex-shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Total</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{filteredBudgets.length}</p>
             </div>
           </div>
         </Card>
-        <Card className="p-6">
+        <Card className="p-4 sm:p-6">
           <div className="flex items-center">
-            <DollarSign className="w-8 h-8 text-green-600 mr-3" />
-            <div>
-              <p className="text-sm text-gray-600">Aprovados</p>
-              <p className="text-2xl font-bold text-gray-900">
+            <DollarSign className="w-6 h-6 sm:w-8 sm:h-8 text-green-600 mr-2 sm:mr-3 flex-shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Aprovados</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
                 {filteredBudgets.filter(b => b.status === 'aprovado').length}
               </p>
             </div>
           </div>
         </Card>
-        <Card className="p-6">
+        <Card className="p-4 sm:p-6">
           <div className="flex items-center">
-            <Eye className="w-8 h-8 text-yellow-600 mr-3" />
-            <div>
-              <p className="text-sm text-gray-600">Rascunhos</p>
-              <p className="text-2xl font-bold text-gray-900">
+            <Eye className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-600 mr-2 sm:mr-3 flex-shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Rascunhos</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
                 {filteredBudgets.filter(b => b.status === 'rascunho').length}
               </p>
             </div>
           </div>
         </Card>
-        <Card className="p-6">
+        <Card className="p-4 sm:p-6">
           <div className="flex items-center">
-            <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center mr-3">
-              <span className="text-red-600 font-bold text-sm">×</span>
+            <div className="w-6 h-6 sm:w-8 sm:h-8 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mr-2 sm:mr-3 flex-shrink-0">
+              <span className="text-red-600 dark:text-red-400 font-bold text-xs sm:text-sm">×</span>
             </div>
-            <div>
-              <p className="text-sm text-gray-600">Recusados</p>
-              <p className="text-2xl font-bold text-gray-900">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Recusados</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
                 {filteredBudgets.filter(b => b.status === 'recusado').length}
               </p>
             </div>
@@ -567,15 +568,15 @@ export default function Orcamentos() {
       {showNewBudget && (
         <Card title="Novo Orçamento">
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">
                   Paciente
                 </label>
                 <select 
                   value={newBudgetPatient}
                   onChange={(e) => setNewBudgetPatient(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                 >
                   <option value="">Selecione um paciente</option>
                   {patients.map(patient => (
@@ -586,19 +587,19 @@ export default function Orcamentos() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">
                   Validade
                 </label>
                 <input
                   type="date"
                   value={newBudgetValidUntil}
                   onChange={(e) => setNewBudgetValidUntil(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Número de Parcelas
@@ -876,8 +877,8 @@ export default function Orcamentos() {
       {/* Lista de Orçamentos */}
       <Card title="Orçamentos Criados" subtitle={`${filteredBudgets.length} orçamentos na lista`}>
         {/* Barra de Pesquisa */}
-        <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-          <div className="flex flex-col md:flex-row gap-4">
+        <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <div className="flex-1">
               <div className="relative">
                 <input
@@ -885,7 +886,7 @@ export default function Orcamentos() {
                   placeholder="Pesquisar orçamentos..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 />
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -894,11 +895,11 @@ export default function Orcamentos() {
                 </div>
               </div>
             </div>
-            <div className="md:w-48">
+            <div className="sm:w-48">
               <select
                 value={searchFilter}
                 onChange={(e) => setSearchFilter(e.target.value as any)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               >
                 <option value="all">Todos os campos</option>
                 <option value="patient">Paciente</option>
@@ -913,7 +914,7 @@ export default function Orcamentos() {
                   setSearchTerm('');
                   setSearchFilter('all');
                 }}
-                className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+                className="px-3 sm:px-4 py-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors whitespace-nowrap"
               >
                 Limpar
               </button>
@@ -938,7 +939,7 @@ export default function Orcamentos() {
               </div>
 
               <div className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-4 sm:mb-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Paciente
@@ -973,49 +974,59 @@ export default function Orcamentos() {
 
                 <div className="mb-6">
                   <h4 className="text-md font-semibold text-gray-900 dark:text-gray-100 mb-4">Itens do Orçamento</h4>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                      <thead className="bg-gray-50 dark:bg-gray-700">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                            Procedimento
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                            Descrição
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                            Qtd
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                            Valor Unit.
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                            Total
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                        {selectedBudget.itens_orcamento?.map((item: any) => (
-                          <tr key={item.id}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
-                              {item.descricao}
-                            </td>
-                            <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
-                              {item.observacoes || item.descricao || '-'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                              {item.quantidade}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                              R$ {item.valor_unitario.toFixed(2)}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 dark:text-gray-100">
-                              R$ {item.valor_total.toFixed(2)}
-                            </td>
+                  <div className="overflow-x-auto -mx-4 sm:mx-0">
+                    <div className="inline-block min-w-full align-middle sm:px-0">
+                      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead className="bg-gray-50 dark:bg-gray-700">
+                          <tr>
+                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                              Procedimento
+                            </th>
+                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider hidden sm:table-cell">
+                              Descrição
+                            </th>
+                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                              Qtd
+                            </th>
+                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider hidden md:table-cell">
+                              Valor Unit.
+                            </th>
+                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                              Total
+                            </th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                          {selectedBudget.itens_orcamento?.map((item: any) => (
+                            <tr key={item.id}>
+                              <td className="px-3 sm:px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">
+                                <div className="min-w-0">
+                                  <div className="truncate">{item.descricao}</div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400 sm:hidden mt-1">
+                                    {item.observacoes || item.descricao || '-'}
+                                  </div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400 md:hidden mt-1">
+                                    R$ {item.valor_unitario.toFixed(2)} x {item.quantidade}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-3 sm:px-6 py-4 text-sm text-gray-900 dark:text-gray-100 hidden sm:table-cell truncate">
+                                {item.observacoes || item.descricao || '-'}
+                              </td>
+                              <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                                {item.quantidade}
+                              </td>
+                              <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 hidden md:table-cell">
+                                R$ {item.valor_unitario.toFixed(2)}
+                              </td>
+                              <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                R$ {item.valor_total.toFixed(2)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
 
@@ -1063,10 +1074,10 @@ export default function Orcamentos() {
                   </div>
                 </div>
 
-                <div className="flex justify-end space-x-3">
+                <div className="flex flex-wrap justify-end gap-2 sm:gap-3">
                   <button
                     onClick={() => setShowViewBudget(false)}
-                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    className="px-3 sm:px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                   >
                     Fechar
                   </button>
@@ -1077,8 +1088,10 @@ export default function Orcamentos() {
                       setShowViewBudget(false);
                       handleEditBudget(selectedBudget);
                     }}
+                    className="text-sm"
                   >
-                    Editar
+                    <span className="hidden sm:inline">Editar</span>
+                    <span className="sm:hidden">Editar</span>
                   </Button>
                   <Button
                     icon={Send}
@@ -1086,8 +1099,10 @@ export default function Orcamentos() {
                       handleSendBudget(selectedBudget);
                       setShowViewBudget(false);
                     }}
+                    className="text-sm"
                   >
-                    Enviar
+                    <span className="hidden sm:inline">Enviar</span>
+                    <span className="sm:hidden">Enviar</span>
                   </Button>
                 </div>
               </div>
@@ -1393,128 +1408,143 @@ export default function Orcamentos() {
           </div>
         )}
 
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Paciente
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Descrição
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Data de Criação
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Validade
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Valor Total
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Ações
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredBudgets.map((budget) => (
-                <tr key={budget.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
-                      {budget.clientelA?.nome}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {budget.descricao || '-'}
-                    </div>
-                    {/* Debug: {JSON.stringify(budget.descricao)} */}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {new Date(budget.created_at).toLocaleDateString('pt-BR')}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {new Date(budget.data_validade).toLocaleDateString('pt-BR')}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-semibold text-gray-900">
-                      R$ {budget.valor_final.toFixed(2)}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <StatusBadge status={budget.status} type="budget" />
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex space-x-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        icon={Eye}
-                        onClick={() => handleViewBudget(budget)}
-                      >
-                        Ver
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        icon={Edit}
-                        onClick={() => handleEditBudget(budget)}
-                      >
-                        Editar
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        icon={Send}
-                        onClick={() => handleSendBudget(budget)}
-                      >
-                        Enviar
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        icon={Trash2}
-                        onClick={() => handleDeleteBudget(budget)}
-                        className="text-red-600 border-red-300 hover:bg-red-50"
-                      >
-                        Excluir
-                      </Button>
-                      {(budget.status === 'enviado' || budget.status === 'rascunho') && (
-                        <>
+        <div className="overflow-x-auto -mx-4 sm:mx-0">
+          <div className="inline-block min-w-full align-middle sm:px-0">
+            <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                      Paciente
+                    </th>
+                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider hidden md:table-cell">
+                      Descrição
+                    </th>
+                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider hidden lg:table-cell">
+                      Data de Criação
+                    </th>
+                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider hidden sm:table-cell">
+                      Validade
+                    </th>
+                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                      Valor Total
+                    </th>
+                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                      Ações
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  {filteredBudgets.map((budget) => (
+                    <tr key={budget.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                      <td className="px-3 sm:px-4 py-3 text-sm">
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                            {budget.clientelA?.nome}
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 md:hidden mt-1 truncate">
+                            {budget.descricao || '-'}
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 sm:hidden mt-1">
+                            Val: {new Date(budget.data_validade).toLocaleDateString('pt-BR')}
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 lg:hidden mt-1">
+                            Criado: {new Date(budget.created_at).toLocaleDateString('pt-BR')}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-3 sm:px-4 py-3 text-sm text-gray-900 dark:text-gray-100 hidden md:table-cell truncate">
+                        {budget.descricao || '-'}
+                      </td>
+                      <td className="px-3 sm:px-4 py-3 text-sm text-gray-900 dark:text-gray-100 hidden lg:table-cell whitespace-nowrap">
+                        {new Date(budget.created_at).toLocaleDateString('pt-BR')}
+                      </td>
+                      <td className="px-3 sm:px-4 py-3 text-sm text-gray-900 dark:text-gray-100 hidden sm:table-cell whitespace-nowrap">
+                        {new Date(budget.data_validade).toLocaleDateString('pt-BR')}
+                      </td>
+                      <td className="px-3 sm:px-4 py-3 text-sm font-semibold text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                        R$ {budget.valor_final.toFixed(2)}
+                      </td>
+                      <td className="px-3 sm:px-4 py-3 text-sm">
+                        <StatusBadge status={budget.status} type="budget" />
+                      </td>
+                      <td className="px-3 sm:px-4 py-3 text-sm font-medium">
+                        <div className="flex flex-wrap gap-1 sm:gap-2">
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            icon={CheckCircle}
-                            onClick={() => handleApproveReject(budget, 'approve')}
-                            className="text-green-600 border-green-300 hover:bg-green-50"
+                            icon={Eye}
+                            onClick={() => handleViewBudget(budget)}
+                            className="text-xs"
                           >
-                            Aprovar
+                            <span className="hidden sm:inline">Ver</span>
+                            <span className="sm:hidden">👁</span>
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            icon={Edit}
+                            onClick={() => handleEditBudget(budget)}
+                            className="text-xs"
+                          >
+                            <span className="hidden sm:inline">Editar</span>
+                            <span className="sm:hidden">✏</span>
                           </Button>
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            icon={XCircle}
-                            onClick={() => handleApproveReject(budget, 'reject')}
-                            className="text-red-600 border-red-300 hover:bg-red-50"
+                            icon={Send}
+                            onClick={() => handleSendBudget(budget)}
+                            className="text-xs"
                           >
-                            Recusar
+                            <span className="hidden sm:inline">Enviar</span>
+                            <span className="sm:hidden">📤</span>
                           </Button>
-                        </>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            icon={Trash2}
+                            onClick={() => handleDeleteBudget(budget)}
+                            className="text-red-600 border-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 text-xs"
+                          >
+                            <span className="hidden sm:inline">Excluir</span>
+                            <span className="sm:hidden">🗑</span>
+                          </Button>
+                          {(budget.status === 'enviado' || budget.status === 'rascunho') && (
+                            <>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                icon={CheckCircle}
+                                onClick={() => handleApproveReject(budget, 'approve')}
+                                className="text-green-600 border-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 text-xs"
+                              >
+                                <span className="hidden sm:inline">Aprovar</span>
+                                <span className="sm:hidden">✓</span>
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                icon={XCircle}
+                                onClick={() => handleApproveReject(budget, 'reject')}
+                                className="text-red-600 border-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 text-xs"
+                              >
+                                <span className="hidden sm:inline">Recusar</span>
+                                <span className="sm:hidden">✗</span>
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </Card>
 

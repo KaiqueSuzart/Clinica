@@ -132,17 +132,19 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600">Visão geral da clínica</p>
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+          <div>
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">Visão geral da clínica</p>
+          </div>
           <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-600">Período:</span>
+            <span className="text-sm text-gray-600 dark:text-gray-400">Período:</span>
             <select
               value={selectedPeriod}
               onChange={(e) => setSelectedPeriod(e.target.value as any)}
-              className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
             >
               <option value="today">Hoje</option>
               <option value="week">Esta Semana</option>
@@ -154,18 +156,18 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {stats.map((stat, index) => {
           const Icon = stat.icon;
           return (
-            <Card key={index} className="p-6">
+            <Card key={index} className="p-4 sm:p-6">
               <div className="flex items-center">
-                <div className={`p-3 rounded-full ${stat.bg}`}>
-                  <Icon className={`w-6 h-6 ${stat.color}`} />
+                <div className={`p-2 sm:p-3 rounded-full ${stat.bg} flex-shrink-0`}>
+                  <Icon className={`w-5 h-5 sm:w-6 sm:h-6 ${stat.color}`} />
                 </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                  <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                <div className="ml-3 sm:ml-4 min-w-0">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">{stat.title}</p>
+                  <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
                 </div>
               </div>
             </Card>
@@ -173,21 +175,21 @@ export default function Dashboard() {
         })}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Atendimentos de Hoje */}
         <Card title="Atendimentos de Hoje" subtitle={`${todayAppointments.length} consultas agendadas`}>
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {todayAppointments.length > 0 ? (
               todayAppointments.map((appointment) => (
-                <div key={appointment.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <Clock className="w-5 h-5 text-gray-400" />
-                    <div>
-                      <p className="font-semibold text-gray-900">{appointment.patientName}</p>
-                      <p className="text-sm text-gray-600">{appointment.time} - {appointment.procedure}</p>
+                <div key={appointment.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg gap-2 sm:gap-0">
+                  <div className="flex items-center space-x-3 min-w-0 flex-1">
+                    <Clock className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="font-semibold text-gray-900 dark:text-white truncate">{appointment.patientName}</p>
+                      <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">{appointment.time} - {appointment.procedure}</p>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 flex-shrink-0">
                     <StatusBadge status={appointment.status} />
                     {appointment.status === 'realizado' && (
                       <button
@@ -195,7 +197,7 @@ export default function Dashboard() {
                           setSelectedAppointment(appointment);
                           setShowEvaluation(true);
                         }}
-                        className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-full hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+                        className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-full hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors whitespace-nowrap"
                       >
                         Avaliar
                       </button>
@@ -204,8 +206,8 @@ export default function Dashboard() {
                 </div>
               ))
             ) : (
-              <div className="text-center py-8 text-gray-500">
-                <Calendar className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                <Calendar className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
                 <p>Nenhum atendimento agendado para hoje</p>
               </div>
             )}
@@ -214,31 +216,33 @@ export default function Dashboard() {
 
         {/* Retornos Agendados */}
         <Card title="Próximos Retornos" subtitle={`${todayReturns.length} retornos de hoje`}>
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {todayReturns.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <CheckCircle className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                <CheckCircle className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
                 <p>Nenhum retorno agendado para hoje</p>
               </div>
             ) : (
               todayReturns.slice(0, 5).map((returnVisit) => (
-                <div key={returnVisit.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <CheckCircle className="w-5 h-5 text-gray-400" />
-                    <div>
-                      <p className="font-semibold text-gray-900 dark:text-gray-100">{returnVisit.paciente_nome}</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                <div key={returnVisit.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg gap-2 sm:gap-0">
+                  <div className="flex items-center space-x-3 min-w-0 flex-1">
+                    <CheckCircle className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="font-semibold text-gray-900 dark:text-gray-100 truncate">{returnVisit.paciente_nome}</p>
+                      <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">
                         {returnVisit.hora_retorno || '09:00'} - {returnVisit.procedimento}
                       </p>
                     </div>
                   </div>
-                  <StatusBadge status={returnVisit.status} type="return" />
+                  <div className="flex-shrink-0">
+                    <StatusBadge status={returnVisit.status} type="return" />
+                  </div>
                 </div>
               ))
             )}
             {todayReturns.length > 5 && (
               <div className="text-center pt-2">
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
                   +{todayReturns.length - 5} retornos adicionais
                 </p>
               </div>
@@ -249,29 +253,29 @@ export default function Dashboard() {
 
       {/* Indicadores do Mês */}
       <Card title="Indicadores do Mês" subtitle={`Performance da clínica em ${new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`}>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
           <div className="text-center">
-            <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-2">{monthlyStats.atendimentosRealizados}</div>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Atendimentos Realizados</p>
+            <div className="text-2xl sm:text-3xl font-bold text-blue-600 dark:text-blue-400 mb-2">{monthlyStats.atendimentosRealizados}</div>
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Atendimentos Realizados</p>
           </div>
           <div className="text-center">
-            <div className="text-3xl font-bold text-green-600 dark:text-green-400 mb-2">{monthlyStats.taxaComparecimento}%</div>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Taxa de Comparecimento</p>
+            <div className="text-2xl sm:text-3xl font-bold text-green-600 dark:text-green-400 mb-2">{monthlyStats.taxaComparecimento}%</div>
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Taxa de Comparecimento</p>
           </div>
           <div className="text-center">
             {permissions.canViewFinancial ? (
               <>
-                <div className="text-3xl font-bold text-purple-600 dark:text-purple-400 mb-2">
+                <div className="text-2xl sm:text-3xl font-bold text-purple-600 dark:text-purple-400 mb-2 break-words">
                   {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(monthlyStats.faturamento)}
                 </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Faturamento</p>
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Faturamento</p>
               </>
             ) : (
               <>
-                <div className="text-3xl font-bold text-gray-400 dark:text-gray-500 mb-2">
+                <div className="text-2xl sm:text-3xl font-bold text-gray-400 dark:text-gray-500 mb-2">
                   ***
                 </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Faturamento (Restrito)</p>
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Faturamento (Restrito)</p>
               </>
             )}
           </div>

@@ -1536,18 +1536,18 @@ export default function Pacientes() {
   return (
     <>
       <ToastContainer />
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Pacientes</h1>
-            <p className="text-gray-600">Gerencie os dados dos pacientes</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Pacientes</h1>
+            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Gerencie os dados dos pacientes</p>
           </div>
-        <Button icon={Plus} onClick={() => setShowNewPatient(true)}>
-          Novo Paciente
-        </Button>
-      </div>
+          <Button icon={Plus} onClick={() => setShowNewPatient(true)} className="w-full sm:w-auto">
+            Novo Paciente
+          </Button>
+        </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Lista de Pacientes */}
         <div className="lg:col-span-1">
           <Card title="Lista de Pacientes" subtitle={`${filteredPatients.length} pacientes`}>
@@ -1598,12 +1598,14 @@ export default function Pacientes() {
                         : 'border-gray-200 hover:bg-gray-50'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-semibold text-gray-900 dark:text-gray-100">{patient.nome}</h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{formatPhoneDisplay(patient.telefone)}</p>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-semibold text-gray-900 dark:text-gray-100 truncate">{patient.nome}</h3>
+                        <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">{formatPhoneDisplay(patient.telefone)}</p>
                       </div>
-                      <StatusBadge status={patient.status || 'ativo'} />
+                      <div className="flex-shrink-0">
+                        <StatusBadge status={patient.status || 'ativo'} />
+                      </div>
                     </div>
                   </div>
                 ))
@@ -1618,8 +1620,8 @@ export default function Pacientes() {
             <div className="space-y-6">
               {/* Tabs de Navegação */}
               <Card>
-                <div className="border-b border-gray-200">
-                  <nav className="-mb-px flex space-x-8">
+                <div className="border-b border-gray-200 dark:border-gray-700">
+                  <nav className="-mb-px flex flex-wrap gap-2 sm:gap-4 sm:space-x-4 overflow-x-auto">
                     {[
                       { 
                         id: 'info', 
@@ -1647,16 +1649,17 @@ export default function Pacientes() {
                         <button
                           key={tab.id}
                           onClick={() => setActiveTab(tab.id as any)}
-                          className={`flex items-center py-2 px-1 border-b-2 font-medium text-sm ${
+                          className={`flex items-center py-2 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap ${
                             activeTab === tab.id
-                              ? 'border-blue-500 text-blue-600'
-                              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                              ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                              : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
                           }`}
                         >
-                          <Icon className="w-4 h-4 mr-2" />
-                          {tab.label}
+                          <Icon className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 flex-shrink-0" />
+                          <span className="hidden sm:inline">{tab.label}</span>
+                          <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
                           {tab.badge && (
-                            <span className={`ml-2 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-white rounded-full ${tab.badgeColor || 'bg-gray-500'}`}>
+                            <span className={`ml-1 sm:ml-2 inline-flex items-center justify-center px-1 sm:px-1.5 py-0.5 text-xs font-bold leading-none text-white rounded-full ${tab.badgeColor || 'bg-gray-500'}`}>
                               {tab.badge}
                             </span>
                           )}
@@ -1674,18 +1677,22 @@ export default function Pacientes() {
                     <div className="space-y-4">
                       {/* Botão para abrir modal */}
                       <div className="flex justify-end">
-                        <Button                         onClick={() => {
-                          console.log('=== CLICOU EM CRIAR PLANO ===');
-                          console.log('selectedPatientData:', selectedPatientData);
-                          console.log('selectedPatientData?.id:', selectedPatientData?.id);
-                          console.log('selectedPatientData?.nome:', selectedPatientData?.nome);
-                          console.log('================================');
-                          setSelectedTreatmentPatient(selectedPatientData); 
-                          setSelectedTreatmentPlan(null); // GARANTIR que é null para novo plano
-                          setShowTreatmentPlan(true); 
-                        }}>
+                        <Button 
+                          onClick={() => {
+                            console.log('=== CLICOU EM CRIAR PLANO ===');
+                            console.log('selectedPatientData:', selectedPatientData);
+                            console.log('selectedPatientData?.id:', selectedPatientData?.id);
+                            console.log('selectedPatientData?.nome:', selectedPatientData?.nome);
+                            console.log('================================');
+                            setSelectedTreatmentPatient(selectedPatientData); 
+                            setSelectedTreatmentPlan(null); // GARANTIR que é null para novo plano
+                            setShowTreatmentPlan(true); 
+                          }}
+                          className="w-full sm:w-auto"
+                        >
                           <FileText className="w-4 h-4 mr-2" />
-                          Criar Planos
+                          <span className="hidden sm:inline">Criar Planos</span>
+                          <span className="sm:hidden">Criar</span>
                         </Button>
                       </div>
 
@@ -1718,13 +1725,13 @@ export default function Pacientes() {
                                 >
                                   <div className="flex items-center justify-between">
                                     <div className="flex-1">
-                                      <div className="flex items-center space-x-2 mb-2">
-                                        <h5 className="font-semibold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                                      <div className="flex items-center flex-wrap gap-2 mb-2">
+                                        <h5 className="font-semibold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate flex-1 min-w-0">
                                           {plan.title || `Plano ${index + 1}`}
                                         </h5>
-                                        <Edit2 className="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-colors opacity-0 group-hover:opacity-100" />
+                                        <Edit2 className="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0" />
                                         {index === 0 && (
-                                          <span className="px-2 py-1 text-xs bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 rounded">
+                                          <span className="px-2 py-1 text-xs bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 rounded whitespace-nowrap flex-shrink-0">
                                             Mais Recente
                                           </span>
                                         )}
@@ -1736,7 +1743,7 @@ export default function Pacientes() {
                                         </p>
                                       )}
                                       
-                                      <div className="grid grid-cols-3 gap-4 text-sm">
+                                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 text-xs sm:text-sm">
                                         <div className="text-center">
                                           <span className="text-blue-600 dark:text-blue-400 font-medium">
                                             {plan.items?.length || 0} procedimentos
@@ -1917,11 +1924,12 @@ export default function Pacientes() {
                     </div>
                     )}
                   </div>
-                  <div className="mt-6 flex space-x-3">
+                  <div className="mt-6 flex flex-wrap gap-2 sm:gap-3">
                     <Button 
                       variant="outline" 
                       size="sm"
                       onClick={() => handleEditPatient(selectedPatientData)}
+                      className="flex-1 sm:flex-initial"
                     >
                       Editar
                     </Button>
@@ -1932,8 +1940,10 @@ export default function Pacientes() {
                       size="sm" 
                       icon={FileText}
                       onClick={() => handleOpenAnamnese(selectedPatientData.id)}
+                      className="flex-1 sm:flex-initial"
                     >
-                      {selectedPatientData.anamnese ? 'Editar Anamnese' : 'Anamnese'}
+                      <span className="hidden sm:inline">{selectedPatientData.anamnese ? 'Editar Anamnese' : 'Anamnese'}</span>
+                      <span className="sm:hidden">{selectedPatientData.anamnese ? 'Editar' : 'Anamnese'}</span>
                     </Button>
                     )}
                     <Button 
@@ -1949,8 +1959,10 @@ export default function Pacientes() {
                         setSelectedTreatmentPatient(selectedPatientData);
                         setShowTreatmentPlan(true);
                       }}
+                      className="flex-1 sm:flex-initial"
                     >
-                      Plano de Tratamento
+                      <span className="hidden sm:inline">Plano de Tratamento</span>
+                      <span className="sm:hidden">Plano</span>
                     </Button>
                     <Button 
                       variant="outline" 
@@ -2048,7 +2060,7 @@ export default function Pacientes() {
                                 {/* Resumo visual para sessões com formatação rica */}
                                 {annotation.content.includes('**') && (
                                   <div className="mb-3 p-3 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
-                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm">
                                       <div>
                                         <span className="text-gray-500 dark:text-gray-400">Procedimentos:</span>
                                         <div className="font-medium text-gray-900 dark:text-gray-100">
@@ -2088,7 +2100,7 @@ export default function Pacientes() {
                                 
                                 {/* Highlight de informações importantes */}
                                 <div className="mt-3 pt-3 border-t border-blue-200 dark:border-blue-700">
-                                  <div className="grid grid-cols-2 gap-4 text-xs">
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 text-xs">
                                     <div>
                                       {annotation.content.includes('Progresso:') && (
                                         <span className="inline-flex items-center px-2 py-1 rounded bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200">

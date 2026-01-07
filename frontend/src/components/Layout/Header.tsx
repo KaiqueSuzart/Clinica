@@ -2,13 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../Auth/AuthProvider';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useMobileMenu } from '../../contexts/MobileMenuContext';
 import { useNotifications } from '../../hooks/useNotifications';
 import NotificationDropdown from '../Notifications/NotificationDropdown';
-import { Bell } from 'lucide-react';
+import { Bell, Menu } from 'lucide-react';
 
 const Header: React.FC = () => {
   const { user, empresa, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
+  const { toggle: toggleMobileMenu } = useMobileMenu();
   const navigate = useNavigate();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showEmpresaMenu, setShowEmpresaMenu] = useState(false);
@@ -47,11 +49,24 @@ const Header: React.FC = () => {
   }, [user?.id, loadUnreadNotifications, runAutoCheck]);
 
   return (
-    <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 transition-colors">
+    <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 transition-colors fixed top-0 left-0 right-0 z-[35]">
       <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          {/* Logo da Empresa - Simplificado */}
+          {/* Logo da Empresa e Botão Hambúrguer */}
           <div className="flex items-center space-x-3">
+            {/* Botão hambúrguer para mobile */}
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleMobileMenu();
+              }}
+              className="lg:hidden p-2 rounded-md text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 z-[60] relative"
+              aria-label="Abrir menu"
+              type="button"
+            >
+              <Menu className="h-6 w-6" />
+            </button>
             <div className="flex-shrink-0">
               {empresa?.logo_url ? (
                 <img
@@ -70,7 +85,7 @@ const Header: React.FC = () => {
           </div>
 
           {/* Controles do usuário - Direita */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 sm:space-x-4">
             {/* Sistema de Notificações */}
             <div className="relative">
               <button
@@ -122,7 +137,7 @@ const Header: React.FC = () => {
             <div className="relative">
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md px-3 py-2 transition-colors"
+                className="flex items-center text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md px-2 sm:px-3 py-2 transition-colors"
               >
                 {user?.avatar_url ? (
                   <img 
@@ -137,7 +152,8 @@ const Header: React.FC = () => {
                     </span>
                   </div>
                 )}
-                <div className="ml-2 text-left">
+                {/* Ocultar texto do usuário no mobile */}
+                <div className="hidden sm:block ml-2 text-left">
                   <p className="text-sm font-medium text-gray-900 dark:text-white">
                     {user?.nome || 'Usuário'}
                   </p>
@@ -145,13 +161,13 @@ const Header: React.FC = () => {
                     {user?.cargo || 'Funcionário'}
                   </p>
                 </div>
-                <svg className="h-4 w-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="hidden sm:block h-4 w-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
 
               {showUserMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50 border border-gray-200 dark:border-gray-700">
+                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50 border border-gray-200 dark:border-gray-700 max-h-[calc(100vh-5rem)] overflow-y-auto">
                   <div className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
                     {user?.email}
                   </div>

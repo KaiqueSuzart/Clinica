@@ -44,3 +44,5 @@ FRONTEND_PREVIEW_URL=https://seu-app.ondigitalocean.app
 # quando o Digital Ocean gerar a URL real do backend.
 
 
+
+

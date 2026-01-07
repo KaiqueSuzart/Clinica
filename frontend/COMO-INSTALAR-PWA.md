@@ -82,3 +82,5 @@ Se aparecer um download ao invés da instalação, isso é normal! O navegador e
 O PWA está funcionando! Só precisa encontrar a opção de instalação no navegador. 🎉
 
 
+
+

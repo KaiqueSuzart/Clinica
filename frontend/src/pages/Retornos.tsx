@@ -231,74 +231,77 @@ export default function Retornos() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Retornos</h1>
-          <p className="text-gray-600">Gerencie os retornos agendados dos pacientes</p>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">Retornos</h1>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">Gerencie os retornos agendados dos pacientes</p>
         </div>
-        <Button icon={RotateCcw} onClick={() => setShowNewReturn(true)}>
-          Novo Retorno
+        <Button icon={RotateCcw} onClick={() => setShowNewReturn(true)} className="w-full sm:w-auto">
+          <span className="hidden sm:inline">Novo Retorno</span>
+          <span className="sm:hidden">Novo</span>
         </Button>
       </div>
 
       {/* Tabs de Navegação */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
         <div className="border-b border-gray-200 dark:border-gray-700">
-          <nav className="-mb-px flex space-x-8 px-6">
+          <nav className="-mb-px flex flex-wrap gap-2 sm:gap-4 sm:space-x-4 px-2 sm:px-6 overflow-x-auto">
             <button
               onClick={() => setActiveTab('confirmed')}
-              className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`flex items-center py-3 sm:py-4 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap ${
                 activeTab === 'confirmed'
                   ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
               }`}
             >
-              <CheckCircle className="w-4 h-4 mr-2" />
-              Retornos Confirmados
-              <span className="ml-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 py-1 rounded-full text-xs">
+              <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 flex-shrink-0" />
+              <span className="hidden sm:inline">Retornos Confirmados</span>
+              <span className="sm:hidden">Confirmados</span>
+              <span className="ml-1 sm:ml-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs">
                 {returnsList.length}
               </span>
             </button>
             <button
               onClick={() => setActiveTab('possible')}
-              className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`flex items-center py-3 sm:py-4 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap ${
                 activeTab === 'possible'
                   ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
               }`}
             >
-              <AlertCircle className="w-4 h-4 mr-2" />
-              Possíveis Retornos
-              <span className="ml-2 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 px-2 py-1 rounded-full text-xs">
+              <AlertCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 flex-shrink-0" />
+              <span className="hidden sm:inline">Possíveis Retornos</span>
+              <span className="sm:hidden">Possíveis</span>
+              <span className="ml-1 sm:ml-2 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs">
                 {possibleReturns.length}
               </span>
             </button>
             <button
               onClick={() => setActiveTab('completed')}
-              className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`flex items-center py-3 sm:py-4 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap ${
                 activeTab === 'completed'
                   ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
               }`}
             >
-              <RotateCcw className="w-4 h-4 mr-2" />
+              <RotateCcw className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 flex-shrink-0" />
               Histórico
-              <span className="ml-2 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-2 py-1 rounded-full text-xs">
+              <span className="ml-1 sm:ml-2 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs">
                 {completedReturns.length}
               </span>
             </button>
             <button
               onClick={() => setActiveTab('overdue')}
-              className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`flex items-center py-3 sm:py-4 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap ${
                 activeTab === 'overdue'
                   ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
               }`}
             >
-              <AlertCircle className="w-4 h-4 mr-2" />
+              <AlertCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 flex-shrink-0" />
               Atrasados
-              <span className="ml-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-2 py-1 rounded-full text-xs">
+              <span className="ml-1 sm:ml-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-xs">
                 {overdueReturns.length}
               </span>
             </button>
@@ -308,7 +311,7 @@ export default function Retornos() {
 
       {/* Estatísticas */}
       {activeTab === 'confirmed' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
         <Card className="p-6">
           <div className="flex items-center">
             <Calendar className="w-8 h-8 text-blue-600 mr-3" />
@@ -486,85 +489,98 @@ export default function Retornos() {
       {/* Lista de Possíveis Retornos */}
       {activeTab === 'possible' && (
         <Card title="Possíveis Retornos" subtitle={`${possibleReturns.length} pacientes aguardando agendamento`}>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-700">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Paciente
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Procedimento
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Data Prevista
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Lembrete
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Ações
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {possibleReturns.map((possibleReturn) => {
-                  const reminderDate = calculateReminderDate(possibleReturn.data_retorno, possibleReturn.observacoes);
-                  const reminderDateObj = new Date(reminderDate.split('/').reverse().join('-') + 'T00:00:00');
-                  const today = new Date();
-                  const diffTime = today.getTime() - reminderDateObj.getTime();
-                  const daysSinceReminder = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                  const isOverdue = daysSinceReminder > 0;
-                  
-                  return (
-                    <tr key={possibleReturn.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className={`w-3 h-3 rounded-full mr-3 ${
-                            isOverdue ? 'bg-red-500' : 'bg-yellow-500'
-                          }`}></div>
-                          <div>
-                            <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                              {possibleReturn.paciente_nome}
+          <div className="overflow-x-auto -mx-4 sm:mx-0">
+            <div className="inline-block min-w-full align-middle sm:px-0">
+              <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead className="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Paciente
+                      </th>
+                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider hidden sm:table-cell">
+                        Procedimento
+                      </th>
+                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Data
+                      </th>
+                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider hidden md:table-cell">
+                        Lembrete
+                      </th>
+                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider hidden lg:table-cell">
+                        Status
+                      </th>
+                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Ações
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {possibleReturns.map((possibleReturn) => {
+                      const reminderDate = calculateReminderDate(possibleReturn.data_retorno, possibleReturn.observacoes);
+                      const reminderDateObj = new Date(reminderDate.split('/').reverse().join('-') + 'T00:00:00');
+                      const today = new Date();
+                      const diffTime = today.getTime() - reminderDateObj.getTime();
+                      const daysSinceReminder = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                      const isOverdue = daysSinceReminder > 0;
+                      
+                      return (
+                        <tr key={possibleReturn.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                          <td className="px-3 sm:px-6 py-4">
+                            <div className="flex items-center">
+                              <div className={`w-3 h-3 rounded-full mr-2 sm:mr-3 flex-shrink-0 ${
+                                isOverdue ? 'bg-red-500' : 'bg-yellow-500'
+                              }`}></div>
+                              <div className="min-w-0">
+                                <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                                  {possibleReturn.paciente_nome}
+                                </div>
+                                <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">
+                                  {formatPhoneDisplay(possibleReturn.paciente_telefone)}
+                                </div>
+                                <div className="text-xs text-gray-600 dark:text-gray-400 sm:hidden mt-1">
+                                  {possibleReturn.procedimento}
+                                </div>
+                              </div>
                             </div>
-                            <div className="text-sm text-gray-500 dark:text-gray-400">
-                              {formatPhoneDisplay(possibleReturn.paciente_telefone)}
+                          </td>
+                          <td className="px-3 sm:px-6 py-4 hidden sm:table-cell">
+                            <div className="text-sm text-gray-900 dark:text-gray-100 truncate">{possibleReturn.procedimento}</div>
+                          </td>
+                          <td className="px-3 sm:px-6 py-4">
+                            <div className="text-sm text-gray-900 dark:text-gray-100">
+                              {new Date(possibleReturn.data_retorno + 'T00:00:00').toLocaleDateString('pt-BR')}
                             </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900 dark:text-gray-100">{possibleReturn.procedimento}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900 dark:text-gray-100">
-                          {new Date(possibleReturn.data_retorno + 'T00:00:00').toLocaleDateString('pt-BR')}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900 dark:text-gray-100">
-                          {calculateReminderDate(possibleReturn.data_retorno, possibleReturn.observacoes)}
-                        </div>
-                        {isOverdue && (
-                          <div className="text-xs text-red-600 dark:text-red-400 font-medium">
-                            {daysSinceReminder} dias atrasado
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          isOverdue 
-                            ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200'
-                            : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200'
-                        }`}>
-                          {isOverdue ? 'Atrasado' : 'Aguardando'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
+                            <div className="text-xs text-gray-500 dark:text-gray-400 md:hidden mt-1">
+                              {calculateReminderDate(possibleReturn.data_retorno, possibleReturn.observacoes)}
+                            </div>
+                            {isOverdue && (
+                              <div className="text-xs text-red-600 dark:text-red-400 font-medium">
+                                {daysSinceReminder} dias atrasado
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-3 sm:px-6 py-4 hidden md:table-cell">
+                            <div className="text-sm text-gray-900 dark:text-gray-100">
+                              {calculateReminderDate(possibleReturn.data_retorno, possibleReturn.observacoes)}
+                            </div>
+                            {isOverdue && (
+                              <div className="text-xs text-red-600 dark:text-red-400 font-medium">
+                                {daysSinceReminder} dias atrasado
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-3 sm:px-6 py-4 hidden lg:table-cell">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              isOverdue 
+                                ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200'
+                                : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200'
+                            }`}>
+                              {isOverdue ? 'Atrasado' : 'Aguardando'}
+                            </span>
+                          </td>
+                          <td className="px-3 sm:px-6 py-4 text-sm font-medium">
+                            <div className="flex flex-wrap gap-1 sm:gap-2">
                           <Button 
                             variant="outline" 
                             size="sm" 
@@ -576,7 +592,8 @@ export default function Retornos() {
                               }
                             }}
                           >
-                            Ligar
+                            <span className="hidden sm:inline">Ligar</span>
+                            <span className="sm:hidden">📞</span>
                           </Button>
                           <Button 
                             variant="outline" 
@@ -588,16 +605,20 @@ export default function Retornos() {
                                 window.open(whatsappUrl, '_blank');
                               }
                             }}
+                            className="text-xs"
                           >
-                            WhatsApp
+                            <span className="hidden sm:inline">WhatsApp</span>
+                            <span className="sm:hidden">💬</span>
                           </Button>
                           <Button 
                             variant="success" 
                             size="sm" 
                             icon={Calendar}
                             onClick={() => handleMarcarConsulta(possibleReturn)}
+                            className="text-xs"
                           >
-                            Marcar
+                            <span className="hidden sm:inline">Marcar</span>
+                            <span className="sm:hidden">📅</span>
                           </Button>
                         </div>
                       </td>
@@ -606,6 +627,8 @@ export default function Retornos() {
                 })}
               </tbody>
             </table>
+              </div>
+            </div>
           </div>
         </Card>
       )}
@@ -613,62 +636,69 @@ export default function Retornos() {
       {/* Lista de Retornos Confirmados */}
       {activeTab === 'confirmed' && (
         <Card title="Retornos Confirmados" subtitle={`${returnsList.length} retornos na lista`}>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <div className="overflow-x-auto -mx-4 sm:mx-0">
+          <div className="inline-block min-w-full align-middle sm:px-0">
+            <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Paciente
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider hidden sm:table-cell">
                   Procedimento
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Data de Retorno
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Data
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider hidden md:table-cell">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Ações
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {returnsList.map((returnVisit) => (
-                <tr key={returnVisit.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">
+                <tr key={returnVisit.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <td className="px-3 sm:px-6 py-4">
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                         {returnVisit.paciente_nome}
                       </div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">
                         {formatPhoneDisplay(returnVisit.paciente_telefone)}
+                      </div>
+                      <div className="text-xs text-gray-600 dark:text-gray-400 sm:hidden mt-1">
+                        {returnVisit.procedimento}
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{returnVisit.procedimento}</div>
+                  <td className="px-3 sm:px-6 py-4 hidden sm:table-cell">
+                    <div className="text-sm text-gray-900 dark:text-gray-100 truncate">{returnVisit.procedimento}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
+                  <td className="px-3 sm:px-6 py-4">
+                    <div className="text-sm text-gray-900 dark:text-gray-100">
                       {new Date(returnVisit.data_retorno + 'T00:00:00').toLocaleDateString('pt-BR')}
                     </div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
                       {returnVisit.hora_retorno}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 sm:px-6 py-4 hidden md:table-cell">
                     <StatusBadge status={returnVisit.status} type="return" />
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex space-x-2">
+                  <td className="px-3 sm:px-6 py-4 text-sm font-medium">
+                    <div className="flex flex-wrap gap-1 sm:gap-2">
                       <Button 
                         variant="outline" 
                         size="sm"
                         onClick={() => handleReagendar(returnVisit)}
+                        className="text-xs"
                       >
-                        Reagendar
+                        <span className="hidden sm:inline">Reagendar</span>
+                        <span className="sm:hidden">↻</span>
                       </Button>
                       <Button 
                         variant="outline" 
@@ -680,8 +710,10 @@ export default function Retornos() {
                             window.location.href = phoneLink;
                           }
                         }}
+                        className="text-xs"
                       >
-                        Ligar
+                        <span className="hidden sm:inline">Ligar</span>
+                        <span className="sm:hidden">📞</span>
                       </Button>
                       {returnVisit.status === 'pendente' && (
                         <Button 
@@ -707,6 +739,8 @@ export default function Retornos() {
               ))}
             </tbody>
           </table>
+            </div>
+          </div>
         </div>
       </Card>
       )}
@@ -714,23 +748,25 @@ export default function Retornos() {
       {/* Lista de Retornos Realizados (Histórico) */}
       {activeTab === 'completed' && (
         <Card title="Histórico de Retornos" subtitle={`${completedReturns.length} retornos realizados`}>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <div className="overflow-x-auto -mx-4 sm:mx-0">
+            <div className="inline-block min-w-full align-middle sm:px-0">
+              <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Paciente
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider hidden sm:table-cell">
                     Procedimento
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Data Realizada
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Data
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider hidden md:table-cell">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Ações
                   </th>
                 </tr>
@@ -738,20 +774,23 @@ export default function Retornos() {
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {completedReturns.map((returnVisit) => (
                   <tr key={returnVisit.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    <td className="px-3 sm:px-6 py-4">
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                           {returnVisit.paciente_nome}
                         </div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
+                        <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">
                           {formatPhoneDisplay(returnVisit.paciente_telefone)}
+                        </div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400 sm:hidden mt-1">
+                          {returnVisit.procedimento}
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 dark:text-gray-100">{returnVisit.procedimento}</div>
+                    <td className="px-3 sm:px-6 py-4 hidden sm:table-cell">
+                      <div className="text-sm text-gray-900 dark:text-gray-100 truncate">{returnVisit.procedimento}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 sm:px-6 py-4">
                       <div className="text-sm text-gray-900 dark:text-gray-100">
                         {new Date(returnVisit.data_retorno + 'T00:00:00').toLocaleDateString('pt-BR')}
                       </div>
@@ -759,13 +798,13 @@ export default function Retornos() {
                         {returnVisit.hora_retorno}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 sm:px-6 py-4 hidden md:table-cell">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200">
                         Realizado
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
+                    <td className="px-3 sm:px-6 py-4 text-sm font-medium">
+                      <div className="flex flex-wrap gap-1 sm:gap-2">
                         <Button 
                           variant="outline" 
                           size="sm" 
@@ -776,8 +815,10 @@ export default function Retornos() {
                               window.location.href = phoneLink;
                             }
                           }}
+                          className="text-xs"
                         >
-                          Ligar
+                          <span className="hidden sm:inline">Ligar</span>
+                          <span className="sm:hidden">📞</span>
                         </Button>
                         <Button 
                           variant="outline" 
@@ -789,8 +830,10 @@ export default function Retornos() {
                               window.open(whatsappUrl, '_blank');
                             }
                           }}
+                          className="text-xs"
                         >
-                          WhatsApp
+                          <span className="hidden sm:inline">WhatsApp</span>
+                          <span className="sm:hidden">💬</span>
                         </Button>
                       </div>
                     </td>
@@ -798,6 +841,8 @@ export default function Retornos() {
                 ))}
               </tbody>
             </table>
+              </div>
+            </div>
           </div>
         </Card>
       )}
@@ -805,26 +850,28 @@ export default function Retornos() {
       {/* Lista de Retornos Atrasados */}
       {activeTab === 'overdue' && (
         <Card title="Retornos Atrasados" subtitle={`${overdueReturns.length} retornos que passaram da data/hora`}>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <div className="overflow-x-auto -mx-4 sm:mx-0">
+            <div className="inline-block min-w-full align-middle sm:px-0">
+              <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Paciente
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider hidden sm:table-cell">
                     Procedimento
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Data/Hora Agendada
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Data/Hora
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Atraso
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider hidden md:table-cell">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Ações
                   </th>
                 </tr>
@@ -839,20 +886,23 @@ export default function Retornos() {
                   
                   return (
                     <tr key={returnVisit.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      <td className="px-3 sm:px-6 py-4">
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                             {returnVisit.paciente_nome}
                           </div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                          <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">
                             {formatPhoneDisplay(returnVisit.paciente_telefone)}
+                          </div>
+                          <div className="text-xs text-gray-600 dark:text-gray-400 sm:hidden mt-1">
+                            {returnVisit.procedimento}
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900 dark:text-gray-100">{returnVisit.procedimento}</div>
+                      <td className="px-3 sm:px-6 py-4 hidden sm:table-cell">
+                        <div className="text-sm text-gray-900 dark:text-gray-100 truncate">{returnVisit.procedimento}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 sm:px-6 py-4">
                         <div className="text-sm text-gray-900 dark:text-gray-100">
                           {new Date(returnVisit.data_retorno + 'T00:00:00').toLocaleDateString('pt-BR')}
                         </div>
@@ -860,7 +910,7 @@ export default function Retornos() {
                           {returnVisit.hora_retorno}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 sm:px-6 py-4">
                         <div className="text-sm text-red-600 dark:text-red-400 font-medium">
                           {diffDays > 1 ? `${diffDays} dias` : `${diffHours} horas`}
                         </div>
@@ -868,45 +918,51 @@ export default function Retornos() {
                           atrasado
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 sm:px-6 py-4 hidden md:table-cell">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200">
                           Atrasado
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
+                      <td className="px-3 sm:px-6 py-4 text-sm font-medium">
+                        <div className="flex flex-wrap gap-1 sm:gap-2">
                           <Button 
                             variant="outline" 
                             size="sm"
                             onClick={() => handleReagendar(returnVisit)}
+                            className="text-xs"
                           >
-                            Reagendar
+                            <span className="hidden sm:inline">Reagendar</span>
+                            <span className="sm:hidden">↻</span>
                           </Button>
                           <Button 
                             variant="outline" 
                             size="sm" 
                             icon={Phone}
                             onClick={() => {
-                              const phoneLink = getPhoneLink(possibleReturn.paciente_telefone);
+                              const phoneLink = getPhoneLink(returnVisit.paciente_telefone);
                               if (phoneLink) {
                                 window.location.href = phoneLink;
                               }
                             }}
+                            className="text-xs"
                           >
-                            Ligar
+                            <span className="hidden sm:inline">Ligar</span>
+                            <span className="sm:hidden">📞</span>
                           </Button>
                           <Button 
                             variant="outline" 
                             size="sm" 
                             icon={MessageSquare}
                             onClick={() => {
-                              const whatsappUrl = getWhatsAppLink(possibleReturn.paciente_telefone);
+                              const whatsappUrl = getWhatsAppLink(returnVisit.paciente_telefone);
                               if (whatsappUrl) {
                                 window.open(whatsappUrl, '_blank');
                               }
                             }}
+                            className="text-xs"
                           >
-                            WhatsApp
+                            <span className="hidden sm:inline">WhatsApp</span>
+                            <span className="sm:hidden">💬</span>
                           </Button>
                           {returnVisit.status === 'pendente' && (
                             <Button 
@@ -933,6 +989,8 @@ export default function Retornos() {
                 })}
               </tbody>
             </table>
+              </div>
+            </div>
           </div>
         </Card>
       )}

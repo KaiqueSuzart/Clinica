@@ -20,3 +20,5 @@ Os ícones devem ter:
 Após criar os ícones, substitua os arquivos placeholder na pasta `public/`.
 
 
+
+

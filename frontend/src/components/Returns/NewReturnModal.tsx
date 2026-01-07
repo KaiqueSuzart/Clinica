@@ -6,6 +6,7 @@ import { useToast } from '../UI/Toast';
 import { useBusinessHours } from '../../contexts/BusinessHoursContext';
 import { useDentistas } from '../../hooks/useDentistas';
 import { useProcedimentos } from '../../hooks/useProcedimentos';
+import { formatPhoneDisplay } from '../../utils/phoneFormatter';
 
 interface NewReturnModalProps {
   isOpen: boolean;
@@ -305,12 +306,12 @@ export default function NewReturnModal({ isOpen, onClose, onSave }: NewReturnMod
                   onChange={(e) => setSelectedPatient(e.target.value)}
                   required
                   disabled={loadingPatients}
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm sm:text-base truncate"
                 >
                   <option value="">Selecione um paciente</option>
                   {patients.map((patient) => (
                     <option key={patient.id} value={patient.id}>
-                      {patient.nome} - {patient.telefone}
+                      {patient.nome} - {formatPhoneDisplay(patient.telefone)}
                     </option>
                   ))}
                 </select>
@@ -326,7 +327,7 @@ export default function NewReturnModal({ isOpen, onClose, onSave }: NewReturnMod
                 </h4>
                 <div className="space-y-1 text-sm text-blue-800 dark:text-blue-200">
                   <p><strong>Nome:</strong> {selectedPatientData.nome}</p>
-                  <p><strong>Telefone:</strong> {selectedPatientData.telefone}</p>
+                  <p><strong>Telefone:</strong> {formatPhoneDisplay(selectedPatientData.telefone)}</p>
                   {selectedPatientData.Email && <p><strong>Email:</strong> {selectedPatientData.Email}</p>}
                   {selectedPatientData.ultima_visita && (
                     <p><strong>Última Visita:</strong> {new Date(selectedPatientData.ultima_visita).toLocaleDateString('pt-BR')}</p>
